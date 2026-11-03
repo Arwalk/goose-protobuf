@@ -1,6 +1,7 @@
 # 0001: message storage layout
 
-- Status: accepted
+- Status: final (reviewed by the project owner against the context-pool
+  alternative, 2026-11-03)
 - Date: 2026-11-03
 - Bead: gpb-wof.1 (blocks gpb-8qn.1, decode context and pool storage)
 - Toolchain: Goose v2026.3 (`goose runtime 4d3da949e563`), gcc 15.2.0,
@@ -161,6 +162,27 @@ namespace, how packages map to names) belongs to the emitter task
 - Encode calls `size_of` per nested message, which is O(n · depth). If
   that shows up in profiles, protobuf C++'s fix applies: a cached size in
   the record, set by `size_of`.
+
+## Review
+
+The owner reviewed this layout (A) against the context of locally owned
+pools (B) and confirmed A as final on 2026-11-03. What tipped it:
+
+- A is the only option fully prototyped in Goose.
+- It has the simplest API: no context parameter on any call.
+- Several `.proto` files compose with no extra design, whereas B has an
+  open problem: a context type covering the pools of imported files.
+
+Accepted with A, and not to be relitigated without a new requirement:
+
+- one message universe per program;
+- likely single-threaded use;
+- manual `M_clear`;
+- pools that never shrink.
+
+A requirement for threads or per-request arenas is what would reopen
+this. Records are spans, links and scalars in both A and B, so a later
+move to B changes signatures and user code, not the data layout.
 
 ## Rejected
 
