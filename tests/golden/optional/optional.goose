@@ -47,13 +47,18 @@ struct Opt {
     o34: u32,
     pb_has0: u32,   // has-bits of fields with presence
     pb_has1: u32,   // has-bits of fields with presence
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Opt_decode_from(r: pb_Reader&, m: Opt&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
+        if r.err != PB_OK { break; }
         if tag == 8 {
             m.o_int32 = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
@@ -156,9 +161,10 @@ fn Opt_decode_from(r: pb_Reader&, m: Opt&) {
             m.o34 = pb_read_varint(r) as! u32;
             m.pb_has1 |= 0x00000001;
         } else {
-            pb_skip_field(r, tag);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -205,108 +211,109 @@ fn Opt_encode(m: Opt&, out: u8[>..]&) {
     }
     if (m.pb_has0 & 0x00000080) != 0 {
         pb_write_varint(out, 72);
-        pb_write_varint(out, m.o9 as u64);
+        pb_write_varint(out, m.o9);
     }
     if (m.pb_has0 & 0x00000100) != 0 {
         pb_write_varint(out, 80);
-        pb_write_varint(out, m.o10 as u64);
+        pb_write_varint(out, m.o10);
     }
     if (m.pb_has0 & 0x00000200) != 0 {
         pb_write_varint(out, 88);
-        pb_write_varint(out, m.o11 as u64);
+        pb_write_varint(out, m.o11);
     }
     if (m.pb_has0 & 0x00000400) != 0 {
         pb_write_varint(out, 96);
-        pb_write_varint(out, m.o12 as u64);
+        pb_write_varint(out, m.o12);
     }
     if (m.pb_has0 & 0x00000800) != 0 {
         pb_write_varint(out, 104);
-        pb_write_varint(out, m.o13 as u64);
+        pb_write_varint(out, m.o13);
     }
     if (m.pb_has0 & 0x00001000) != 0 {
         pb_write_varint(out, 112);
-        pb_write_varint(out, m.o14 as u64);
+        pb_write_varint(out, m.o14);
     }
     if (m.pb_has0 & 0x00002000) != 0 {
         pb_write_varint(out, 120);
-        pb_write_varint(out, m.o15 as u64);
+        pb_write_varint(out, m.o15);
     }
     if (m.pb_has0 & 0x00004000) != 0 {
         pb_write_varint(out, 128);
-        pb_write_varint(out, m.o16 as u64);
+        pb_write_varint(out, m.o16);
     }
     if (m.pb_has0 & 0x00008000) != 0 {
         pb_write_varint(out, 136);
-        pb_write_varint(out, m.o17 as u64);
+        pb_write_varint(out, m.o17);
     }
     if (m.pb_has0 & 0x00010000) != 0 {
         pb_write_varint(out, 144);
-        pb_write_varint(out, m.o18 as u64);
+        pb_write_varint(out, m.o18);
     }
     if (m.pb_has0 & 0x00020000) != 0 {
         pb_write_varint(out, 152);
-        pb_write_varint(out, m.o19 as u64);
+        pb_write_varint(out, m.o19);
     }
     if (m.pb_has0 & 0x00040000) != 0 {
         pb_write_varint(out, 160);
-        pb_write_varint(out, m.o20 as u64);
+        pb_write_varint(out, m.o20);
     }
     if (m.pb_has0 & 0x00080000) != 0 {
         pb_write_varint(out, 168);
-        pb_write_varint(out, m.o21 as u64);
+        pb_write_varint(out, m.o21);
     }
     if (m.pb_has0 & 0x00100000) != 0 {
         pb_write_varint(out, 176);
-        pb_write_varint(out, m.o22 as u64);
+        pb_write_varint(out, m.o22);
     }
     if (m.pb_has0 & 0x00200000) != 0 {
         pb_write_varint(out, 184);
-        pb_write_varint(out, m.o23 as u64);
+        pb_write_varint(out, m.o23);
     }
     if (m.pb_has0 & 0x00400000) != 0 {
         pb_write_varint(out, 192);
-        pb_write_varint(out, m.o24 as u64);
+        pb_write_varint(out, m.o24);
     }
     if (m.pb_has0 & 0x00800000) != 0 {
         pb_write_varint(out, 200);
-        pb_write_varint(out, m.o25 as u64);
+        pb_write_varint(out, m.o25);
     }
     if (m.pb_has0 & 0x01000000) != 0 {
         pb_write_varint(out, 208);
-        pb_write_varint(out, m.o26 as u64);
+        pb_write_varint(out, m.o26);
     }
     if (m.pb_has0 & 0x02000000) != 0 {
         pb_write_varint(out, 216);
-        pb_write_varint(out, m.o27 as u64);
+        pb_write_varint(out, m.o27);
     }
     if (m.pb_has0 & 0x04000000) != 0 {
         pb_write_varint(out, 224);
-        pb_write_varint(out, m.o28 as u64);
+        pb_write_varint(out, m.o28);
     }
     if (m.pb_has0 & 0x08000000) != 0 {
         pb_write_varint(out, 232);
-        pb_write_varint(out, m.o29 as u64);
+        pb_write_varint(out, m.o29);
     }
     if (m.pb_has0 & 0x10000000) != 0 {
         pb_write_varint(out, 240);
-        pb_write_varint(out, m.o30 as u64);
+        pb_write_varint(out, m.o30);
     }
     if (m.pb_has0 & 0x20000000) != 0 {
         pb_write_varint(out, 248);
-        pb_write_varint(out, m.o31 as u64);
+        pb_write_varint(out, m.o31);
     }
     if (m.pb_has0 & 0x40000000) != 0 {
         pb_write_varint(out, 256);
-        pb_write_varint(out, m.o32 as u64);
+        pb_write_varint(out, m.o32);
     }
     if (m.pb_has0 & 0x80000000) != 0 {
         pb_write_varint(out, 264);
-        pb_write_varint(out, m.o33 as u64);
+        pb_write_varint(out, m.o33);
     }
     if (m.pb_has1 & 0x00000001) != 0 {
         pb_write_varint(out, 272);
-        pb_write_varint(out, m.o34 as u64);
+        pb_write_varint(out, m.o34);
     }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
@@ -320,36 +327,37 @@ fn Opt_size_of(m: Opt&) -> i64 {
     if (m.pb_has0 & 0x00000020) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.o_mode)); }
     if (m.pb_has0 & 0x00000040) != 0 { n += 9; }
     if m.plain != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.plain)); }
-    if (m.pb_has0 & 0x00000080) != 0 { n += 1 + pb_varint_size(m.o9 as u64); }
-    if (m.pb_has0 & 0x00000100) != 0 { n += 1 + pb_varint_size(m.o10 as u64); }
-    if (m.pb_has0 & 0x00000200) != 0 { n += 1 + pb_varint_size(m.o11 as u64); }
-    if (m.pb_has0 & 0x00000400) != 0 { n += 1 + pb_varint_size(m.o12 as u64); }
-    if (m.pb_has0 & 0x00000800) != 0 { n += 1 + pb_varint_size(m.o13 as u64); }
-    if (m.pb_has0 & 0x00001000) != 0 { n += 1 + pb_varint_size(m.o14 as u64); }
-    if (m.pb_has0 & 0x00002000) != 0 { n += 1 + pb_varint_size(m.o15 as u64); }
-    if (m.pb_has0 & 0x00004000) != 0 { n += 2 + pb_varint_size(m.o16 as u64); }
-    if (m.pb_has0 & 0x00008000) != 0 { n += 2 + pb_varint_size(m.o17 as u64); }
-    if (m.pb_has0 & 0x00010000) != 0 { n += 2 + pb_varint_size(m.o18 as u64); }
-    if (m.pb_has0 & 0x00020000) != 0 { n += 2 + pb_varint_size(m.o19 as u64); }
-    if (m.pb_has0 & 0x00040000) != 0 { n += 2 + pb_varint_size(m.o20 as u64); }
-    if (m.pb_has0 & 0x00080000) != 0 { n += 2 + pb_varint_size(m.o21 as u64); }
-    if (m.pb_has0 & 0x00100000) != 0 { n += 2 + pb_varint_size(m.o22 as u64); }
-    if (m.pb_has0 & 0x00200000) != 0 { n += 2 + pb_varint_size(m.o23 as u64); }
-    if (m.pb_has0 & 0x00400000) != 0 { n += 2 + pb_varint_size(m.o24 as u64); }
-    if (m.pb_has0 & 0x00800000) != 0 { n += 2 + pb_varint_size(m.o25 as u64); }
-    if (m.pb_has0 & 0x01000000) != 0 { n += 2 + pb_varint_size(m.o26 as u64); }
-    if (m.pb_has0 & 0x02000000) != 0 { n += 2 + pb_varint_size(m.o27 as u64); }
-    if (m.pb_has0 & 0x04000000) != 0 { n += 2 + pb_varint_size(m.o28 as u64); }
-    if (m.pb_has0 & 0x08000000) != 0 { n += 2 + pb_varint_size(m.o29 as u64); }
-    if (m.pb_has0 & 0x10000000) != 0 { n += 2 + pb_varint_size(m.o30 as u64); }
-    if (m.pb_has0 & 0x20000000) != 0 { n += 2 + pb_varint_size(m.o31 as u64); }
-    if (m.pb_has0 & 0x40000000) != 0 { n += 2 + pb_varint_size(m.o32 as u64); }
-    if (m.pb_has0 & 0x80000000) != 0 { n += 2 + pb_varint_size(m.o33 as u64); }
-    if (m.pb_has1 & 0x00000001) != 0 { n += 2 + pb_varint_size(m.o34 as u64); }
+    if (m.pb_has0 & 0x00000080) != 0 { n += 1 + pb_varint_size(m.o9); }
+    if (m.pb_has0 & 0x00000100) != 0 { n += 1 + pb_varint_size(m.o10); }
+    if (m.pb_has0 & 0x00000200) != 0 { n += 1 + pb_varint_size(m.o11); }
+    if (m.pb_has0 & 0x00000400) != 0 { n += 1 + pb_varint_size(m.o12); }
+    if (m.pb_has0 & 0x00000800) != 0 { n += 1 + pb_varint_size(m.o13); }
+    if (m.pb_has0 & 0x00001000) != 0 { n += 1 + pb_varint_size(m.o14); }
+    if (m.pb_has0 & 0x00002000) != 0 { n += 1 + pb_varint_size(m.o15); }
+    if (m.pb_has0 & 0x00004000) != 0 { n += 2 + pb_varint_size(m.o16); }
+    if (m.pb_has0 & 0x00008000) != 0 { n += 2 + pb_varint_size(m.o17); }
+    if (m.pb_has0 & 0x00010000) != 0 { n += 2 + pb_varint_size(m.o18); }
+    if (m.pb_has0 & 0x00020000) != 0 { n += 2 + pb_varint_size(m.o19); }
+    if (m.pb_has0 & 0x00040000) != 0 { n += 2 + pb_varint_size(m.o20); }
+    if (m.pb_has0 & 0x00080000) != 0 { n += 2 + pb_varint_size(m.o21); }
+    if (m.pb_has0 & 0x00100000) != 0 { n += 2 + pb_varint_size(m.o22); }
+    if (m.pb_has0 & 0x00200000) != 0 { n += 2 + pb_varint_size(m.o23); }
+    if (m.pb_has0 & 0x00400000) != 0 { n += 2 + pb_varint_size(m.o24); }
+    if (m.pb_has0 & 0x00800000) != 0 { n += 2 + pb_varint_size(m.o25); }
+    if (m.pb_has0 & 0x01000000) != 0 { n += 2 + pb_varint_size(m.o26); }
+    if (m.pb_has0 & 0x02000000) != 0 { n += 2 + pb_varint_size(m.o27); }
+    if (m.pb_has0 & 0x04000000) != 0 { n += 2 + pb_varint_size(m.o28); }
+    if (m.pb_has0 & 0x08000000) != 0 { n += 2 + pb_varint_size(m.o29); }
+    if (m.pb_has0 & 0x10000000) != 0 { n += 2 + pb_varint_size(m.o30); }
+    if (m.pb_has0 & 0x20000000) != 0 { n += 2 + pb_varint_size(m.o31); }
+    if (m.pb_has0 & 0x40000000) != 0 { n += 2 + pb_varint_size(m.o32); }
+    if (m.pb_has0 & 0x80000000) != 0 { n += 2 + pb_varint_size(m.o33); }
+    if (m.pb_has1 & 0x00000001) != 0 { n += 2 + pb_varint_size(m.o34); }
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Opt_clear(m: Opt&) {
     m.o_int32 = 0;
     m.o_sint64 = 0;
@@ -387,6 +395,7 @@ fn Opt_clear(m: Opt&) {
     m.o34 = 0;
     m.pb_has0 = 0;
     m.pb_has1 = 0;
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // Sets o_int32 and marks it present: it is encoded even when 0.

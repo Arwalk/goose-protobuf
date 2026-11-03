@@ -12,15 +12,22 @@ let print_print_A: i32 = 0;
 let E_set_x_: i32 = 0;
 
 // message reserved.Outer
-struct Outer {}
+struct Outer {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -33,31 +40,41 @@ fn Outer_decode(buf: const u8[:], m: Outer&) -> i32 {
 
 // Appends m's wire encoding, Outer_size_of(m) bytes, to out.
 fn Outer_encode(m: Outer&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Outer_size_of(m: Outer&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Outer_clear(m: Outer&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // enum reserved.Outer.Ref
 let Outer_Ref_Ref_ZERO: i32 = 0;
 
 // message reserved.Outer.decode
-struct Outer_decode_ {}
+struct Outer_decode_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Outer_decode_decode_from(r: pb_Reader&, m: Outer_decode_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -70,28 +87,38 @@ fn Outer_decode_decode(buf: const u8[:], m: Outer_decode_&) -> i32 {
 
 // Appends m's wire encoding, Outer_decode_size_of(m) bytes, to out.
 fn Outer_decode_encode(m: Outer_decode_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Outer_decode_size_of(m: Outer_decode_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Outer_decode_clear(m: Outer_decode_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.Outer.pool
-struct Outer_pool_ {}
+struct Outer_pool_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Outer_pool_decode_from(r: pb_Reader&, m: Outer_pool_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -104,28 +131,38 @@ fn Outer_pool_decode(buf: const u8[:], m: Outer_pool_&) -> i32 {
 
 // Appends m's wire encoding, Outer_pool_size_of(m) bytes, to out.
 fn Outer_pool_encode(m: Outer_pool_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Outer_pool_size_of(m: Outer_pool_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Outer_pool_clear(m: Outer_pool_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.Node
-struct Node {}
+struct Node {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Node_decode_from(r: pb_Reader&, m: Node&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -138,28 +175,38 @@ fn Node_decode(buf: const u8[:], m: Node&) -> i32 {
 
 // Appends m's wire encoding, Node_size_of(m) bytes, to out.
 fn Node_encode(m: Node&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Node_size_of(m: Node&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Node_clear(m: Node&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.Node.set_name
-struct Node_set_name_ {}
+struct Node_set_name_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Node_set_name_decode_from(r: pb_Reader&, m: Node_set_name_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -172,28 +219,38 @@ fn Node_set_name_decode(buf: const u8[:], m: Node_set_name_&) -> i32 {
 
 // Appends m's wire encoding, Node_set_name_size_of(m) bytes, to out.
 fn Node_set_name_encode(m: Node_set_name_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Node_set_name_size_of(m: Node_set_name_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Node_set_name_clear(m: Node_set_name_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.Node.children_at
-struct Node_children_at_ {}
+struct Node_children_at_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Node_children_at_decode_from(r: pb_Reader&, m: Node_children_at_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -206,28 +263,38 @@ fn Node_children_at_decode(buf: const u8[:], m: Node_children_at_&) -> i32 {
 
 // Appends m's wire encoding, Node_children_at_size_of(m) bytes, to out.
 fn Node_children_at_encode(m: Node_children_at_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Node_children_at_size_of(m: Node_children_at_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Node_children_at_clear(m: Node_children_at_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.str
-struct str_ {}
+struct str_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn str_decode_from(r: pb_Reader&, m: str_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -240,28 +307,38 @@ fn str_decode(buf: const u8[:], m: str_&) -> i32 {
 
 // Appends m's wire encoding, str_size_of(m) bytes, to out.
 fn str_encode(m: str_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn str_size_of(m: str_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn str_clear(m: str_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.pb_x
-struct pb_x_ {}
+struct pb_x_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn pb_x_decode_from_(r: pb_Reader&, m: pb_x_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -274,28 +351,38 @@ fn pb_x_decode_(buf: const u8[:], m: pb_x_&) -> i32 {
 
 // Appends m's wire encoding, pb_x_size_of_(m) bytes, to out.
 fn pb_x_encode_(m: pb_x_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn pb_x_size_of_(m: pb_x_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn pb_x_clear_(m: pb_x_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.thread
-struct thread {}
+struct thread {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn thread_decode_from(r: pb_Reader&, m: thread&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -308,28 +395,38 @@ fn thread_decode(buf: const u8[:], m: thread&) -> i32 {
 
 // Appends m's wire encoding, thread_size_of(m) bytes, to out.
 fn thread_encode(m: thread&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn thread_size_of(m: thread&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn thread_clear(m: thread&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.thread.spawn
-struct thread_spawn_ {}
+struct thread_spawn_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn thread_spawn_decode_from(r: pb_Reader&, m: thread_spawn_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -342,28 +439,38 @@ fn thread_spawn_decode(buf: const u8[:], m: thread_spawn_&) -> i32 {
 
 // Appends m's wire encoding, thread_spawn_size_of(m) bytes, to out.
 fn thread_spawn_encode(m: thread_spawn_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn thread_spawn_size_of(m: thread_spawn_&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn thread_spawn_clear(m: thread_spawn_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message reserved.E
-struct E {}
+struct E {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn E_decode_from(r: pb_Reader&, m: E&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -376,14 +483,17 @@ fn E_decode(buf: const u8[:], m: E&) -> i32 {
 
 // Appends m's wire encoding, E_size_of(m) bytes, to out.
 fn E_encode(m: E&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn E_size_of(m: E&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn E_clear(m: E&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }

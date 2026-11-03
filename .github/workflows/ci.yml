@@ -86,6 +86,16 @@ jobs:
           scripts/install_toolchain.sh
           echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
 
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+
+      # Messages the testee will use, generated and goose-checked (no golden).
+      - name: Generate conformance messages
+        run: |
+          scripts/check_generated.sh -I third_party/protobuf/src \
+            google/protobuf/test_messages_proto3.proto
+
       - name: Protobuf submodule commit
         id: pb
         run: echo "commit=$(git rev-parse HEAD:third_party/protobuf)" >> "$GITHUB_OUTPUT"

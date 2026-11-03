@@ -1,0 +1,9 @@
+# proto-file: unknown.proto
+# proto-message: unknown.Wide
+# wide.txtpb without the fields Known has: Known's unknown fields, in order.
+v: 300
+s: "unknown"
+f: 99
+r: [1, 2, 3]
+sub { a: 5 d: -1 }
+g: -2

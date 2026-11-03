@@ -8,19 +8,25 @@ import pb_wire;
 // message smoke.Smoke
 struct Smoke {
     id: i32,
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Smoke_decode_from(r: pb_Reader&, m: Smoke&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
+        if r.err != PB_OK { break; }
         if tag == 8 {
             m.id = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_skip_field(r, tag);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -37,16 +43,19 @@ fn Smoke_encode(m: Smoke&, out: u8[>..]&) {
         pb_write_varint(out, 8);
         pb_write_varint(out, pb_int32_to_u64(m.id));
     }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Smoke_size_of(m: Smoke&) -> i64 {
     var n: i64 = 0;
     if m.id != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.id)); }
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Smoke_clear(m: Smoke&) {
     m.id = 0;
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }

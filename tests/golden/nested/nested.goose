@@ -6,15 +6,22 @@ namespace goose_test_nested;
 import pb_wire;
 
 // message goose.test.nested.Outer
-struct Outer {}
+struct Outer {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -27,31 +34,41 @@ fn Outer_decode(buf: const u8[:], m: Outer&) -> i32 {
 
 // Appends m's wire encoding, Outer_size_of(m) bytes, to out.
 fn Outer_encode(m: Outer&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Outer_size_of(m: Outer&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Outer_clear(m: Outer&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // enum goose.test.nested.Outer.State
 let Outer_State_STATE_UNSPECIFIED: i32 = 0;
 
 // message goose.test.nested.Outer.Middle
-struct Outer_Middle {}
+struct Outer_Middle {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Outer_Middle_decode_from(r: pb_Reader&, m: Outer_Middle&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -64,16 +81,19 @@ fn Outer_Middle_decode(buf: const u8[:], m: Outer_Middle&) -> i32 {
 
 // Appends m's wire encoding, Outer_Middle_size_of(m) bytes, to out.
 fn Outer_Middle_encode(m: Outer_Middle&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Outer_Middle_size_of(m: Outer_Middle&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Outer_Middle_clear(m: Outer_Middle&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // enum goose.test.nested.Outer.Middle.Kind
@@ -81,15 +101,22 @@ let Outer_Middle_Kind_KIND_UNSPECIFIED: i32 = 0;
 let Outer_Middle_Kind_KIND_LEAF: i32 = 1;
 
 // message goose.test.nested.Outer.Middle.Inner
-struct Outer_Middle_Inner {}
+struct Outer_Middle_Inner {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Outer_Middle_Inner_decode_from(r: pb_Reader&, m: Outer_Middle_Inner&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -102,28 +129,38 @@ fn Outer_Middle_Inner_decode(buf: const u8[:], m: Outer_Middle_Inner&) -> i32 {
 
 // Appends m's wire encoding, Outer_Middle_Inner_size_of(m) bytes, to out.
 fn Outer_Middle_Inner_encode(m: Outer_Middle_Inner&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Outer_Middle_Inner_size_of(m: Outer_Middle_Inner&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Outer_Middle_Inner_clear(m: Outer_Middle_Inner&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message goose.test.nested.Sibling
-struct Sibling {}
+struct Sibling {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Sibling_decode_from(r: pb_Reader&, m: Sibling&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -136,28 +173,38 @@ fn Sibling_decode(buf: const u8[:], m: Sibling&) -> i32 {
 
 // Appends m's wire encoding, Sibling_size_of(m) bytes, to out.
 fn Sibling_encode(m: Sibling&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Sibling_size_of(m: Sibling&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Sibling_clear(m: Sibling&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // message goose.test.nested.Sibling.Inner
-struct Sibling_Inner {}
+struct Sibling_Inner {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Sibling_Inner_decode_from(r: pb_Reader&, m: Sibling_Inner&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -170,14 +217,17 @@ fn Sibling_Inner_decode(buf: const u8[:], m: Sibling_Inner&) -> i32 {
 
 // Appends m's wire encoding, Sibling_Inner_size_of(m) bytes, to out.
 fn Sibling_Inner_encode(m: Sibling_Inner&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Sibling_Inner_size_of(m: Sibling_Inner&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Sibling_Inner_clear(m: Sibling_Inner&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }

@@ -4,15 +4,22 @@
 import pb_wire;
 
 // message Empty
-struct Empty {}
+struct Empty {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Empty_decode_from(r: pb_Reader&, m: Empty&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
-        pb_skip_field(r, tag);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -25,14 +32,17 @@ fn Empty_decode(buf: const u8[:], m: Empty&) -> i32 {
 
 // Appends m's wire encoding, Empty_size_of(m) bytes, to out.
 fn Empty_encode(m: Empty&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Empty_size_of(m: Empty&) -> i64 {
     var n: i64 = 0;
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Empty_clear(m: Empty&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }

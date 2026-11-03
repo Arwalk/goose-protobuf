@@ -8,9 +8,10 @@
 #      be deterministic);
 #   2. diff the output against tests/golden/<name>/ (a missing directory
 #      means "no files"); --update rewrites tests/golden/<name>/ instead;
-#   3. `goose check` every .goose file in tests/golden/<name>/. Goose has no
-#      include path, so each file is checked from a directory holding a copy
-#      of the golden tree plus runtime/pb_wire.goose (`import pb_wire;`).
+#   3. `goose check` every .goose file in tests/golden/<name>/, failing on
+#      warnings too. Goose has no include path, so each file is checked
+#      from a directory holding a copy of the golden tree plus
+#      runtime/pb_wire.goose (`import pb_wire;`).
 # Exits nonzero if any proto fails any step; all failures are reported.
 #
 # Env: PLUGIN     plugin binary (default: zig build, generator/zig-out/bin)
@@ -94,6 +95,10 @@ for proto in "${protos[@]}"; do
       if ! (cd "$chk" && "$goose" check "$rel") >"$tmp/$name/check.log" 2>&1; then
         echo "FAIL $name: goose check failed on tests/golden/$name/$rel"
         grep -v '^parsed ok\|^typechecked ok\|^bce:' "$tmp/$name/check.log"
+        ok=0
+      elif grep -q 'warning:' "$tmp/$name/check.log"; then
+        echo "FAIL $name: goose check warned on tests/golden/$name/$rel"
+        grep 'warning:' "$tmp/$name/check.log"
         ok=0
       fi
     done < <(find "$golden" -name '*.goose' -type f | LC_ALL=C sort)

@@ -30,13 +30,18 @@ struct Scalars {
     f_mid: i32,
     f_optional: i32,
     pb_has0: u32,   // has-bits of fields with presence
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Scalars_decode_from(r: pb_Reader&, m: Scalars&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
+        if r.err != PB_OK { break; }
         if tag == 8 {
             m.f_int32 = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 16 {
@@ -73,9 +78,10 @@ fn Scalars_decode_from(r: pb_Reader&, m: Scalars&) {
             m.f_optional = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_skip_field(r, tag);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -98,7 +104,7 @@ fn Scalars_encode(m: Scalars&, out: u8[>..]&) {
     }
     if m.f_uint32 != 0 {
         pb_write_varint(out, 24);
-        pb_write_varint(out, m.f_uint32 as u64);
+        pb_write_varint(out, m.f_uint32);
     }
     if m.f_uint64 != 0 {
         pb_write_varint(out, 32);
@@ -106,7 +112,7 @@ fn Scalars_encode(m: Scalars&, out: u8[>..]&) {
     }
     if m.f_sint32 != 0 {
         pb_write_varint(out, 40);
-        pb_write_varint(out, pb_zigzag32(m.f_sint32) as u64);
+        pb_write_varint(out, pb_zigzag32(m.f_sint32));
     }
     if m.f_sint64 != 0 {
         pb_write_varint(out, 48);
@@ -156,6 +162,7 @@ fn Scalars_encode(m: Scalars&, out: u8[>..]&) {
         pb_write_varint(out, 4294967288);
         pb_write_varint(out, pb_int32_to_u64(m.f_big));
     }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
@@ -163,9 +170,9 @@ fn Scalars_size_of(m: Scalars&) -> i64 {
     var n: i64 = 0;
     if m.f_int32 != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.f_int32)); }
     if m.f_int64 != 0 { n += 1 + pb_varint_size(pb_int64_to_u64(m.f_int64)); }
-    if m.f_uint32 != 0 { n += 1 + pb_varint_size(m.f_uint32 as u64); }
+    if m.f_uint32 != 0 { n += 1 + pb_varint_size(m.f_uint32); }
     if m.f_uint64 != 0 { n += 1 + pb_varint_size(m.f_uint64); }
-    if m.f_sint32 != 0 { n += 1 + pb_varint_size(pb_zigzag32(m.f_sint32) as u64); }
+    if m.f_sint32 != 0 { n += 1 + pb_varint_size(pb_zigzag32(m.f_sint32)); }
     if m.f_sint64 != 0 { n += 1 + pb_varint_size(pb_zigzag64(m.f_sint64)); }
     if m.f_fixed32 != 0 { n += 5; }
     if m.f_fixed64 != 0 { n += 9; }
@@ -178,10 +185,11 @@ fn Scalars_size_of(m: Scalars&) -> i64 {
     if m.f_mid != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.f_mid)); }
     if (m.pb_has0 & 0x00000001) != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.f_optional)); }
     if m.f_big != 0 { n += 5 + pb_varint_size(pb_int32_to_u64(m.f_big)); }
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Scalars_clear(m: Scalars&) {
     m.f_int32 = 0;
     m.f_int64 = 0;
@@ -201,6 +209,7 @@ fn Scalars_clear(m: Scalars&) {
     m.f_mid = 0;
     m.f_optional = 0;
     m.pb_has0 = 0;
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // Sets f_optional and marks it present: it is encoded even when 0.
@@ -219,19 +228,25 @@ fn Scalars_clear_f_optional(m: Scalars&) {
 // message scalars.Scalars.Inner
 struct Scalars_Inner {
     type_: i64,
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
 // Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
 fn Scalars_Inner_decode_from(r: pb_Reader&, m: Scalars_Inner&) {
+    var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
+        let start = r.pos;
         let tag = pb_read_tag(r);
-        if r.err != PB_OK { return; }
+        if r.err != PB_OK { break; }
         if tag == 8 {
             m.type_ = pb_unzigzag64(pb_read_varint(r));
         } else {
-            pb_skip_field(r, tag);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
 // Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -248,16 +263,19 @@ fn Scalars_Inner_encode(m: Scalars_Inner&, out: u8[>..]&) {
         pb_write_varint(out, 8);
         pb_write_varint(out, pb_zigzag64(m.type_));
     }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Scalars_Inner_size_of(m: Scalars_Inner&) -> i64 {
     var n: i64 = 0;
     if m.type_ != 0 { n += 1 + pb_varint_size(pb_zigzag64(m.type_)); }
+    n += m.pb_unknown.len;
     return n;
 }
 
-// Resets m to the empty message.
+// Frees what m owns and resets it to the empty message.
 fn Scalars_Inner_clear(m: Scalars_Inner&) {
     m.type_ = 0;
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }

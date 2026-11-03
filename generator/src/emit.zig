@@ -298,8 +298,8 @@ pub const FileEmitter = struct {
         const goose_name = try self.claimDecl(path, full, prefix.len > 0);
         try self.w.print("\n// message {s}\n", .{full});
 
-        // The fields this generator stores; every other field is skipped
-        // on decode like an unknown field.
+        // The fields this generator stores; every other field is kept as an
+        // unknown field.
         var fields: std.ArrayList(Field) = .empty;
         var record_names: std.StringHashMapUnmanaged(void) = .empty;
         var bits: u32 = 0;
@@ -339,14 +339,10 @@ pub const FileEmitter = struct {
     }
 
     fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, has_words: u32) Error!void {
-        if (fields.len == 0) {
-            try self.w.print("struct {s} {{}}\n", .{goose_name});
-            return;
-        }
         try self.w.print("struct {s} {{\n", .{goose_name});
         for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, f.sc.goose });
         for (0..has_words) |i| try self.w.print("    pb_has{d}: u32,   // has-bits of fields with presence\n", .{i});
-        try self.w.writeAll("}\n");
+        try self.w.writeAll("    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes\n}\n");
     }
 
     fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
@@ -355,10 +351,14 @@ pub const FileEmitter = struct {
         try self.w.print(
             \\
             \\// Merges the fields in r's window into m; on failure r.err is set.
+            \\// Fields it does not know, or with another wire type, are kept as
+            \\// unknown fields.
             \\fn {s}(r: pb_Reader&, m: {s}&) {{
+            \\    var unknown_len: i64 = m.pb_unknown.len;
             \\    while r.pos < r.end {{
+            \\        let start = r.pos;
             \\        let tag = pb_read_tag(r);
-            \\        if r.err != PB_OK {{ return; }}
+            \\        if r.err != PB_OK {{ break; }}
             \\
         , .{ decode_from, goose_name });
         for (fields, 0..) |f, i| {
@@ -367,17 +367,18 @@ pub const FileEmitter = struct {
             if (f.bit) |b| try self.w.print("            m.pb_has{d} |= 0x{x:0>8};\n", .{ b / 32, bitMask(b) });
         }
         if (fields.len == 0) {
-            try self.w.writeAll("        pb_skip_field(r, tag);\n");
+            try self.w.writeAll("        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);\n");
         } else {
             try self.w.writeAll(
                 \\        } else {
-                \\            pb_skip_field(r, tag);
+                \\            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
                 \\        }
                 \\
             );
         }
         try self.w.print(
             \\    }}
+            \\    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
             \\}}
             \\
             \\// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
@@ -405,7 +406,7 @@ pub const FileEmitter = struct {
             try self.w.print("        {f};\n", .{Subst{ .t = f.sc.write, .x = x }});
             try self.w.writeAll("    }\n");
         }
-        try self.w.writeAll("}\n");
+        try self.w.writeAll("    out.append(pb_run(pb_bytes, m.pb_unknown));\n}\n");
     }
 
     fn emitSizeOf(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
@@ -426,19 +427,19 @@ pub const FileEmitter = struct {
             }
             try self.w.writeAll(" }\n");
         }
-        try self.w.writeAll("    return n;\n}\n");
+        try self.w.writeAll("    n += m.pb_unknown.len;\n    return n;\n}\n");
     }
 
     fn emitClear(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
         try self.w.print(
             \\
-            \\// Resets m to the empty message.
+            \\// Frees what m owns and resets it to the empty message.
             \\fn {s}(m: {s}&) {{
             \\
         , .{ try generatedName(self.a, path, "clear"), goose_name });
         for (fields) |f| try self.w.print("    m.{s} = {s};\n", .{ f.name, f.sc.zero });
         for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
-        try self.w.writeAll("}\n");
+        try self.w.writeAll("    m.pb_unknown = pb_bytes_free(m.pb_unknown);\n}\n");
     }
 
     /// set_, has_ and clear_ of a scalar field with presence.
@@ -552,9 +553,9 @@ fn varintScalar(goose: []const u8, read: []const u8, value: []const u8) Scalar {
 
 const sc_int32 = varintScalar("i32", "pb_u64_to_int32(pb_read_varint(r))", "pb_int32_to_u64($)");
 const sc_int64 = varintScalar("i64", "pb_u64_to_int64(pb_read_varint(r))", "pb_int64_to_u64($)");
-const sc_uint32 = varintScalar("u32", "pb_read_varint(r) as! u32", "$ as u64");
+const sc_uint32 = varintScalar("u32", "pb_read_varint(r) as! u32", "$");
 const sc_uint64 = varintScalar("u64", "pb_read_varint(r)", "$");
-const sc_sint32 = varintScalar("i32", "pb_unzigzag32(pb_read_varint(r) as! u32)", "pb_zigzag32($) as u64");
+const sc_sint32 = varintScalar("i32", "pb_unzigzag32(pb_read_varint(r) as! u32)", "pb_zigzag32($)");
 const sc_sint64 = varintScalar("i64", "pb_unzigzag64(pb_read_varint(r))", "pb_zigzag64($)");
 const sc_bool: Scalar = .{
     .goose = "bool",
@@ -745,8 +746,8 @@ test "nested names equal to generated names are escaped" {
 
     var diag: []const u8 = "";
     const out = try generateForTest(a, &file, &diag);
-    try std.testing.expect(std.mem.indexOf(u8, out, "struct Node_decode_ {}") != null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "struct Node_set_name_ {}") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "struct Node_decode_ {\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "struct Node_set_name_ {\n") != null);
 }
 
 test "a top-level name equal to a generated name is a collision" {

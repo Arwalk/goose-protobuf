@@ -8,6 +8,8 @@
 //   - tag (field number + wire type) encode/decode
 //   - skip_field, including groups and a nesting depth limit (gpb-41j.2)
 //   - unknown-field copy (gpb-41j.2)
+//   - the pb_bytes pool and pb_Span runs (decision 0001), which hold
+//     unknown fields (gpb-41j.6) and, later, strings and bytes
 //
 // Goose `varint` is NOT the protobuf varint; do not use it here.
 // Every message's encode/decode/size_of is generated per message; nothing
@@ -216,6 +218,52 @@ fn pb_read_len(r: pb_Reader&) -> i64 {
     return n as! i64;
 }
 
+// ------------------------------------------------------------------- pools
+// Decision 0001: records are fixed-size; their variable parts are runs in
+// global reusable pools, reached through spans.
+
+// Elements [at, at + len) of a pool. An empty span owns nothing.
+struct pb_Span { at: u32, len: u32 }
+
+// The contents of every unknown-field run (and, later, string and bytes
+// field) of every message.
+reusable[] var pb_bytes: u8[>..] = [];
+
+// The elements of run s.
+fn pb_run<T>(pool: T[>..]&, s: pb_Span) -> T[:] {
+    let lo: i64 = s.at;
+    return pool[lo..lo + s.len];
+}
+
+// Resizes run s of pool to n elements and returns it: allocates, moves
+// (keeping the first min(s.len, n) elements) or, for n == 0, frees it.
+// New elements hold the pool's default.
+fn pb_resize<T>(pool: T[>..]&, s: pb_Span, n: i64) -> pb_Span {
+    if n == 0 {
+        if s.len > 0 { pool.free_slice(pb_run(pool, s)); }
+        return pb_Span { at: 0, len: 0 };
+    }
+    if s.len == 0 {
+        let r = pool.alloc_slice(n);
+        return pb_Span { at: pool.index_of(r[0]) as! u32, len: n as! u32 };
+    }
+    let r = pool.realloc_slice(pb_run(pool, s), n);
+    return pb_Span { at: pool.index_of(r[0]) as! u32, len: n as! u32 };
+}
+
+// Run s of pb_bytes with src appended. src must not be in pb_bytes.
+fn pb_bytes_append(s: pb_Span, src: const u8[:]) -> pb_Span {
+    if src.len == 0 { return s; }
+    let old: i64 = s.len;
+    let t = pb_resize(pb_bytes, s, old + src.len);
+    let dst = pb_run(pb_bytes, t);
+    for i in src.len { dst[old + i] = src[i]; }
+    return t;
+}
+
+// Frees run s of pb_bytes; returns the empty span.
+fn pb_bytes_free(s: pb_Span) -> pb_Span { return pb_resize(pb_bytes, s, 0); }
+
 // ----------------------------------------------------- skipping, unknowns
 
 // Skips the value of a field whose tag was just read. A start-group is
@@ -261,4 +309,29 @@ recursive fn pb_skip_field(r: pb_Reader&, tag: u32) {
 fn pb_append_unknown(r: pb_Reader&, start: i64, tag: u32, out: u8[>..]&) {
     pb_skip_field(r, tag);
     if r.err == PB_OK { out.append(r.buf[start..r.pos]); }
+}
+
+// Skips the field whose tag was just read (the tag began at start) and
+// appends its raw bytes to run s of pb_bytes, of which the first `used`
+// bytes are in use. The run grows by doubling, so a decode loop calls
+// pb_bytes_trim(s, used) when it ends. Nothing is appended after a
+// failure. Recursive decoders may call this: it keeps no growable local.
+fn pb_unknown_append(r: pb_Reader&, start: i64, tag: u32, s: pb_Span&, used: i64&) {
+    pb_skip_field(r, tag);
+    if r.err != PB_OK { return; }
+    let n = r.pos - start;
+    if used + n > s.len {
+        var cap: i64 = s.len * 2;
+        if cap < used + n { cap = used + n; }
+        s = pb_resize(pb_bytes, s, cap);
+    }
+    let dst = pb_run(pb_bytes, s);
+    for i in n { dst[used + i] = r.buf[start + i]; }
+    used += n;
+}
+
+// Run s of pb_bytes cut to its first `used` bytes.
+fn pb_bytes_trim(s: pb_Span, used: i64) -> pb_Span {
+    if used == s.len { return s; }
+    return pb_resize(pb_bytes, s, used);
 }

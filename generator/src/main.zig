@@ -171,7 +171,9 @@ test "one .goose file per file to generate" {
         \\import pb_wire;
         \\
         \\// message pkg.sub.M
-        \\struct M {}
+        \\struct M {
+        \\    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+        \\}
         \\
     ;
     try std.testing.expectStringStartsWith(res.file.items[0].content.?, want);

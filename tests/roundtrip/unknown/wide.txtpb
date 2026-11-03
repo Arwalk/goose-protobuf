@@ -1,0 +1,10 @@
+# proto-file: unknown.proto
+# proto-message: unknown.Wide
+a: 7
+v: 300
+s: "unknown"
+d: 1.5
+f: 99
+r: [1, 2, 3]
+sub { a: 5 d: -1 }
+g: -2

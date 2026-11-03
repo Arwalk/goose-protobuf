@@ -1,0 +1,23 @@
+// Golden and round-trip (tests/roundtrip/unknown/): fields a message does
+// not know are kept as raw bytes and re-encoded after its known fields.
+// Wide is Known with more fields, so Wide's encoding, decoded as Known,
+// has unknown fields of every wire type between known ones.
+syntax = "proto3";
+
+package unknown;
+
+message Known {
+  int32 a = 1;
+  double d = 4;
+}
+
+message Wide {
+  int32 a = 1;
+  uint64 v = 2;
+  string s = 3;
+  double d = 4;
+  fixed32 f = 5;
+  repeated int32 r = 6;
+  Known sub = 7;
+  sfixed64 g = 8;
+}

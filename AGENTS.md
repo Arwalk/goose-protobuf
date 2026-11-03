@@ -15,6 +15,7 @@ scripts/run_conformance.sh [testee] [flags]     # conformance suite
 scripts/golden.sh                               # golden tests (--update to accept)
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
+scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 ```
 
 Golden tests: each `tests/protos/<name>.proto` is generated twice (the two

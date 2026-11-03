@@ -1,6 +1,7 @@
 # proto-file: scalars.proto
 # proto-message: scalars.Scalars
-# Fields not stored yet are skipped; the stored ones around them decode.
+# Fields not stored yet are kept as unknown; the stored ones around them
+# decode.
 f_int32: 1
 f_string: "hello"
 f_optional: 0
