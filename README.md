@@ -51,9 +51,17 @@ Conformance:
 
 ```sh
 git submodule update --init
-scripts/build_runner.sh
-scripts/run_conformance.sh build/testee
+scripts/build_runner.sh                            # once: builds the runner
+scripts/run_conformance.sh                         # builds + runs build/testee
+scripts/run_conformance.sh --maximum_edition 2023  # runner flags pass through
+scripts/run_conformance.sh path/to/testee --test <name> --enforce_recommended
+scripts/test_run_conformance.sh                    # checks the exit-code contract
 ```
+
+With no testee argument (or a flag first), `run_conformance.sh` builds
+`conformance/testee.goose` to `build/testee` when it is missing or older
+than its sources. It exits nonzero iff a test fails that is not in
+`conformance/failure_list_goose.txt`, or a listed test passes.
 
 ## License
 

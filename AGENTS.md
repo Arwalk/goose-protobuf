@@ -11,7 +11,7 @@ for the pinned versions and their caveats.
 (cd generator && zig build && zig build test)   # generator (Zig 0.17.1)
 goose check runtime/pb_wire.goose               # Goose typecheck
 scripts/build_runner.sh                         # conformance_test_runner
-scripts/run_conformance.sh <testee-binary>      # conformance suite
+scripts/run_conformance.sh [testee] [flags]     # conformance suite
 ```
 
 ## Conventions
