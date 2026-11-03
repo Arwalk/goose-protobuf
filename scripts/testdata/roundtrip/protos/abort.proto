@@ -1,0 +1,4 @@
+// Fixture for scripts/test_roundtrip.sh.
+syntax = "proto3";
+package abort;
+message M { int32 a = 1; }

@@ -3,7 +3,8 @@
 # (smoke.goose) whose content comes from $FAKE_CONTENT, or random bytes if
 # FAKE_CONTENT is unset. Checks that golden.sh passes on matching goldens,
 # fails with a readable diff on a changed golden, fails on a golden that
-# does not typecheck, fails on nondeterministic output, and that --update
+# does not typecheck or that goose warns about, fails on nondeterministic
+# output, and that --update
 # regenerates. Needs protoc, goose and python3.
 # Usage: scripts/test_golden.sh
 set -uo pipefail
@@ -32,6 +33,7 @@ mkdir -p "$tmp/protos"
 cp "$root/tests/protos/smoke.proto" "$tmp/protos/"
 printf 'fn smoke_id(x: i32) -> i32 {\n  return x;\n}\n' > "$tmp/good.goose"
 printf 'fn smoke_id(x: i32) -> i32 {\n  return y;\n}\n' > "$tmp/bad.goose"
+printf 'fn smoke_wide(x: u32) -> u64 {\n  return x as u64;\n}\n' > "$tmp/warn.goose"
 
 export PLUGIN="$tmp/fake-plugin" PROTO_DIR="$tmp/protos" GOLDEN_DIR="$tmp/golden"
 bad=0
@@ -58,6 +60,10 @@ run nonzero "changed golden fails with a diff" "^-  return x + 0;"
 export FAKE_CONTENT="$tmp/bad.goose"
 "$root/scripts/golden.sh" --update >/dev/null 2>&1
 run nonzero "non-typechecking golden fails" "unknown identifier: y"
+
+export FAKE_CONTENT="$tmp/warn.goose"
+"$root/scripts/golden.sh" --update >/dev/null 2>&1
+run nonzero "golden with a goose warning fails" "goose check warned"
 
 unset FAKE_CONTENT
 run nonzero "nondeterministic output fails" "nondeterministic"

@@ -14,6 +14,8 @@
 # Exits nonzero if any step fails for any name.
 #
 # Env: PLUGIN     plugin binary (default: zig build, generator/zig-out/bin)
+#      PROTO_DIR     protos     (default tests/protos)
+#      ROUNDTRIP_DIR test cases (default tests/roundtrip)
 #      PROTOC, GOOSE (default protoc, goose; .tools/bin first)
 #      TEST_TIMEOUT  seconds per test (default 120)
 set -uo pipefail
@@ -23,7 +25,8 @@ root="$(cd "$(dirname "$0")/.." && pwd)"
 protoc="${PROTOC:-protoc}"
 goose="${GOOSE:-goose}"
 limit="${TEST_TIMEOUT:-120}"
-proto_dir="$root/tests/protos"
+proto_dir="${PROTO_DIR:-$root/tests/protos}"
+rt_dir="${ROUNDTRIP_DIR:-$root/tests/roundtrip}"
 
 if [ -z "${PLUGIN:-}" ]; then
   (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
@@ -34,7 +37,7 @@ names=()
 if [ $# -gt 0 ]; then
   names=("$@")
 else
-  for d in "$root"/tests/roundtrip/*/; do [ -d "$d" ] && names+=("$(basename "$d")"); done
+  for d in "$rt_dir"/*/; do [ -d "$d" ] && names+=("$(basename "$d")"); done
 fi
 [ ${#names[@]} -gt 0 ] || { echo "error: no round-trip tests" >&2; exit 1; }
 
@@ -44,12 +47,12 @@ command -v timeout >/dev/null && runner="timeout $limit"
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 failed=()
 for name in "${names[@]}"; do
-  src="$root/tests/roundtrip/$name"
+  src="$rt_dir/$name"
   proto="$proto_dir/$name.proto"
   work="$tmp/$name"
   fail() { echo "FAIL $name: $*"; failed+=("$name"); }
-  [ -d "$src" ] || { fail "no directory tests/roundtrip/$name"; continue; }
-  [ -f "$proto" ] || { fail "no tests/protos/$name.proto"; continue; }
+  [ -d "$src" ] || { fail "no directory $src"; continue; }
+  [ -f "$proto" ] || { fail "no $proto"; continue; }
   mkdir -p "$work"
   cp "$src"/* "$work"/
   cp "$root/runtime/pb_wire.goose" "$work"/

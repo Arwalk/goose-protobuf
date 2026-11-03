@@ -63,6 +63,8 @@ jobs:
         run: |
           scripts/test_golden.sh
           scripts/test_goose_tests.sh
+          scripts/test_roundtrip.sh
+          scripts/test_check_generated.sh
 
   conformance:
     strategy:
