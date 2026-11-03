@@ -14,6 +14,7 @@ scripts/build_runner.sh                         # conformance_test_runner
 scripts/run_conformance.sh [testee] [flags]     # conformance suite
 scripts/golden.sh                               # golden tests (--update to accept)
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
+scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 ```
 
 Golden tests: each `tests/protos/<name>.proto` is generated twice (the two
@@ -29,6 +30,13 @@ Goose unit tests: a `*_test.goose` file under `tests/` is a program built
 with `--debug` and run; it passes iff it exits 0 (fail with `abort(...)`).
 Import the runtime as a directory package, since a plain `import` cannot
 reach above the test's directory: `import pb_wire from "../../runtime";`.
+
+Round-trip tests: `tests/roundtrip/<name>/` holds `<case>.txtpb` files,
+each with a `# proto-message: pkg.Msg` line, and a
+`<name>_roundtrip.goose` program. The harness generates
+`tests/protos/<name>.proto` next to them, encodes each case with
+`protoc --encode` into `<case>.bin`, which the program embeds with
+`embed_file`, then builds and runs the program; it passes iff it exits 0.
 
 ## Conventions
 

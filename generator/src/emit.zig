@@ -85,9 +85,9 @@ pub fn nestedPath(a: std.mem.Allocator, prefix: []const u8, name: []const u8) ![
 }
 
 /// Operations and globals generated for every message, as `<path>_<op>`
-/// (decision 0001: codecs, `M_copy`, the `M_Ref` link, the pools).
+/// (decisions 0001 and 0004: codecs, `M_copy`, the `M_Ref` link, the pools).
 pub const message_ops = [_][]const u8{
-    "decode", "encode", "size_of", "clear", "copy", "Ref", "pool", "links",
+    "decode", "decode_from", "encode", "size_of", "clear", "copy", "Ref", "pool", "links",
 };
 
 /// How a field is stored, which decides its accessors.
@@ -293,9 +293,253 @@ pub const FileEmitter = struct {
         const full = try self.fullName(scope, name);
         const goose_name = try self.claimDecl(path, full, prefix.len > 0);
         try self.w.print("\n// message {s}\n", .{full});
-        try self.w.print("struct {s} {{}}\n", .{goose_name});
+
+        // The fields this generator stores; every other field is skipped
+        // on decode like an unknown field.
+        var fields: std.ArrayList(Field) = .empty;
+        var record_names: std.StringHashMapUnmanaged(void) = .empty;
+        for (m.field.items) |*fd| {
+            const sc = scalarOf(self.file, fd) orelse continue;
+            const rname = try ident(self.a, fd.name orelse "");
+            if ((try record_names.getOrPut(self.a, rname)).found_existing) {
+                self.diag = try std.fmt.allocPrint(
+                    self.a,
+                    "{s}: two fields of {s} map to the Goose record field {s}",
+                    .{ self.file.name orelse "", full, rname },
+                );
+                return error.NameCollision;
+            }
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname });
+        }
+        const by_number = try self.a.dupe(Field, fields.items);
+        std.mem.sortUnstable(Field, by_number, {}, Field.lessThan);
+
+        try self.emitRecord(goose_name, fields.items);
+        try self.emitDecode(goose_name, path, fields.items);
+        try self.emitEncode(goose_name, path, by_number);
+        try self.emitSizeOf(goose_name, path, by_number);
+        try self.emitClear(goose_name, path, fields.items);
+
         for (m.enum_type.items) |*e| try self.emitEnum(e, path, full);
         for (m.nested_type.items) |*n| try self.emitMessage(n, path, full);
+    }
+
+    fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field) Error!void {
+        if (fields.len == 0) {
+            try self.w.print("struct {s} {{}}\n", .{goose_name});
+            return;
+        }
+        try self.w.print("struct {s} {{\n", .{goose_name});
+        for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, f.sc.goose });
+        try self.w.writeAll("}\n");
+    }
+
+    fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+        const decode = try generatedName(self.a, path, "decode");
+        const decode_from = try generatedName(self.a, path, "decode_from");
+        try self.w.print(
+            \\
+            \\// Merges the fields in r's window into m; on failure r.err is set.
+            \\fn {s}(r: pb_Reader&, m: {s}&) {{
+            \\    while r.pos < r.end {{
+            \\        let tag = pb_read_tag(r);
+            \\        if r.err != PB_OK {{ return; }}
+            \\
+        , .{ decode_from, goose_name });
+        for (fields, 0..) |f, i| {
+            try self.w.print("        {s}if tag == {d} {{\n", .{ if (i == 0) "" else "} else ", f.tag() });
+            try self.w.print("            m.{s} = {s};\n", .{ f.name, f.sc.read });
+        }
+        if (fields.len == 0) {
+            try self.w.writeAll("        pb_skip_field(r, tag);\n");
+        } else {
+            try self.w.writeAll(
+                \\        } else {
+                \\            pb_skip_field(r, tag);
+                \\        }
+                \\
+            );
+        }
+        try self.w.print(
+            \\    }}
+            \\}}
+            \\
+            \\// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+            \\// partial message, which the caller clears.
+            \\fn {s}(buf: const u8[:], m: {s}&) -> i32 {{
+            \\    var r = pb_reader(buf);
+            \\    {s}(r, m);
+            \\    return r.err;
+            \\}}
+            \\
+        , .{ decode, goose_name, decode_from });
+    }
+
+    fn emitEncode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+        try self.w.print(
+            \\
+            \\// Appends m's wire encoding, {s}(m) bytes, to out.
+            \\fn {s}(m: {s}&, out: u8[>..]&) {{
+            \\
+        , .{ try generatedName(self.a, path, "size_of"), try generatedName(self.a, path, "encode"), goose_name });
+        for (fields) |f| {
+            const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            try self.w.print("    if {f} {{\n", .{Subst{ .t = f.sc.nonzero, .x = x }});
+            try self.w.print("        pb_write_varint(out, {d});\n", .{f.tag()});
+            try self.w.print("        {f};\n", .{Subst{ .t = f.sc.write, .x = x }});
+            try self.w.writeAll("    }\n");
+        }
+        try self.w.writeAll("}\n");
+    }
+
+    fn emitSizeOf(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+        try self.w.print(
+            \\
+            \\// The size of m's wire encoding, in bytes.
+            \\fn {s}(m: {s}&) -> i64 {{
+            \\    var n: i64 = 0;
+            \\
+        , .{ try generatedName(self.a, path, "size_of"), goose_name });
+        for (fields) |f| {
+            const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            const ts = varintSize(f.tag());
+            try self.w.print("    if {f} {{ n += ", .{Subst{ .t = f.sc.nonzero, .x = x }});
+            switch (f.sc.size) {
+                .varint => try self.w.print("{d} + pb_varint_size({f});", .{ ts, Subst{ .t = f.sc.write_value, .x = x } }),
+                .fixed => |k| try self.w.print("{d};", .{ts + k}),
+            }
+            try self.w.writeAll(" }\n");
+        }
+        try self.w.writeAll("    return n;\n}\n");
+    }
+
+    fn emitClear(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+        try self.w.print(
+            \\
+            \\// Resets m to the empty message.
+            \\fn {s}(m: {s}&) {{
+            \\
+        , .{ try generatedName(self.a, path, "clear"), goose_name });
+        for (fields) |f| try self.w.print("    m.{s} = {s};\n", .{ f.name, f.sc.zero });
+        try self.w.writeAll("}\n");
+    }
+};
+
+/// A field stored in the record.
+const Field = struct {
+    fd: *const descriptor.FieldDescriptorProto,
+    sc: *const Scalar,
+    /// The record field name, escaped.
+    name: []const u8,
+
+    fn number(f: Field) u32 {
+        return @intCast(f.fd.number orelse 0);
+    }
+
+    fn tag(f: Field) u64 {
+        return (@as(u64, f.number()) << 3) | f.sc.wire;
+    }
+
+    fn lessThan(_: void, a: Field, b: Field) bool {
+        return a.number() < b.number();
+    }
+};
+
+/// How one scalar type is stored, read, written and sized. In the
+/// templates, `$` stands for the value (`m.<field>`).
+const Scalar = struct {
+    goose: []const u8,
+    wire: u3,
+    zero: []const u8,
+    /// Decode expression, reading from `r`.
+    read: []const u8,
+    /// Encode statement, writing the value (tag already written) to `out`.
+    write: []const u8,
+    /// True if the value is not the default (implicit presence: only then
+    /// is it encoded). Floats compare bits, so -0.0 is encoded.
+    nonzero: []const u8,
+    size: union(enum) { varint, fixed: u64 },
+    /// For varints: the u64 written, whose pb_varint_size is the size.
+    write_value: []const u8 = "",
+};
+
+fn varintScalar(goose: []const u8, read: []const u8, value: []const u8) Scalar {
+    return .{
+        .goose = goose,
+        .wire = 0,
+        .zero = "0",
+        .read = read,
+        .write = "pb_write_varint(out, " ++ value ++ ")",
+        .nonzero = "$ != 0",
+        .size = .varint,
+        .write_value = value,
+    };
+}
+
+const sc_int32 = varintScalar("i32", "pb_u64_to_int32(pb_read_varint(r))", "pb_int32_to_u64($)");
+const sc_int64 = varintScalar("i64", "pb_u64_to_int64(pb_read_varint(r))", "pb_int64_to_u64($)");
+const sc_uint32 = varintScalar("u32", "pb_read_varint(r) as! u32", "$ as u64");
+const sc_uint64 = varintScalar("u64", "pb_read_varint(r)", "$");
+const sc_sint32 = varintScalar("i32", "pb_unzigzag32(pb_read_varint(r) as! u32)", "pb_zigzag32($) as u64");
+const sc_sint64 = varintScalar("i64", "pb_unzigzag64(pb_read_varint(r))", "pb_zigzag64($)");
+const sc_bool: Scalar = .{
+    .goose = "bool",
+    .wire = 0,
+    .zero = "false",
+    .read = "pb_read_varint(r) != 0",
+    .write = "pb_write_varint(out, 1)",
+    .nonzero = "$",
+    .size = .{ .fixed = 1 },
+};
+const sc_fixed32: Scalar = .{ .goose = "u32", .wire = 5, .zero = "0", .read = "pb_read_fixed32(r)", .write = "pb_write_fixed32(out, $)", .nonzero = "$ != 0", .size = .{ .fixed = 4 } };
+const sc_sfixed32: Scalar = .{ .goose = "i32", .wire = 5, .zero = "0", .read = "pb_read_fixed32(r) as! i32", .write = "pb_write_fixed32(out, $ as! u32)", .nonzero = "$ != 0", .size = .{ .fixed = 4 } };
+const sc_float: Scalar = .{ .goose = "f32", .wire = 5, .zero = "0.0", .read = "pb_read_float(r)", .write = "pb_write_float(out, $)", .nonzero = "pb_f32_to_bits($) != 0", .size = .{ .fixed = 4 } };
+const sc_fixed64: Scalar = .{ .goose = "u64", .wire = 1, .zero = "0", .read = "pb_read_fixed64(r)", .write = "pb_write_fixed64(out, $)", .nonzero = "$ != 0", .size = .{ .fixed = 8 } };
+const sc_sfixed64: Scalar = .{ .goose = "i64", .wire = 1, .zero = "0", .read = "pb_read_fixed64(r) as! i64", .write = "pb_write_fixed64(out, $ as! u64)", .nonzero = "$ != 0", .size = .{ .fixed = 8 } };
+const sc_double: Scalar = .{ .goose = "f64", .wire = 1, .zero = "0.0", .read = "pb_read_double(r)", .write = "pb_write_double(out, $)", .nonzero = "pb_f64_to_bits($) != 0", .size = .{ .fixed = 8 } };
+
+/// The scalar storage of `fd`, or null if this generator does not store
+/// the field yet: only singular numeric, bool and enum fields with
+/// implicit presence are stored (strings, bytes, messages, repeated
+/// fields, oneofs and presence come with later tasks).
+fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
+    if (fd.label == .LABEL_REPEATED) return null;
+    if (fd.oneof_index != null) return null; // also every proto3 optional
+    if (hasPresence(file, fd)) return null;
+    return switch (fd.type orelse return null) {
+        .TYPE_INT32, .TYPE_ENUM => &sc_int32,
+        .TYPE_INT64 => &sc_int64,
+        .TYPE_UINT32 => &sc_uint32,
+        .TYPE_UINT64 => &sc_uint64,
+        .TYPE_SINT32 => &sc_sint32,
+        .TYPE_SINT64 => &sc_sint64,
+        .TYPE_BOOL => &sc_bool,
+        .TYPE_FIXED32 => &sc_fixed32,
+        .TYPE_SFIXED32 => &sc_sfixed32,
+        .TYPE_FLOAT => &sc_float,
+        .TYPE_FIXED64 => &sc_fixed64,
+        .TYPE_SFIXED64 => &sc_sfixed64,
+        .TYPE_DOUBLE => &sc_double,
+        else => null,
+    };
+}
+
+fn varintSize(v: u64) u64 {
+    var n: u64 = 1;
+    var x = v;
+    while (x >= 0x80) : (x >>= 7) n += 1;
+    return n;
+}
+
+/// Formats template `t` with every `$` replaced by `x`.
+const Subst = struct {
+    t: []const u8,
+    x: []const u8,
+
+    pub fn format(s: Subst, w: *std.Io.Writer) std.Io.Writer.Error!void {
+        for (s.t) |c| {
+            if (c == '$') try w.writeAll(s.x) else try w.writeByte(c);
+        }
     }
 };
 

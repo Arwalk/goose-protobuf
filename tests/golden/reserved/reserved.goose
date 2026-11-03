@@ -14,35 +14,376 @@ let E_set_x_: i32 = 0;
 // message reserved.Outer
 struct Outer {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_decode(buf: const u8[:], m: Outer&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_size_of(m) bytes, to out.
+fn Outer_encode(m: Outer&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_size_of(m: Outer&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Outer_clear(m: Outer&) {
+}
+
 // enum reserved.Outer.Ref
 let Outer_Ref_Ref_ZERO: i32 = 0;
 
 // message reserved.Outer.decode
 struct Outer_decode_ {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Outer_decode_decode_from(r: pb_Reader&, m: Outer_decode_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_decode_decode(buf: const u8[:], m: Outer_decode_&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_decode_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_decode_size_of(m) bytes, to out.
+fn Outer_decode_encode(m: Outer_decode_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_decode_size_of(m: Outer_decode_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Outer_decode_clear(m: Outer_decode_&) {
+}
+
 // message reserved.Outer.pool
 struct Outer_pool_ {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Outer_pool_decode_from(r: pb_Reader&, m: Outer_pool_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_pool_decode(buf: const u8[:], m: Outer_pool_&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_pool_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_pool_size_of(m) bytes, to out.
+fn Outer_pool_encode(m: Outer_pool_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_pool_size_of(m: Outer_pool_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Outer_pool_clear(m: Outer_pool_&) {
+}
 
 // message reserved.Node
 struct Node {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Node_decode_from(r: pb_Reader&, m: Node&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Node_decode(buf: const u8[:], m: Node&) -> i32 {
+    var r = pb_reader(buf);
+    Node_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Node_size_of(m) bytes, to out.
+fn Node_encode(m: Node&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Node_size_of(m: Node&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Node_clear(m: Node&) {
+}
+
 // message reserved.Node.set_name
 struct Node_set_name_ {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Node_set_name_decode_from(r: pb_Reader&, m: Node_set_name_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Node_set_name_decode(buf: const u8[:], m: Node_set_name_&) -> i32 {
+    var r = pb_reader(buf);
+    Node_set_name_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Node_set_name_size_of(m) bytes, to out.
+fn Node_set_name_encode(m: Node_set_name_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Node_set_name_size_of(m: Node_set_name_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Node_set_name_clear(m: Node_set_name_&) {
+}
 
 // message reserved.Node.children_at
 struct Node_children_at_ {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Node_children_at_decode_from(r: pb_Reader&, m: Node_children_at_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Node_children_at_decode(buf: const u8[:], m: Node_children_at_&) -> i32 {
+    var r = pb_reader(buf);
+    Node_children_at_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Node_children_at_size_of(m) bytes, to out.
+fn Node_children_at_encode(m: Node_children_at_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Node_children_at_size_of(m: Node_children_at_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Node_children_at_clear(m: Node_children_at_&) {
+}
+
 // message reserved.str
 struct str_ {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn str_decode_from(r: pb_Reader&, m: str_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn str_decode(buf: const u8[:], m: str_&) -> i32 {
+    var r = pb_reader(buf);
+    str_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, str_size_of(m) bytes, to out.
+fn str_encode(m: str_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn str_size_of(m: str_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn str_clear(m: str_&) {
+}
 
 // message reserved.pb_x
 struct pb_x_ {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn pb_x_decode_from_(r: pb_Reader&, m: pb_x_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn pb_x_decode_(buf: const u8[:], m: pb_x_&) -> i32 {
+    var r = pb_reader(buf);
+    pb_x_decode_from_(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, pb_x_size_of_(m) bytes, to out.
+fn pb_x_encode_(m: pb_x_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn pb_x_size_of_(m: pb_x_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn pb_x_clear_(m: pb_x_&) {
+}
+
 // message reserved.thread
 struct thread {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn thread_decode_from(r: pb_Reader&, m: thread&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn thread_decode(buf: const u8[:], m: thread&) -> i32 {
+    var r = pb_reader(buf);
+    thread_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, thread_size_of(m) bytes, to out.
+fn thread_encode(m: thread&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn thread_size_of(m: thread&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn thread_clear(m: thread&) {
+}
 
 // message reserved.thread.spawn
 struct thread_spawn_ {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn thread_spawn_decode_from(r: pb_Reader&, m: thread_spawn_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn thread_spawn_decode(buf: const u8[:], m: thread_spawn_&) -> i32 {
+    var r = pb_reader(buf);
+    thread_spawn_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, thread_spawn_size_of(m) bytes, to out.
+fn thread_spawn_encode(m: thread_spawn_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn thread_spawn_size_of(m: thread_spawn_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn thread_spawn_clear(m: thread_spawn_&) {
+}
+
 // message reserved.E
 struct E {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn E_decode_from(r: pb_Reader&, m: E&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn E_decode(buf: const u8[:], m: E&) -> i32 {
+    var r = pb_reader(buf);
+    E_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, E_size_of(m) bytes, to out.
+fn E_encode(m: E&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn E_size_of(m: E&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn E_clear(m: E&) {
+}

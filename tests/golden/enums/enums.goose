@@ -19,6 +19,37 @@ let Alias_ALIAS_ALSO_B: i32 = 1;
 // message goose.test.enums.Holder
 struct Holder {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Holder_decode(buf: const u8[:], m: Holder&) -> i32 {
+    var r = pb_reader(buf);
+    Holder_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Holder_size_of(m) bytes, to out.
+fn Holder_encode(m: Holder&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Holder_size_of(m: Holder&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Holder_clear(m: Holder&) {
+}
+
 // enum goose.test.enums.Holder.Local
 let Holder_Local_LOCAL_X: i32 = 0;
 let Holder_Local_LOCAL_Y: i32 = -7;

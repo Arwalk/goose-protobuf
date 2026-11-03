@@ -12,8 +12,101 @@ let while_in: i32 = 1;
 // message goose.match.fn.type
 struct type_ {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn type_decode_from(r: pb_Reader&, m: type_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn type_decode(buf: const u8[:], m: type_&) -> i32 {
+    var r = pb_reader(buf);
+    type_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, type_size_of(m) bytes, to out.
+fn type_encode(m: type_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn type_size_of(m: type_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn type_clear(m: type_&) {
+}
+
 // message goose.match.fn.struct
 struct struct_ {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn struct_decode_from(r: pb_Reader&, m: struct_&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn struct_decode(buf: const u8[:], m: struct_&) -> i32 {
+    var r = pb_reader(buf);
+    struct_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, struct_size_of(m) bytes, to out.
+fn struct_encode(m: struct_&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn struct_size_of(m: struct_&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn struct_clear(m: struct_&) {
+}
+
 // message goose.match.fn.struct.self
 struct struct_self {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn struct_self_decode_from(r: pb_Reader&, m: struct_self&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn struct_self_decode(buf: const u8[:], m: struct_self&) -> i32 {
+    var r = pb_reader(buf);
+    struct_self_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, struct_self_size_of(m) bytes, to out.
+fn struct_self_encode(m: struct_self&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn struct_self_size_of(m: struct_self&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn struct_self_clear(m: struct_self&) {
+}

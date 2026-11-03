@@ -5,3 +5,34 @@ import pb_wire;
 
 // message Empty
 struct Empty {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Empty_decode_from(r: pb_Reader&, m: Empty&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Empty_decode(buf: const u8[:], m: Empty&) -> i32 {
+    var r = pb_reader(buf);
+    Empty_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Empty_size_of(m) bytes, to out.
+fn Empty_encode(m: Empty&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Empty_size_of(m: Empty&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Empty_clear(m: Empty&) {
+}

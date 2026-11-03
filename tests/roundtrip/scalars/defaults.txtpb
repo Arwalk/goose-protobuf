@@ -1,0 +1,19 @@
+# proto-file: scalars.proto
+# proto-message: scalars.Scalars
+# Every field explicitly at its default: proto3 encodes none of them.
+f_int32: 0
+f_int64: 0
+f_uint32: 0
+f_uint64: 0
+f_sint32: 0
+f_sint64: 0
+f_fixed32: 0
+f_fixed64: 0
+f_sfixed32: 0
+f_sfixed64: 0
+f_float: 0
+f_double: 0
+f_bool: false
+f_color: COLOR_UNSPECIFIED
+f_mid: 0
+f_big: 0

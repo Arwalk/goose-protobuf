@@ -1,0 +1,17 @@
+# proto-file: scalars.proto
+# proto-message: scalars.Scalars
+f_int32: -2147483648
+f_int64: -9223372036854775808
+f_uint32: 4294967295
+f_uint64: 18446744073709551615
+f_sint32: -2147483648
+f_sint64: -9223372036854775808
+f_fixed32: 4294967295
+f_fixed64: 18446744073709551615
+f_sfixed32: -2147483648
+f_sfixed64: -9223372036854775808
+f_float: -inf
+f_double: inf
+f_color: COLOR_NEGATIVE
+f_mid: 2147483647
+f_big: -1

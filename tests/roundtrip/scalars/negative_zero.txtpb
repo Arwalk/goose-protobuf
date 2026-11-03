@@ -1,0 +1,5 @@
+# proto-file: scalars.proto
+# proto-message: scalars.Scalars
+# -0.0 is not the default (its bits are not 0), so it is encoded.
+f_float: -0
+f_double: -0

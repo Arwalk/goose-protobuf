@@ -6,4 +6,47 @@ namespace smoke;
 import pb_wire;
 
 // message smoke.Smoke
-struct Smoke {}
+struct Smoke {
+    id: i32,
+}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Smoke_decode_from(r: pb_Reader&, m: Smoke&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        if tag == 8 {
+            m.id = pb_u64_to_int32(pb_read_varint(r));
+        } else {
+            pb_skip_field(r, tag);
+        }
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Smoke_decode(buf: const u8[:], m: Smoke&) -> i32 {
+    var r = pb_reader(buf);
+    Smoke_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Smoke_size_of(m) bytes, to out.
+fn Smoke_encode(m: Smoke&, out: u8[>..]&) {
+    if m.id != 0 {
+        pb_write_varint(out, 8);
+        pb_write_varint(out, pb_int32_to_u64(m.id));
+    }
+}
+
+// The size of m's wire encoding, in bytes.
+fn Smoke_size_of(m: Smoke&) -> i64 {
+    var n: i64 = 0;
+    if m.id != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.id)); }
+    return n;
+}
+
+// Resets m to the empty message.
+fn Smoke_clear(m: Smoke&) {
+    m.id = 0;
+}

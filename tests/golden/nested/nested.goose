@@ -8,11 +8,73 @@ import pb_wire;
 // message goose.test.nested.Outer
 struct Outer {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_decode(buf: const u8[:], m: Outer&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_size_of(m) bytes, to out.
+fn Outer_encode(m: Outer&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_size_of(m: Outer&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Outer_clear(m: Outer&) {
+}
+
 // enum goose.test.nested.Outer.State
 let Outer_State_STATE_UNSPECIFIED: i32 = 0;
 
 // message goose.test.nested.Outer.Middle
 struct Outer_Middle {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Outer_Middle_decode_from(r: pb_Reader&, m: Outer_Middle&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_Middle_decode(buf: const u8[:], m: Outer_Middle&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_Middle_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_Middle_size_of(m) bytes, to out.
+fn Outer_Middle_encode(m: Outer_Middle&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_Middle_size_of(m: Outer_Middle&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Outer_Middle_clear(m: Outer_Middle&) {
+}
 
 // enum goose.test.nested.Outer.Middle.Kind
 let Outer_Middle_Kind_KIND_UNSPECIFIED: i32 = 0;
@@ -21,8 +83,101 @@ let Outer_Middle_Kind_KIND_LEAF: i32 = 1;
 // message goose.test.nested.Outer.Middle.Inner
 struct Outer_Middle_Inner {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Outer_Middle_Inner_decode_from(r: pb_Reader&, m: Outer_Middle_Inner&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_Middle_Inner_decode(buf: const u8[:], m: Outer_Middle_Inner&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_Middle_Inner_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_Middle_Inner_size_of(m) bytes, to out.
+fn Outer_Middle_Inner_encode(m: Outer_Middle_Inner&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_Middle_Inner_size_of(m: Outer_Middle_Inner&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Outer_Middle_Inner_clear(m: Outer_Middle_Inner&) {
+}
+
 // message goose.test.nested.Sibling
 struct Sibling {}
 
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Sibling_decode_from(r: pb_Reader&, m: Sibling&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Sibling_decode(buf: const u8[:], m: Sibling&) -> i32 {
+    var r = pb_reader(buf);
+    Sibling_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Sibling_size_of(m) bytes, to out.
+fn Sibling_encode(m: Sibling&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Sibling_size_of(m: Sibling&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Sibling_clear(m: Sibling&) {
+}
+
 // message goose.test.nested.Sibling.Inner
 struct Sibling_Inner {}
+
+// Merges the fields in r's window into m; on failure r.err is set.
+fn Sibling_Inner_decode_from(r: pb_Reader&, m: Sibling_Inner&) {
+    while r.pos < r.end {
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { return; }
+        pb_skip_field(r, tag);
+    }
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Sibling_Inner_decode(buf: const u8[:], m: Sibling_Inner&) -> i32 {
+    var r = pb_reader(buf);
+    Sibling_Inner_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Sibling_Inner_size_of(m) bytes, to out.
+fn Sibling_Inner_encode(m: Sibling_Inner&, out: u8[>..]&) {
+}
+
+// The size of m's wire encoding, in bytes.
+fn Sibling_Inner_size_of(m: Sibling_Inner&) -> i64 {
+    var n: i64 = 0;
+    return n;
+}
+
+// Resets m to the empty message.
+fn Sibling_Inner_clear(m: Sibling_Inner&) {
+}
