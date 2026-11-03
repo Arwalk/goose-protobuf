@@ -191,11 +191,13 @@ fn pb_tag_field(tag: u32) -> u32 { return tag >> 3; }
 fn pb_tag_wire(tag: u32) -> u32 { return tag & 7; }
 
 // The next tag, or 0 after a failure. Field number 0, a field number over
-// 2^29 - 1 and wire types 6 and 7 are malformed.
+// 2^29 - 1, wire types 6 and 7, and a tag over 5 bytes (padded with 0x80
+// bytes; protobuf reads tags as 32-bit varints) are malformed.
 fn pb_read_tag(r: pb_Reader&) -> u32 {
+    let start = r.pos;
     let v = pb_read_varint(r);
     if r.err != PB_OK { return 0; }
-    if v > 0xffffffff || (v >> 3) == 0 || (v & 7) > 5 {
+    if r.pos - start > 5 || v > 0xffffffff || (v >> 3) == 0 || (v & 7) > 5 {
         pb_fail(r, PB_ERR_MALFORMED);
         return 0;
     }

@@ -139,6 +139,19 @@ fn test_tags() {
     let big_tag: u8[5] = [0x80, 0x80, 0x80, 0x80, 0x10];   // field 2^29
     var big = pb_reader(big_tag);
     if pb_read_tag(big) != 0 || big.err != PB_ERR_MALFORMED { fail_at("tag over 32 bits", str(big.err)); }
+
+    // A tag is at most 5 bytes, as in protobuf: tag 8 padded to 5 bytes
+    // reads, padded to 6 or 9 bytes (conformance BadTag_OverlongVarint) is
+    // malformed even though its value fits.
+    let padded: u8[9] = [0x88, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00];
+    let five: u8[5] = [0x88, 0x80, 0x80, 0x80, 0x00];
+    var r5 = pb_reader(five);
+    if pb_read_tag(r5) != 8 || r5.err != PB_OK || r5.pos != 5 { fail_at("5-byte tag", str(r5.err)); }
+    let six: u8[6] = [0x88, 0x80, 0x80, 0x80, 0x80, 0x00];
+    var r6 = pb_reader(six);
+    if pb_read_tag(r6) != 0 || r6.err != PB_ERR_MALFORMED { fail_at("6-byte tag", str(r6.err)); }
+    var r9 = pb_reader(padded);
+    if pb_read_tag(r9) != 0 || r9.err != PB_ERR_MALFORMED { fail_at("9-byte tag", str(r9.err)); }
 }
 
 fn test_len() {
