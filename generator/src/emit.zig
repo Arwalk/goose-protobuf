@@ -1,6 +1,6 @@
 //! Goose emitter: turns one FileDescriptorProto into one .goose file.
 //!
-//! Naming (stable: generated code and user code depend on it):
+//! Naming (final, docs/decisions/0006-naming.md; user code depends on it):
 //!   - package `a.b`        -> `namespace a_b;` (no package: global namespace)
 //!   - message `Outer.Inner` -> struct `Outer_Inner`
 //!   - enum value `RED` of enum `Outer.Color` -> `let Outer_Color_RED: i32`
