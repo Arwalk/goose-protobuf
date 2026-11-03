@@ -1,0 +1,26 @@
+# CI placeholder. Filled in by the Phase 0 CI tasks (bd list -l ci).
+# Planned jobs, ubuntu-latest + macos-latest matrix:
+#   generator  - setup Zig 0.17.1, zig build, zig build test
+#   golden     - install pinned protoc 36.2 and Goose v2026.3
+#                (macOS: xattr -dr com.apple.quarantine), run golden tests,
+#                goose check on generated output
+#   conformance - cached scripts/build_runner.sh, build testee,
+#                 scripts/run_conformance.sh
+# Pins live in TOOLCHAIN.md.
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  placeholder:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - run: echo "CI not wired yet; see TOOLCHAIN.md"

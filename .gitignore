@@ -1,0 +1,25 @@
+# Zig
+.zig-cache/
+zig-cache/
+zig-out/
+zig-pkg/
+
+# Build outputs (conformance runner, testee, emitted C)
+/build/
+*.o
+
+# Goose / tooling caches
+.goose/
+
+# Editors / OS
+.DS_Store
+*.swp
+.idea/
+.vscode/
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/
+*.gate.lock*
