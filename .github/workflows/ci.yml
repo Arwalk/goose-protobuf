@@ -60,3 +60,61 @@ jobs:
         run: |
           scripts/test_golden.sh
           scripts/test_goose_tests.sh
+
+  conformance:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Cache pinned protoc and Goose
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install_toolchain.sh') }}
+
+      - name: Install pinned protoc and Goose
+        run: |
+          scripts/install_toolchain.sh
+          echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - name: Protobuf submodule commit
+        id: pb
+        run: echo "commit=$(git rev-parse HEAD:third_party/protobuf)" >> "$GITHUB_OUTPUT"
+
+      # The whole build dir is cached: the runner loads libjsoncpp from it.
+      - name: Cache conformance runner
+        id: runner-cache
+        uses: actions/cache@v4
+        with:
+          path: build/pb
+          key: runner-${{ runner.os }}-${{ runner.arch }}-${{ steps.pb.outputs.commit }}-${{ hashFiles('scripts/build_runner.sh') }}
+
+      - name: Build conformance runner (cache miss only)
+        if: steps.runner-cache.outputs.cache-hit != 'true'
+        run: scripts/build_runner.sh
+
+      - name: Check runner
+        run: test -x build/pb/conformance_test_runner
+
+      # The stdin shim (read(2)) was only run on linux-x64 by the spike
+      # (docs/decisions/0003-stdio.md); this runs it on macOS too.
+      - name: Stdio framing check
+        run: |
+          mkdir -p build
+          goose build tests/spikes/stdio/echo.goose -o build/echo
+          python3 tests/spikes/stdio/driver.py build/echo
+
+      # Fails if any result does not match conformance/failure_list_goose.txt.
+      - name: Conformance suite
+        run: scripts/run_conformance.sh --maximum_edition 2023
+
+      - name: Testee and harness checks
+        run: |
+          python3 conformance/check_testee.py build/testee
+          scripts/test_run_conformance.sh
