@@ -12,7 +12,16 @@ for the pinned versions and their caveats.
 goose check runtime/pb_wire.goose               # Goose typecheck
 scripts/build_runner.sh                         # conformance_test_runner
 scripts/run_conformance.sh [testee] [flags]     # conformance suite
+scripts/golden.sh                               # golden tests (--update to accept)
 ```
+
+Golden tests: each `tests/protos/<name>.proto` is generated twice (the two
+outputs must be byte-identical), diffed against `tests/golden/<name>/` (no
+directory means no files), and every golden `.goose` file goes through
+`goose check` next to a copy of `runtime/pb_wire.goose`. After an
+intended generator change, run `scripts/golden.sh --update` and review the
+golden diff in the commit. `scripts/test_golden.sh` and
+`scripts/test_run_conformance.sh` self-test the harnesses.
 
 ## Conventions
 
