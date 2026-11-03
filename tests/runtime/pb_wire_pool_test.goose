@@ -77,6 +77,20 @@ fn main() {
     u = pb_bytes_free(u);
     tu = pb_bytes_free(tu);
 
+    // Typed run pools: a run of f64 and a run of spans, grown and freed.
+    var fs = pb_resize(pb_f64s, pb_Span { at: 0, len: 0 }, 2);
+    pb_run(pb_f64s, fs)[0] = 1.5;
+    pb_run(pb_f64s, fs)[1] = -2.0;
+    fs = pb_resize(pb_f64s, fs, 3);
+    let fr = pb_run(pb_f64s, fs);
+    if fr.len != 3 || fr[0] != 1.5 || fr[1] != -2.0 { fail_at("f64s", str(fr.len)); }
+    fs = pb_resize(pb_f64s, fs, 0);
+    var ss = pb_resize(pb_spans, pb_Span { at: 0, len: 0 }, 1);
+    pb_run(pb_spans, ss)[0] = pb_bytes_append(pb_Span { at: 0, len: 0 }, "s");
+    if !bytes_eq(pb_run(pb_bytes, pb_run(pb_spans, ss)[0]), "s") { fail_at("spans", ""); }
+    pb_bytes_free(pb_run(pb_spans, ss)[0]);
+    ss = pb_resize(pb_spans, ss, 0);
+
     if failures != 0 { abort(str(failures, " failures")); }
     print("pb_wire pool tests: all passed");
 }

@@ -89,6 +89,21 @@ fn main() {
     if bad.a != 1 || bad.pb_unknown.len != 0 { fail_at("truncated", "partial message is wrong"); }
     unknown::Known_clear(bad);
 
+    // A message held in its generated pool, reached through a run of
+    // links (decision 0001): decode into the slot, re-encode, free it.
+    var links = pb_resize(unknown::Known_links, pb_Span { at: 0, len: 0 }, 1);
+    let slot .= unknown::Known_pool.alloc_ref(unknown::Known { .. });
+    pb_run(unknown::Known_links, links)[0].m .= slot;
+    let l = pb_run(unknown::Known_links, links)[0].m;
+    assert(l);
+    if unknown::Known_decode(wide, l) != PB_OK { fail_at("pool slot", "decode"); }
+    var pout: u8[>..] = [];
+    unknown::Known_encode(l, pout);
+    if !bytes_eq(pout, want) { fail_at("pool slot", str("re-encode [", hex(pout), "]")); }
+    unknown::Known_clear(l);
+    unknown::Known_pool.free(unknown::Known_pool.index_of(l));
+    links = pb_resize(unknown::Known_links, links, 0);
+
     if failures != 0 { abort(str(failures, " failures")); }
     print("unknown round-trip: all passed");
 }

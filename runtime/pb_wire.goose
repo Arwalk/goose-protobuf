@@ -231,6 +231,18 @@ struct pb_Span { at: u32, len: u32 }
 // field) of every message.
 reusable[] var pb_bytes: u8[>..] = [];
 
+// Runs of repeated fields: one pool per scalar element type (enums are
+// i32), and runs of pb_Span (into pb_bytes) for repeated strings and
+// bytes. Repeated sub-messages use the generated M_links pools.
+reusable[] var pb_i32s: i32[>..] = [];
+reusable[] var pb_i64s: i64[>..] = [];
+reusable[] var pb_u32s: u32[>..] = [];
+reusable[] var pb_u64s: u64[>..] = [];
+reusable[] var pb_f32s: f32[>..] = [];
+reusable[] var pb_f64s: f64[>..] = [];
+reusable[] var pb_bools: bool[>..] = [];
+reusable[] var pb_spans: pb_Span[>..] = [];
+
 // The elements of run s.
 fn pb_run<T>(pool: T[>..]&, s: pb_Span) -> T[:] {
     let lo: i64 = s.at;

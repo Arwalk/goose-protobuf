@@ -207,3 +207,18 @@ move to B changes signatures and user code, not the data layout.
   would point into the caller's buffer, which then has to outlive the
   message. Copying into `pb_bytes` costs one `memcpy`-like pass and keeps
   lifetimes simple. This could come back as an opt-in decode mode.
+
+## Status of the implementation
+
+The design above is unchanged. gpb-41j.6 and gpb-8qn.1 put it in place:
+
+- pb_wire holds `pb_Span`, `pb_bytes`, `pb_run`, `pb_resize`, the
+  byte-run helpers (`pb_bytes_append`, `pb_bytes_free`, `pb_bytes_trim`,
+  `pb_unknown_append`) and the typed run pools `pb_i32s`, `pb_i64s`,
+  `pb_u32s`, `pb_u64s`, `pb_f32s`, `pb_f64s`, `pb_bools` and `pb_spans`.
+- Every generated record ends in `pb_unknown: pb_Span`, and every
+  message gets `M_Ref`, `M_pool` and `M_links`, whether or not a field
+  uses them yet, so that a type in another file can link to it.
+- The generated file header documents the user-facing API.
+- Sub-message, string, bytes and repeated fields use these pools from
+  gpb-8qn.2, gpb-8qn.4 and Phase 3 on.

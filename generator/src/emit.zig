@@ -180,6 +180,7 @@ pub const FileEmitter = struct {
             \\
             \\
         , .{proto_name});
+        try self.w.writeAll(api_comment);
         const package = f.package orelse "";
         if (package.len > 0) {
             try self.w.print("namespace {s};\n\n", .{try namespaceName(self.a, package)});
@@ -326,6 +327,7 @@ pub const FileEmitter = struct {
         std.mem.sortUnstable(Field, by_number, {}, Field.lessThan);
 
         try self.emitRecord(goose_name, fields.items, has_words);
+        try self.emitPools(goose_name, path);
         try self.emitDecode(goose_name, path, fields.items);
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
@@ -343,6 +345,22 @@ pub const FileEmitter = struct {
         for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, f.sc.goose });
         for (0..has_words) |i| try self.w.print("    pb_has{d}: u32,   // has-bits of fields with presence\n", .{i});
         try self.w.writeAll("    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes\n}\n");
+    }
+
+    /// The link type and pools of decision 0001: sub-messages of this type
+    /// live one per slot in M_pool, and repeated fields hold runs of links
+    /// in M_links.
+    fn emitPools(self: *FileEmitter, goose_name: []const u8, path: []const u8) Error!void {
+        const ref = try generatedName(self.a, path, "Ref");
+        const pool = try generatedName(self.a, path, "pool");
+        try self.w.print(
+            \\
+            \\// A link to a {s} in {s}, for sub-message fields.
+            \\struct {s} {{ m: {s}&<u32 in {s}>? }}
+            \\reusable var {s}: {s}[>..] = [];
+            \\reusable[] var {s}: {s}[>..] = [];
+            \\
+        , .{ goose_name, pool, ref, goose_name, pool, pool, goose_name, try generatedName(self.a, path, "links"), ref });
     }
 
     fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
@@ -473,6 +491,27 @@ pub const FileEmitter = struct {
         });
     }
 };
+
+/// The header comment of every generated file: the user-facing API
+/// (decisions 0001, 0004, 0006).
+const api_comment =
+    \\// API, for each message M (Outer.Inner is Outer_Inner):
+    \\//   var m = M { .. };            an empty message: any local, global or
+    \\//                                array element the caller owns
+    \\//   m.f, m.f = v                 scalar fields without presence
+    \\//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
+    \\//   M_clear_f(m)                 optional); m.f reads them
+    \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
+    \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
+    \\//                                PB_ERR_* code and a partial m
+    \\//   M_clear(m)                   frees what m owns, empties it
+    \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
+    \\// fields, and later strings, bytes, repeated fields and sub-messages)
+    \\// live in global pools (pb_bytes, M_pool, M_links): clear a message
+    \\// to free them. Copying a record copies spans, not their contents.
+    \\
+    \\
+;
 
 /// A field stored in the record.
 const Field = struct {
