@@ -20,21 +20,22 @@ command -v "$goose" >/dev/null || { echo "error: goose not found; see TOOLCHAIN.
 explicit=1
 if [ $# -eq 0 ]; then set -- "$root/tests"; explicit=0; fi
 
+# Newline-separated lists and no empty "${arr[@]}": macOS has bash 3.2.
 tests=()
-while IFS= read -r -d '' f; do tests+=("$f"); done < <(
+while IFS= read -r f; do tests+=("$f"); done < <(
   for p in "$@"; do
-    if [ -f "$p" ]; then printf '%s\0' "$p"
-    elif [ -d "$p" ]; then find "$p" -name '*_test.goose' -type f -print0
+    if [ -f "$p" ]; then echo "$p"
+    elif [ -d "$p" ]; then find "$p" -name '*_test.goose' -type f
     else echo "error: no such file or directory: $p" >&2; fi
-  done | sort -z)
+  done | LC_ALL=C sort)
 
 if [ ${#tests[@]} -eq 0 ]; then
   echo "goose_tests: no *_test.goose found in $*"
   exit $explicit
 fi
 
-runner=()
-command -v timeout >/dev/null && runner=(timeout "$limit")
+runner=env  # macOS has no timeout(1)
+command -v timeout >/dev/null && runner="timeout $limit"
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 failed=()
@@ -46,14 +47,14 @@ for t in "${tests[@]}"; do
     grep -v '^parsed ok\|^typechecked ok\|^bce:\|^wrote \|^built ' "$tmp/log" | sed 's/^/    /'
     failed+=("$rel"); continue
   fi
-  "${runner[@]}" "$bin" >"$tmp/log" 2>&1
+  $runner "$bin" >"$tmp/log" 2>&1
   status=$?
   if [ $status -eq 0 ]; then
     echo "PASS $rel"
   else
     reason="exit $status"
     [ $status -ge 128 ] && reason="killed by signal $((status - 128)) (abort?)"
-    [ $status -eq 124 ] && [ ${#runner[@]} -gt 0 ] && reason="timed out after ${limit}s"
+    [ $status -eq 124 ] && [ "$runner" != env ] && reason="timed out after ${limit}s"
     echo "FAIL $rel ($reason)"
     sed 's/^/    /' "$tmp/log"
     failed+=("$rel")

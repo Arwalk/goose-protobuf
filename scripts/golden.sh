@@ -89,14 +89,14 @@ for proto in "${protos[@]}"; do
     chk="$tmp/$name/check"; mkdir -p "$chk"
     cp -R "$golden/." "$chk/"
     cp "$root/runtime/pb_wire.goose" "$chk/pb_wire.goose"
-    while IFS= read -r -d '' f; do
+    while IFS= read -r f; do
       rel="${f#$golden/}"
       if ! (cd "$chk" && "$goose" check "$rel") >"$tmp/$name/check.log" 2>&1; then
         echo "FAIL $name: goose check failed on tests/golden/$name/$rel"
         grep -v '^parsed ok\|^typechecked ok\|^bce:' "$tmp/$name/check.log"
         ok=0
       fi
-    done < <(find "$golden" -name '*.goose' -type f -print0 | sort -z)
+    done < <(find "$golden" -name '*.goose' -type f | LC_ALL=C sort)
   fi
 
   if [ $ok = 1 ]; then echo "ok   $name"; else failed+=("$name"); fi

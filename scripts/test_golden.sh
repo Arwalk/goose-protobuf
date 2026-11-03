@@ -52,7 +52,7 @@ cmp -s "$tmp/golden/smoke/smoke.goose" "$tmp/good.goose" ||
   { echo "FAIL --update did not write the golden"; bad=1; }
 run 0       "matching golden passes"   "^ok   smoke"
 
-sed -i 's/return x;/return x + 0;/' "$tmp/golden/smoke/smoke.goose"
+perl -pi -e 's/return x;/return x + 0;/' "$tmp/golden/smoke/smoke.goose"
 run nonzero "changed golden fails with a diff" "^-  return x + 0;"
 
 export FAKE_CONTENT="$tmp/bad.goose"

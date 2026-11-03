@@ -1,12 +1,6 @@
-# CI placeholder. Filled in by the Phase 0 CI tasks (bd list -l ci).
-# Planned jobs, ubuntu-latest + macos-latest matrix:
-#   generator  - setup Zig 0.17.1, zig build, zig build test
-#   golden     - install pinned protoc 36.2 and Goose v2026.3
-#                (macOS: xattr -dr com.apple.quarantine), run golden tests,
-#                goose check on generated output
-#   conformance - cached scripts/build_runner.sh, build testee,
-#                 scripts/run_conformance.sh
-# Pins live in TOOLCHAIN.md.
+# CI: generator build and tests, golden tests and Goose unit tests on Linux
+# and macOS. Every step runs a script that also runs locally (AGENTS.md).
+# Pins live in TOOLCHAIN.md; the conformance job is gpb-iip.9.
 name: ci
 
 on:
@@ -14,13 +8,55 @@ on:
   pull_request:
 
 jobs:
-  placeholder:
+  build-test:
     strategy:
+      fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
+      # The protobuf submodule is only needed by the conformance runner.
       - uses: actions/checkout@v4
+
+      - uses: mlugg/setup-zig@v2
         with:
-          submodules: true
-      - run: echo "CI not wired yet; see TOOLCHAIN.md"
+          version: 0.17.1
+
+      - name: Cache pinned protoc and Goose
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install_toolchain.sh') }}
+
+      - name: Install pinned protoc and Goose
+        run: |
+          scripts/install_toolchain.sh
+          echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - name: Toolchain versions
+        run: |
+          zig version
+          protoc --version
+          goose version
+          goose toolchain
+
+      - name: Generator build and unit tests
+        working-directory: generator
+        run: zig build && zig build test
+
+      - name: Plugin smoke test
+        run: tests/smoke_plugin.sh
+
+      - name: Runtime typecheck
+        run: goose check runtime/pb_wire.goose
+
+      - name: Golden tests
+        run: scripts/golden.sh
+
+      - name: Goose unit tests
+        run: scripts/goose_tests.sh
+
+      - name: Harness self-tests
+        run: |
+          scripts/test_golden.sh
+          scripts/test_goose_tests.sh
