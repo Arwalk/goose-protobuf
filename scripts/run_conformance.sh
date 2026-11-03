@@ -5,41 +5,28 @@
 #   scripts/run_conformance.sh --maximum_edition 2023 # same, with runner flags
 #   scripts/run_conformance.sh build/testee --test <name> --enforce_recommended
 # With no testee (or when the first argument is a flag), the default testee
-# conformance/testee.goose is built to build/testee first if it is missing
-# or older than its sources. Runner flags (--maximum_edition,
+# conformance/testee.goose is built to build/testee first, with
+# scripts/build_testee.sh (which generates its bindings). Runner flags (--maximum_edition,
 # --enforce_recommended, --test, ...) are passed through unchanged.
 # Exit status is the runner's: nonzero iff a test fails that is not in the
 # failure list, or a test in the failure list passes.
 # Env: RUNNER (default build/pb/conformance_test_runner)
 #      FAILURE_LIST (default conformance/failure_list_goose.txt)
-#      GOOSE (default goose)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 runner="${RUNNER:-$root/build/pb/conformance_test_runner}"
 failure_list="${FAILURE_LIST:-$root/conformance/failure_list_goose.txt}"
-goose="${GOOSE:-goose}"
 
 die() { echo "error: $*" >&2; exit 1; }
 
-# Build the default testee unless it is newer than every source it uses.
+# Build the default testee from freshly generated bindings. The build
+# depends on the generator, the runtime and the protobuf sources, so it is
+# always redone (zig build and goose build are quick when nothing changed).
 build_default_testee() {
-  local out="$root/build/testee" src="$root/conformance/testee.goose" f
-  local stale=0
-  [ -x "$out" ] || stale=1
-  if [ "$stale" = 0 ]; then
-    for f in "$src" "$root/conformance/io.c" "$root/conformance/testee.build" \
-             "$root"/runtime/*.goose; do
-      [ -e "$f" ] && [ "$f" -nt "$out" ] && { stale=1; break; }
-    done
-  fi
-  if [ "$stale" = 1 ]; then
-    command -v "$goose" >/dev/null || die "goose not found; see TOOLCHAIN.md"
-    mkdir -p "$root/build"
-    echo "building default testee: $out" >&2
-    "$goose" build "$src" -o "$out" >&2
-  fi
-  testee="$out"
+  testee="$root/build/testee"
+  echo "building default testee: $testee" >&2
+  "$root/scripts/build_testee.sh" "$testee"
 }
 
 if [ $# -eq 0 ] || [ "${1#-}" != "$1" ]; then

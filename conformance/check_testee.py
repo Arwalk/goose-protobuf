@@ -8,8 +8,10 @@ Usage: python3 conformance/check_testee.py <command...>
 Exits 0 if every check passes. Each read has a timeout, so a testee that
 waits for EOF fails instead of hanging.
 
-Phase 0 contract (gpb-iip.4): the FailureSet request gets an empty
-FailureSet; every other request gets `skipped`.
+Contract (gpb-41j.7): the FailureSet request gets an empty FailureSet; a
+binary TestAllTypesProto3 request with binary output gets its payload
+decoded and re-encoded in protobuf_payload, or a parse_error if it does
+not decode; every other request gets `skipped`.
 """
 import os
 import select
@@ -25,6 +27,7 @@ failures = 0
 PROTOBUF, JSON = 1, 2
 FAILURE_SET_REPLY = b"\x1a\x00"  # protobuf_payload (3) = empty FailureSet
 SKIPPED_TAG = 0x2A               # skipped (5), length-delimited
+PARSE_ERROR_TAG = 0x0A           # parse_error (1), length-delimited
 
 
 def check(name, ok, detail=""):
@@ -66,9 +69,9 @@ def frame(msg):
     return struct.pack("<I", len(msg)) + msg
 
 
-def is_skipped(reply):
-    """True if reply is exactly one `skipped` field with a non-empty text."""
-    if not reply or reply[0] != SKIPPED_TAG:
+def is_one_field(reply, tag):
+    """True if reply is exactly one `tag` field with a non-empty text."""
+    if not reply or reply[0] != tag:
         return False
     n, shift, i = 0, 0, 1
     while i < len(reply):
@@ -116,26 +119,37 @@ def wait_exit(p):
 
 
 T3 = "protobuf_test_messages.proto3.TestAllTypesProto3"
+T2 = "protobuf_test_messages.proto2.TestAllTypesProto2"
+UNKNOWN_999 = varint(999 << 3) + varint(5)   # a field TestAllTypesProto3 lacks
 CASES = [
-    # (name, request bytes, expectation: "failureset" or "skipped")
+    # (name, request bytes, expectation: "failureset", "skipped",
+    #  "parse_error", or the bytes of the expected protobuf_payload)
     ("FailureSet request gets an empty FailureSet",
      request("conformance.FailureSet"), "failureset"),
-    ("binary in, binary out is skipped",
-     request(T3, payload=b"\x08\x96\x01"), "skipped"),
-    ("binary in, empty payload is skipped",
-     request(T3), "skipped"),
+    ("binary in, binary out round-trips",
+     request(T3, payload=b"\x08\x96\x01"), b"\x08\x96\x01"),
+    ("binary in, empty payload gives an empty payload",
+     request(T3), b""),
+    ("unknown fields are kept",
+     request(T3, payload=b"\x08\x01" + UNKNOWN_999), b"\x08\x01" + UNKNOWN_999),
+    ("a truncated payload is a parse_error",
+     request(T3, payload=b"\x08"), "parse_error"),
+    ("a payload after a parse_error still round-trips",
+     request(T3, payload=b"\x10\x02"), b"\x10\x02"),
+    ("proto2 is skipped",
+     request(T2, payload=b"\x08\x01"), "skipped"),
     ("JSON in is skipped",
      request(T3, payload_field=2, payload=b"{}"), "skipped"),
     ("JSON out is skipped",
      request(T3, payload=b"\x08\x01", out_format=JSON), "skipped"),
     ("text in is skipped",
      request(T3, payload_field=8, payload=b"optional_int32: 1"), "skipped"),
-    ("unknown and unhandled fields are skipped over",
+    ("unknown and unhandled request fields are skipped over",
      request(T3, payload=b"\x08\x01",
              extra=field_varint(5, 1) + field_len(6, b"\x08\x01")
              + field_varint(9, 1) + b"\x55\x01\x02\x03\x04"   # field 10, fixed32
              + b"\x59" + bytes(8)),                           # field 11, fixed64
-     "skipped"),
+     b"\x08\x01"),
     ("FailureSet request split mid-prefix gets an empty FailureSet",
      request("conformance.FailureSet"), "failureset"),
 ]
@@ -156,8 +170,12 @@ def interactive(cmd):
         got = read_reply(out)
         if want == "failureset":
             ok = got == FAILURE_SET_REPLY
+        elif want == "skipped":
+            ok = got is not None and is_one_field(got, SKIPPED_TAG)
+        elif want == "parse_error":
+            ok = got is not None and is_one_field(got, PARSE_ERROR_TAG)
         else:
-            ok = got is not None and is_skipped(got)
+            ok = got == field_len(3, want)
         check(name, ok, "" if ok else f"got {got!r}")
         if got is None:
             p.kill(); p.wait()

@@ -6,21 +6,27 @@
 //   repeat until stdin reaches EOF.
 //
 // The first request has message_type == "conformance.FailureSet"; reply
-// with an empty FailureSet in protobuf_payload. Every other request gets
-// `skipped`: Phase 0 has no generated messages yet, so binary-in /
-// binary-out is skipped too, with its own reason.
+// with an empty FailureSet in protobuf_payload. A binary request for
+// TestAllTypesProto3 with binary output is decoded with the generated
+// bindings and re-encoded into protobuf_payload; a decode error is a
+// parse_error. Everything else (proto2, editions, JSON, text) gets
+// `skipped`.
 //
-// ConformanceRequest is hand-parsed (only the fields needed here); any
-// other field is skipped by wire type.
+// ConformanceRequest and ConformanceResponse are hand-coded (only the
+// fields needed here; any other field is skipped by wire type) until the
+// generator supports strings and oneofs (Phase 3).
 //
 // os.read_stdin reads to EOF, so exact-length reads go through the C shim
 // in io.c (linked by testee.build); see docs/decisions/0003-stdio.md.
 // Only the reply may go to stdout: no print, no read_stdin, no read_line.
 //
-// Build: goose build conformance/testee.goose -o build/testee
+// Build: scripts/build_testee.sh   (generates test_messages_proto3.goose
+//        next to this file and builds build/testee)
 // Check: python3 conformance/check_testee.py build/testee
 
 import os;
+import pb_wire;
+import test_messages_proto3;
 
 extern "pbio_read_exact" fn read_exact(out: u8[>..]&, n: i64) -> i32;
 
@@ -73,17 +79,38 @@ fn send(resp: u8[:]) {
     flush_stdout();
 }
 
-fn send_skipped(reason: u8[:]) {
+// Send a response holding one length-delimited field.
+fn send_field(tag: u8, data: u8[:]) {
     var resp: u8[>..] = [];
-    resp.push(0x2a);   // skipped (5), length-delimited
-    append_varint(resp, reason.len as! u64);
-    resp.append(reason);
+    resp.push(tag);
+    append_varint(resp, data.len as! u64);
+    resp.append(data);
     send(resp);
+}
+
+fn send_skipped(reason: u8[:]) { send_field(0x2a, reason); }   // skipped (5)
+
+// TestAllTypesProto3: decode, re-encode. The message's pool storage is
+// freed before the next request.
+var t3 = protobuf_test_messages_proto3::TestAllTypesProto3 { .. };
+
+fn roundtrip_proto3(payload: u8[:]) {
+    let err = protobuf_test_messages_proto3::TestAllTypesProto3_decode(payload, t3);
+    if err != PB_OK {
+        protobuf_test_messages_proto3::TestAllTypesProto3_clear(t3);
+        send_field(0x0a, str("decode error ", err));   // parse_error (1)
+        return;
+    }
+    var out: u8[>..] = [];
+    protobuf_test_messages_proto3::TestAllTypesProto3_encode(t3, out);
+    protobuf_test_messages_proto3::TestAllTypesProto3_clear(t3);
+    send_field(0x1a, out);   // protobuf_payload (3)
 }
 
 fn respond(req: u8[:]) {
     var message_type: u8[:] = req[..0];
     var payload = PAYLOAD_NONE;
+    var protobuf_payload: u8[:] = req[..0];
     var output_format: u64 = 0;
 
     var at: i64 = 0;
@@ -110,7 +137,7 @@ fn respond(req: u8[:]) {
             if n > (req.len - q) as! u64 { fail("length past end of request"); }
             at = q + n as! i64;
             if field == 4 { message_type = req[q..at]; }
-            else if field == 1 { payload = PAYLOAD_PROTOBUF; }
+            else if field == 1 { payload = PAYLOAD_PROTOBUF; protobuf_payload = req[q..at]; }
             else if field == 2 || field == 7 || field == 8 { payload = PAYLOAD_OTHER; }
         } else {
             fail("unsupported wire type in request");
@@ -121,7 +148,11 @@ fn respond(req: u8[:]) {
         let empty_failure_set: u8[2] = [0x1a, 0x00];   // protobuf_payload (3), 0 bytes
         send(empty_failure_set);
     } else if payload == PAYLOAD_PROTOBUF && output_format == WIRE_PROTOBUF {
-        send_skipped("binary format not implemented yet");
+        if message_type == "protobuf_test_messages.proto3.TestAllTypesProto3" {
+            roundtrip_proto3(protobuf_payload);
+        } else {
+            send_skipped("only TestAllTypesProto3 is generated yet");
+        }
     } else {
         send_skipped("only the binary wire format is supported");
     }

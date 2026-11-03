@@ -34,7 +34,7 @@ runtime/        pb_wire.goose: shared wire-format primitives
 conformance/    Goose testee + failure list (may only shrink)
 tests/          golden/, protos/, roundtrip/, fuzz/
 third_party/    protobuf (submodule, pinned; conformance runner source)
-scripts/        build_runner.sh, run_conformance.sh
+scripts/        build_runner.sh, build_testee.sh, run_conformance.sh, test harnesses
 docs/decisions/ spike conclusions and design decisions
 ```
 
@@ -61,8 +61,9 @@ scripts/test_run_conformance.sh                    # checks the exit-code contra
 ```
 
 With no testee argument (or a flag first), `run_conformance.sh` builds
-`conformance/testee.goose` to `build/testee` when it is missing or older
-than its sources. It exits nonzero iff a test fails that is not in
+`build/testee` with `scripts/build_testee.sh`, which generates
+`TestAllTypesProto3` with the plugin and builds `conformance/testee.goose`
+against it. It exits nonzero iff a test fails that is not in
 `conformance/failure_list_goose.txt`, or a listed test passes.
 
 ## License
