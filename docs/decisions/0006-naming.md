@@ -46,7 +46,8 @@ built from. It covers:
 - Goose keywords and contextual keywords (reference, Appendix A);
 - Goose builtins (reference §25), such as `print`, `str`, `copy`,
   `abort`, `assert` and `exit`;
-- names starting with `pb_`, which belong to the runtime;
+- names starting with `pb_` or `PB_`, which belong to the runtime
+  (`pb_Span`, `PB_ERR_TRUNCATED`);
 - names that would clash with a generated function or accessor. A
   nested declaration whose path ends in a generated suffix (`_decode`,
   `_encode`, `_size_of`, `_clear`, `_set_<field>`, `_<field>_at`,
@@ -107,8 +108,25 @@ that escaping cannot resolve is a collision error.
 ## Status of the implementation
 
 gpb-41j.3 implemented the package, message, enum and keyword rules, and
-collision detection for types and constants. Still to do:
+collision detection for types and constants. gpb-41j.9 added the rest of
+the reserved list, in `generator/src/emit.zig`:
 
-- gpb-41j.9: extend the reserved list to builtins, `pb_` names and
-  generated function names, and check functions for collisions;
+- Every generated function and global is claimed before any type or
+  constant: per message `_decode`, `_encode`, `_size_of`, `_clear`,
+  `_copy`, and the `_Ref`, `_pool` and `_links` of decision 0001; per
+  field, the accessors in `fieldAccessors` (the one table of accessor
+  names, which the field emitters must use), plus `has_`/`clear_` for
+  fields with explicit presence.
+- Generated names are built from the unescaped path and then escaped
+  like any final name: `message pb_x` gives `pb_x_` and `pb_x_decode_`,
+  `message type` gives `type_` and `type_decode`.
+- A nested type or enum constant whose name is generated gets one `_`.
+  A top-level one, or a name still taken after the `_`, is a collision.
+- The accessors of singular message fields (`<f>`, `has_<f>`,
+  `clear_<f>`) and of repeated fields (`<f>`, `<f>_at`, `add_<f>`) are
+  provisional: 0001 does not fix them. The task that emits a field kind
+  updates the table, its goldens and this note.
+
+Still to do:
+
 - gpb-8qn.8: output file name mangling.

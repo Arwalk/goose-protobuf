@@ -1,0 +1,41 @@
+// Golden: names that clash with Goose builtins, the pb_wire runtime, and
+// the functions and accessors generated per message (decision 0006).
+// Fields are not emitted yet (gpb-41j.4), but their accessor names are
+// claimed already.
+syntax = "proto3";
+
+package reserved;
+
+// A nested name equal to a generated function or global of its parent.
+message Outer {
+  message decode {}
+  message pool {}
+  enum Ref {
+    Ref_ZERO = 0;
+  }
+}
+
+// Nested names equal to accessors of the parent's fields.
+message Node {
+  string name = 1;
+  repeated Node children = 2;
+  message set_name {}
+  message children_at {}
+}
+
+// Builtins and runtime-prefixed names.
+message str {}
+message pb_x {}
+message thread {
+  message spawn {}
+}
+
+enum print {
+  print_A = 0;
+}
+
+// An enum constant equal to an accessor: E_set_x, the setter of E.x.
+message E { string x = 1; }
+enum E_set {
+  x = 0;
+}
