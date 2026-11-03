@@ -10,8 +10,9 @@
 // request whose payload is not protobuf_payload, or whose
 // requested_output_format is not PROTOBUF, gets `skipped`.
 //
-// Note: os.read_stdin reads to EOF, so exact-length reads need another
-// mechanism (see the stdin spike in docs/decisions/).
+// Note: os.read_stdin reads to EOF, so exact-length reads go through a C
+// shim over read(2); see docs/decisions/0003-stdio.md and
+// tests/spikes/stdio/.
 //
 // Stub: implemented by the Phase 0 testee task (see `bd ready`).
 
