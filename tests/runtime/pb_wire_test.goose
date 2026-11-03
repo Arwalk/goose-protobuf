@@ -211,6 +211,10 @@ fn test_floats() {
     check_f64("max finite", 0x7FEFFFFFFFFFFFFF);
 }
 
+fn test_bool() {
+    if pb_bool_to_u64(true) != 1 || pb_bool_to_u64(false) != 0 { fail_at("bool", "pb_bool_to_u64"); }
+}
+
 fn main() {
     test_varint();
     test_zigzag();
@@ -218,6 +222,7 @@ fn main() {
     test_tags();
     test_len();
     test_floats();
+    test_bool();
     if failures != 0 { abort(str(failures, " failures")); }
     print("pb_wire scalar tests: all passed");
 }

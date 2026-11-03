@@ -1,0 +1,12 @@
+# proto-file: optional.proto
+# proto-message: optional.Opt
+o_int32: -7
+o_sint64: -9000000000
+o_double: 0.5
+o_float: -0
+o_bool: true
+o_mode: MODE_ON
+o_fixed64: 1
+plain: 0
+o20: 20
+o34: 4000000000

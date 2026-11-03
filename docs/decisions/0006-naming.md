@@ -122,6 +122,11 @@ the reserved list, in `generator/src/emit.zig`:
   `message type` gives `type_` and `type_decode`.
 - A nested type or enum constant whose name is generated gets one `_`.
   A top-level one, or a name still taken after the `_`, is a collision.
+- A scalar with presence (proto3 `optional`, gpb-41j.5) is read as
+  `m.<f>` and written with `<M>_set_<f>`, which sets its has-bit; it
+  also has `<M>_has_<f>` and `<M>_clear_<f>`. Has-bits live in record
+  fields `pb_has<k>: u32`, which no proto field can take because `pb_`
+  names are escaped.
 - The accessors of singular message fields (`<f>`, `has_<f>`,
   `clear_<f>`) and of repeated fields (`<f>`, `<f>_at`, `add_<f>`) are
   provisional: 0001 does not fix them. The task that emits a field kind

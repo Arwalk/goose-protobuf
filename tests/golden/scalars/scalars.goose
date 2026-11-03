@@ -28,6 +28,8 @@ struct Scalars {
     f_color: i32,
     f_big: i32,
     f_mid: i32,
+    f_optional: i32,
+    pb_has0: u32,   // has-bits of fields with presence
 }
 
 // Merges the fields in r's window into m; on failure r.err is set.
@@ -67,6 +69,9 @@ fn Scalars_decode_from(r: pb_Reader&, m: Scalars&) {
             m.f_big = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 128 {
             m.f_mid = pb_u64_to_int32(pb_read_varint(r));
+        } else if tag == 168 {
+            m.f_optional = pb_u64_to_int32(pb_read_varint(r));
+            m.pb_has0 |= 0x00000001;
         } else {
             pb_skip_field(r, tag);
         }
@@ -133,7 +138,7 @@ fn Scalars_encode(m: Scalars&, out: u8[>..]&) {
     }
     if m.f_bool {
         pb_write_varint(out, 104);
-        pb_write_varint(out, 1);
+        pb_write_varint(out, pb_bool_to_u64(m.f_bool));
     }
     if m.f_color != 0 {
         pb_write_varint(out, 112);
@@ -142,6 +147,10 @@ fn Scalars_encode(m: Scalars&, out: u8[>..]&) {
     if m.f_mid != 0 {
         pb_write_varint(out, 128);
         pb_write_varint(out, pb_int32_to_u64(m.f_mid));
+    }
+    if (m.pb_has0 & 0x00000001) != 0 {
+        pb_write_varint(out, 168);
+        pb_write_varint(out, pb_int32_to_u64(m.f_optional));
     }
     if m.f_big != 0 {
         pb_write_varint(out, 4294967288);
@@ -167,6 +176,7 @@ fn Scalars_size_of(m: Scalars&) -> i64 {
     if m.f_bool { n += 2; }
     if m.f_color != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.f_color)); }
     if m.f_mid != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.f_mid)); }
+    if (m.pb_has0 & 0x00000001) != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.f_optional)); }
     if m.f_big != 0 { n += 5 + pb_varint_size(pb_int32_to_u64(m.f_big)); }
     return n;
 }
@@ -189,6 +199,21 @@ fn Scalars_clear(m: Scalars&) {
     m.f_color = 0;
     m.f_big = 0;
     m.f_mid = 0;
+    m.f_optional = 0;
+    m.pb_has0 = 0;
+}
+
+// Sets f_optional and marks it present: it is encoded even when 0.
+fn Scalars_set_f_optional(m: Scalars&, v: i32) {
+    m.f_optional = v;
+    m.pb_has0 |= 0x00000001;
+}
+
+fn Scalars_has_f_optional(m: Scalars&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
+
+fn Scalars_clear_f_optional(m: Scalars&) {
+    m.f_optional = 0;
+    m.pb_has0 &= 0xfffffffe;
 }
 
 // message scalars.Scalars.Inner

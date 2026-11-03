@@ -1,0 +1,14 @@
+# proto-file: optional.proto
+# proto-message: optional.Opt
+# Every optional field set to its default: all of them are encoded.
+o_int32: 0
+o_sint64: 0
+o_double: 0
+o_float: 0
+o_bool: false
+o_mode: MODE_UNSPECIFIED
+o_fixed64: 0
+o9: 0
+o32: 0
+o33: 0
+o34: 0

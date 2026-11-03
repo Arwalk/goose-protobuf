@@ -1,0 +1,50 @@
+// Golden and round-trip (tests/roundtrip/optional/): proto3 `optional`
+// fields have explicit presence. A set field is encoded even when it is
+// 0, an unset one never is, and decode sets the has-bit. The synthetic
+// oneof protoc adds for each one is not an ADT. 33 fields with presence
+// take two has-bit words.
+syntax = "proto3";
+
+package optional;
+
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_ON = 1;
+}
+
+message Opt {
+  optional int32 o_int32 = 1;
+  optional sint64 o_sint64 = 2;
+  optional double o_double = 3;
+  optional float o_float = 4;
+  optional bool o_bool = 5;
+  optional Mode o_mode = 6;
+  optional fixed64 o_fixed64 = 7;
+  int32 plain = 8;
+  optional uint32 o9 = 9;
+  optional uint32 o10 = 10;
+  optional uint32 o11 = 11;
+  optional uint32 o12 = 12;
+  optional uint32 o13 = 13;
+  optional uint32 o14 = 14;
+  optional uint32 o15 = 15;
+  optional uint32 o16 = 16;
+  optional uint32 o17 = 17;
+  optional uint32 o18 = 18;
+  optional uint32 o19 = 19;
+  optional uint32 o20 = 20;
+  optional uint32 o21 = 21;
+  optional uint32 o22 = 22;
+  optional uint32 o23 = 23;
+  optional uint32 o24 = 24;
+  optional uint32 o25 = 25;
+  optional uint32 o26 = 26;
+  optional uint32 o27 = 27;
+  optional uint32 o28 = 28;
+  optional uint32 o29 = 29;
+  optional uint32 o30 = 30;
+  optional uint32 o31 = 31;
+  optional uint32 o32 = 32;
+  optional uint32 o33 = 33;
+  optional uint32 o34 = 34;
+}

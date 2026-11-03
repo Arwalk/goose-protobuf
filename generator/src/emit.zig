@@ -98,13 +98,18 @@ pub const Accessor = struct { prefix: []const u8, suffix: []const u8 };
 
 /// The accessors generated for a field. This table is the one source of
 /// truth for accessor names: the emitters of each field kind use it, and
-/// the collision check claims every name in it. Scalars without presence
-/// are read and written directly (`m.id = 5`), so they have none.
-pub fn fieldAccessors(kind: FieldKind) []const Accessor {
+/// the collision check claims every name in it. Scalars are read
+/// directly (`m.id`); without presence they are also written directly
+/// (`m.id = 5`), so they have none. A scalar with presence is written
+/// with `set_`, which also sets its has-bit.
+pub fn fieldAccessors(kind: FieldKind, presence: bool) []const Accessor {
     return switch (kind) {
-        .scalar => &.{},
-        .string => &.{ .{ .prefix = "", .suffix = "" }, .{ .prefix = "set_", .suffix = "" } },
-        .message => &.{.{ .prefix = "", .suffix = "" }},
+        .scalar => if (presence) &(.{set_acc} ++ presence_accessors) else &.{},
+        .string => if (presence)
+            &(.{ get_acc, set_acc } ++ presence_accessors)
+        else
+            &.{ get_acc, set_acc },
+        .message => &(.{get_acc} ++ presence_accessors),
         .repeated => &.{
             .{ .prefix = "", .suffix = "" },
             .{ .prefix = "", .suffix = "_at" },
@@ -114,11 +119,13 @@ pub fn fieldAccessors(kind: FieldKind) []const Accessor {
     };
 }
 
-/// The extra accessors of a field with explicit presence.
-pub const presence_accessors = [_]Accessor{
-    .{ .prefix = "has_", .suffix = "" },
-    .{ .prefix = "clear_", .suffix = "" },
-};
+const get_acc: Accessor = .{ .prefix = "", .suffix = "" };
+const set_acc: Accessor = .{ .prefix = "set_", .suffix = "" };
+const has_acc: Accessor = .{ .prefix = "has_", .suffix = "" };
+const clear_acc: Accessor = .{ .prefix = "clear_", .suffix = "" };
+
+/// The accessors every field with explicit presence has.
+const presence_accessors = [_]Accessor{ has_acc, clear_acc };
 
 /// The Goose name of a generated function or global of the message at
 /// `path` (unescaped): `<path>_<op>`, escaped if reserved.
@@ -247,14 +254,11 @@ pub const FileEmitter = struct {
         for (m.field.items) |*fd| {
             const fname = fd.name orelse "";
             const kind = fieldKind(m, full, fd);
-            const presence: []const Accessor = if (hasPresence(self.file, fd)) &presence_accessors else &.{};
-            for ([_][]const Accessor{ fieldAccessors(kind), presence }) |accs| {
-                for (accs) |acc| {
-                    try self.claim(try accessorName(self.a, path, fname, acc), .{
-                        .what = try std.fmt.allocPrint(self.a, "accessor {s}{s}{s} of {s}", .{ acc.prefix, fname, acc.suffix, full }),
-                        .generated = true,
-                    });
-                }
+            for (fieldAccessors(kind, hasPresence(self.file, fd))) |acc| {
+                try self.claim(try accessorName(self.a, path, fname, acc), .{
+                    .what = try std.fmt.allocPrint(self.a, "accessor {s}{s}{s} of {s}", .{ acc.prefix, fname, acc.suffix, full }),
+                    .generated = true,
+                });
             }
         }
         for (m.nested_type.items) |*n| try self.claimGenerated(n, path, full);
@@ -298,6 +302,7 @@ pub const FileEmitter = struct {
         // on decode like an unknown field.
         var fields: std.ArrayList(Field) = .empty;
         var record_names: std.StringHashMapUnmanaged(void) = .empty;
+        var bits: u32 = 0;
         for (m.field.items) |*fd| {
             const sc = scalarOf(self.file, fd) orelse continue;
             const rname = try ident(self.a, fd.name orelse "");
@@ -309,28 +314,38 @@ pub const FileEmitter = struct {
                 );
                 return error.NameCollision;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname });
+            var bit: ?u32 = null;
+            if (hasPresence(self.file, fd)) {
+                bit = bits;
+                bits += 1;
+            }
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit });
         }
+        const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
         std.mem.sortUnstable(Field, by_number, {}, Field.lessThan);
 
-        try self.emitRecord(goose_name, fields.items);
+        try self.emitRecord(goose_name, fields.items, has_words);
         try self.emitDecode(goose_name, path, fields.items);
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
-        try self.emitClear(goose_name, path, fields.items);
+        try self.emitClear(goose_name, path, fields.items, has_words);
+        for (fields.items) |f| {
+            if (f.bit != null) try self.emitPresenceAccessors(goose_name, path, f);
+        }
 
         for (m.enum_type.items) |*e| try self.emitEnum(e, path, full);
         for (m.nested_type.items) |*n| try self.emitMessage(n, path, full);
     }
 
-    fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field) Error!void {
+    fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, has_words: u32) Error!void {
         if (fields.len == 0) {
             try self.w.print("struct {s} {{}}\n", .{goose_name});
             return;
         }
         try self.w.print("struct {s} {{\n", .{goose_name});
         for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, f.sc.goose });
+        for (0..has_words) |i| try self.w.print("    pb_has{d}: u32,   // has-bits of fields with presence\n", .{i});
         try self.w.writeAll("}\n");
     }
 
@@ -349,6 +364,7 @@ pub const FileEmitter = struct {
         for (fields, 0..) |f, i| {
             try self.w.print("        {s}if tag == {d} {{\n", .{ if (i == 0) "" else "} else ", f.tag() });
             try self.w.print("            m.{s} = {s};\n", .{ f.name, f.sc.read });
+            if (f.bit) |b| try self.w.print("            m.pb_has{d} |= 0x{x:0>8};\n", .{ b / 32, bitMask(b) });
         }
         if (fields.len == 0) {
             try self.w.writeAll("        pb_skip_field(r, tag);\n");
@@ -384,7 +400,7 @@ pub const FileEmitter = struct {
         , .{ try generatedName(self.a, path, "size_of"), try generatedName(self.a, path, "encode"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
-            try self.w.print("    if {f} {{\n", .{Subst{ .t = f.sc.nonzero, .x = x }});
+            try self.w.print("    if {f} {{\n", .{f.isSet(x)});
             try self.w.print("        pb_write_varint(out, {d});\n", .{f.tag()});
             try self.w.print("        {f};\n", .{Subst{ .t = f.sc.write, .x = x }});
             try self.w.writeAll("    }\n");
@@ -403,7 +419,7 @@ pub const FileEmitter = struct {
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             const ts = varintSize(f.tag());
-            try self.w.print("    if {f} {{ n += ", .{Subst{ .t = f.sc.nonzero, .x = x }});
+            try self.w.print("    if {f} {{ n += ", .{f.isSet(x)});
             switch (f.sc.size) {
                 .varint => try self.w.print("{d} + pb_varint_size({f});", .{ ts, Subst{ .t = f.sc.write_value, .x = x } }),
                 .fixed => |k| try self.w.print("{d};", .{ts + k}),
@@ -413,7 +429,7 @@ pub const FileEmitter = struct {
         try self.w.writeAll("    return n;\n}\n");
     }
 
-    fn emitClear(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+    fn emitClear(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
         try self.w.print(
             \\
             \\// Resets m to the empty message.
@@ -421,7 +437,39 @@ pub const FileEmitter = struct {
             \\
         , .{ try generatedName(self.a, path, "clear"), goose_name });
         for (fields) |f| try self.w.print("    m.{s} = {s};\n", .{ f.name, f.sc.zero });
+        for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
         try self.w.writeAll("}\n");
+    }
+
+    /// set_, has_ and clear_ of a scalar field with presence.
+    fn emitPresenceAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
+        const b = f.bit.?;
+        const fname = f.fd.name orelse "";
+        try self.w.print(
+            \\
+            \\// Sets {s} and marks it present: it is encoded even when 0.
+            \\fn {s}(m: {s}&, v: {s}) {{
+            \\    m.{s} = v;
+            \\    m.pb_has{d} |= 0x{x:0>8};
+            \\}}
+            \\
+            \\fn {s}(m: {s}&) -> bool {{ return (m.pb_has{d} & 0x{x:0>8}) != 0; }}
+            \\
+            \\fn {s}(m: {s}&) {{
+            \\    m.{s} = {s};
+            \\    m.pb_has{d} &= 0x{x:0>8};
+            \\}}
+            \\
+        , .{
+            fname,
+            try accessorName(self.a, path, fname, set_acc), goose_name, f.sc.goose,
+            f.name,
+            b / 32, bitMask(b),
+            try accessorName(self.a, path, fname, has_acc), goose_name, b / 32, bitMask(b),
+            try accessorName(self.a, path, fname, clear_acc), goose_name,
+            f.name, f.sc.zero,
+            b / 32, ~bitMask(b),
+        });
     }
 };
 
@@ -431,6 +479,13 @@ const Field = struct {
     sc: *const Scalar,
     /// The record field name, escaped.
     name: []const u8,
+    /// The has-bit of a field with presence: bit bit % 32 of pb_has<bit / 32>.
+    bit: ?u32 = null,
+
+    /// The condition under which the field, whose value is `x`, is encoded.
+    fn isSet(f: Field, x: []const u8) Cond {
+        return .{ .f = f, .x = x };
+    }
 
     fn number(f: Field) u32 {
         return @intCast(f.fd.number orelse 0);
@@ -444,6 +499,25 @@ const Field = struct {
         return a.number() < b.number();
     }
 };
+
+/// Formats the encode condition of a field: its has-bit if it has
+/// presence, else a value other than the default.
+const Cond = struct {
+    f: Field,
+    x: []const u8,
+
+    pub fn format(c: Cond, w: *std.Io.Writer) std.Io.Writer.Error!void {
+        if (c.f.bit) |b| {
+            try w.print("(m.pb_has{d} & 0x{x:0>8}) != 0", .{ b / 32, bitMask(b) });
+        } else {
+            try (Subst{ .t = c.f.sc.nonzero, .x = c.x }).format(w);
+        }
+    }
+};
+
+fn bitMask(b: u32) u32 {
+    return @as(u32, 1) << @intCast(b % 32);
+}
 
 /// How one scalar type is stored, read, written and sized. In the
 /// templates, `$` stands for the value (`m.<field>`).
@@ -487,7 +561,7 @@ const sc_bool: Scalar = .{
     .wire = 0,
     .zero = "false",
     .read = "pb_read_varint(r) != 0",
-    .write = "pb_write_varint(out, 1)",
+    .write = "pb_write_varint(out, pb_bool_to_u64($))",
     .nonzero = "$",
     .size = .{ .fixed = 1 },
 };
@@ -499,13 +573,15 @@ const sc_sfixed64: Scalar = .{ .goose = "i64", .wire = 1, .zero = "0", .read = "
 const sc_double: Scalar = .{ .goose = "f64", .wire = 1, .zero = "0.0", .read = "pb_read_double(r)", .write = "pb_write_double(out, $)", .nonzero = "pb_f64_to_bits($) != 0", .size = .{ .fixed = 8 } };
 
 /// The scalar storage of `fd`, or null if this generator does not store
-/// the field yet: only singular numeric, bool and enum fields with
-/// implicit presence are stored (strings, bytes, messages, repeated
-/// fields, oneofs and presence come with later tasks).
+/// the field yet: only singular numeric, bool and enum fields of proto3,
+/// with implicit presence or `optional`, are stored (strings, bytes,
+/// messages, repeated fields, oneofs and proto2 come with later tasks).
 fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
     if (fd.label == .LABEL_REPEATED) return null;
-    if (fd.oneof_index != null) return null; // also every proto3 optional
-    if (hasPresence(file, fd)) return null;
+    if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return null;
+    // A proto3 optional is in a synthetic oneof, which is not an ADT: its
+    // field is stored like any other, with a has-bit.
+    if (fd.oneof_index != null and !(fd.proto3_optional orelse false)) return null;
     return switch (fd.type orelse return null) {
         .TYPE_INT32, .TYPE_ENUM => &sc_int32,
         .TYPE_INT64 => &sc_int64,
@@ -751,4 +827,34 @@ test "field kinds and presence" {
     try std.testing.expect(hasPresence(&p3, &msg_f));
     try std.testing.expect(!hasPresence(&p3, &rep_f));
     try std.testing.expect(hasPresence(&p2, &int_f));
+}
+
+test "accessors depend on kind and presence" {
+    try std.testing.expectEqual(@as(usize, 0), fieldAccessors(.scalar, false).len);
+    const p = fieldAccessors(.scalar, true);
+    try std.testing.expectEqual(@as(usize, 3), p.len);
+    try std.testing.expectEqualStrings("set_", p[0].prefix);
+    try std.testing.expectEqualStrings("has_", p[1].prefix);
+    try std.testing.expectEqualStrings("clear_", p[2].prefix);
+    try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.string, true).len);
+    try std.testing.expectEqual(@as(usize, 3), fieldAccessors(.message, true).len);
+}
+
+test "proto3 optional is stored with a has-bit; real oneofs and proto2 are not" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var m: descriptor.DescriptorProto = .{ .name = "M" };
+    try m.field.append(a, .{ .name = "o", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32, .oneof_index = 0, .proto3_optional = true });
+    try m.field.append(a, .{ .name = "u", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32, .oneof_index = 1 });
+    var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .syntax = "proto3" };
+    try file.message_type.append(a, m);
+    var diag: []const u8 = "";
+    const out = try generateForTest(a, &file, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    o: i32,\n    pb_has0: u32,") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "fn M_set_o(m: M&, v: i32)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    u: i32,") == null);
+
+    const p2: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
+    try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &m.field.items[0]));
 }

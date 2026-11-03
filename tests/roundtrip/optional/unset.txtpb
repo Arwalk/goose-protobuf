@@ -1,0 +1,4 @@
+# proto-file: optional.proto
+# proto-message: optional.Opt
+# No optional field set; only the implicit-presence field is encoded.
+plain: 5

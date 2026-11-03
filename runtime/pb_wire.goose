@@ -89,6 +89,7 @@ fn pb_int32_to_u64(v: i32) -> u64 { return v as! u64; }   // sign-extends
 fn pb_int64_to_u64(v: i64) -> u64 { return v as! u64; }
 fn pb_u64_to_int32(v: u64) -> i32 { return (v as! u32) as! i32; }
 fn pb_u64_to_int64(v: u64) -> i64 { return v as! i64; }
+fn pb_bool_to_u64(v: bool) -> u64 { if v { return 1; } return 0; }
 
 // ------------------------------------------------------------------- zigzag
 
