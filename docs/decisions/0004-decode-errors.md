@@ -85,20 +85,20 @@ The primitives never abort on bad input: `as!` for wrapping casts, and
 bounds checked before every index.
 
 For each message `M` the generator emits the following. The storage
-parameters are fixed by the layout spike, gpb-wof.1, and the naming
-scheme by the emitter tasks:
+layout comes from [0001](0001-message-layout.md), and names are fixed by
+the emitter task:
 
 ```goose
-// Entry: non-recursive. 0 on success, else a PB_ERR_* code. On failure M's
-// storage holds a partial message; the caller discards it.
-fn M_decode(buf: const u8[:], <storage>, <M handle>) -> i32
+// Entry: non-recursive. Merges buf into m. 0 on success, else a PB_ERR_*
+// code; m then holds a partial message, which the caller clears (M_clear).
+fn M_decode(buf: const u8[:], m: M&) -> i32
 
-// Merges fields from r's window into the message, setting r.err on failure.
+// Merges fields from r's window into m, setting r.err on failure.
 // `recursive fn` only when M is in a recursive cycle.
-recursive fn M_decode_from(r: pb_Reader&, <storage>, <M handle>)
+recursive fn M_decode_from(r: pb_Reader&, m: M&)
 
-fn M_encode(<storage>, <M handle>, out: u8[>..]&)  // appends; cannot fail
-fn M_size_of(<storage>, <M handle>) -> i64        // cannot fail
+fn M_encode(m: M&, out: u8[>..]&)  // appends; cannot fail
+fn M_size_of(m: M&) -> i64         // cannot fail
 ```
 
 The code generated for a sub-message field is:
