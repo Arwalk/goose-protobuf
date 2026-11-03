@@ -214,3 +214,50 @@ fn pb_read_len(r: pb_Reader&) -> i64 {
     if n > (r.end - r.pos) as! u64 { pb_fail(r, PB_ERR_TRUNCATED); return 0; }
     return n as! i64;
 }
+
+// ----------------------------------------------------- skipping, unknowns
+
+// Skips the value of a field whose tag was just read. A start-group is
+// skipped through its matching end-group; groups count against
+// PB_MAX_DEPTH together with message nesting (r.depth). An end-group here
+// has no start, and wire types 6 and 7 do not exist: both are malformed.
+recursive fn pb_skip_field(r: pb_Reader&, tag: u32) {
+    let wire = pb_tag_wire(tag);
+    if wire == PB_WT_VARINT {
+        pb_read_varint(r);
+    } else if wire == PB_WT_I64 {
+        if r.end - r.pos < 8 { pb_fail(r, PB_ERR_TRUNCATED); return; }
+        r.pos += 8;
+    } else if wire == PB_WT_LEN {
+        let n = pb_read_len(r);
+        r.pos += n;
+    } else if wire == PB_WT_I32 {
+        if r.end - r.pos < 4 { pb_fail(r, PB_ERR_TRUNCATED); return; }
+        r.pos += 4;
+    } else if wire == PB_WT_SGROUP {
+        if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); return; }
+        r.depth++;
+        loop {
+            if r.pos >= r.end { pb_fail(r, PB_ERR_TRUNCATED); return; }
+            let inner = pb_read_tag(r);
+            if r.err != PB_OK { return; }
+            if pb_tag_wire(inner) == PB_WT_EGROUP {
+                if pb_tag_field(inner) != pb_tag_field(tag) { pb_fail(r, PB_ERR_MALFORMED); return; }
+                break;
+            }
+            pb_skip_field(r, inner);
+            if r.err != PB_OK { return; }
+        }
+        r.depth--;
+    } else {
+        pb_fail(r, PB_ERR_MALFORMED);
+    }
+}
+
+// Skips the field whose tag was just read and appends its raw bytes, from
+// start (where the tag began) to the end of its value, to out. Nothing is
+// appended after a failure.
+fn pb_append_unknown(r: pb_Reader&, start: i64, tag: u32, out: u8[>..]&) {
+    pb_skip_field(r, tag);
+    if r.err == PB_OK { out.append(r.buf[start..r.pos]); }
+}
