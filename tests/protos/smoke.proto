@@ -1,0 +1,10 @@
+// Smoke input for tests/smoke_plugin.sh. The proto3 `optional` field makes
+// protoc require FEATURE_PROTO3_OPTIONAL from the plugin.
+syntax = "proto3";
+
+package smoke;
+
+message Smoke {
+  int32 id = 1;
+  optional string name = 2;
+}

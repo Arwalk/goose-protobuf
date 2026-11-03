@@ -36,7 +36,10 @@ script.
 - **zig-protobuf** exports only the `protobuf` module. The `descriptor.proto` /
   `plugin.proto` bindings are in its `bootstrapped-generator/google/` and
   import each other through `../`, so they can't be wrapped as modules as-is.
-  Regenerate them with zig-protobuf's `RunProtocStep`, or vendor them.
+  `generator/build.zig` copies both files into one tree with a `WriteFiles`
+  step, under a root file `pb_plugin.zig`, and builds the `pb_plugin` module
+  from it. The bindings therefore stay pinned to the zig-protobuf hash, with
+  no vendored copy and no protoc run at build time.
 - zig-protobuf's `build.zig` always resolves its lazy `protoc` 36.2
   dependency, so the first `zig build` downloads protoc.
 - Zig's HTTP client can fail behind an HTTP proxy (`HttpConnectionClosing`).
