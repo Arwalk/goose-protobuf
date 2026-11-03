@@ -1,0 +1,16 @@
+// Golden: names that are Goose keywords, in the package, message and enum
+// names. Fields come with gpb-41j.4.
+syntax = "proto3";
+
+package goose.match.fn;
+
+message type {}
+
+message struct {
+  message self {}
+}
+
+enum while {
+  for = 0;
+  in = 1;
+}

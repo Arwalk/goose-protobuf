@@ -1,0 +1,4 @@
+// Golden: an empty message, no package (global namespace).
+syntax = "proto3";
+
+message Empty {}

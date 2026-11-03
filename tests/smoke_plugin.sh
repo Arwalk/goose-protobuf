@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-# Smoke test for the protoc-gen-goose plugin skeleton:
-# - protoc runs the plugin on tests/protos/smoke.proto, exits 0, and the
-#   output directory stays empty;
+# Smoke test for protoc-gen-goose:
+# - protoc runs the plugin on tests/protos/smoke.proto, exits 0, and writes
+#   exactly smoke.goose (its content is checked by scripts/golden.sh);
 # - a malformed CodeGeneratorRequest makes the plugin exit nonzero with a
 #   message on stderr.
 set -euo pipefail
@@ -21,12 +21,12 @@ mkdir "$tmp/out"
 protoc --plugin=protoc-gen-goose="$plugin" --goose_out="$tmp/out" \
   -I "$root/tests/protos" "$root/tests/protos/smoke.proto"
 
-if [[ -n "$(ls -A "$tmp/out")" ]]; then
-  echo "FAIL: plugin wrote files:" >&2
+if [[ "$(ls -A "$tmp/out")" != "smoke.goose" ]]; then
+  echo "FAIL: plugin wrote, instead of smoke.goose:" >&2
   ls -A "$tmp/out" >&2
   exit 1
 fi
-echo "PASS: protoc exits 0 and writes nothing"
+echo "PASS: protoc exits 0 and writes smoke.goose"
 
 status=0
 printf '\x0a\x05a' | "$plugin" >"$tmp/stdout" 2>"$tmp/stderr" || status=$?

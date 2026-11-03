@@ -1,0 +1,25 @@
+// Golden: enum values that are negative, at the i32 limits, and aliased.
+syntax = "proto3";
+
+package goose.test.enums;
+
+enum Sign {
+  SIGN_ZERO = 0;
+  SIGN_NEG = -1;
+  SIGN_MIN = -2147483648;
+  SIGN_MAX = 2147483647;
+}
+
+enum Alias {
+  option allow_alias = true;
+  ALIAS_A = 0;
+  ALIAS_B = 1;
+  ALIAS_ALSO_B = 1;
+}
+
+message Holder {
+  enum Local {
+    LOCAL_X = 0;
+    LOCAL_Y = -7;
+  }
+}

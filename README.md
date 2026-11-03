@@ -4,7 +4,9 @@
 [Goose](https://aardappel.github.io/goose/) code for the **protobuf binary
 wire format**. It is tested against the official protobuf conformance suite.
 
-Status: plugin skeleton (decodes the request, emits no files). The backlog lives in beads (`bd ready`).
+Status: Phase 1 in progress. The plugin emits one `.goose` file per `.proto` file,
+with message structs (no fields yet) and enum constants; `runtime/pb_wire.goose`
+has the scalar wire primitives. The backlog lives in beads (`bd ready`).
 
 ## Scope
 
