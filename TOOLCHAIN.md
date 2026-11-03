@@ -48,6 +48,29 @@ script.
 - **protobuf v36.2** has no git submodules. CMake fetches abseil-cpp and
   jsoncpp (FetchContent) when it builds the conformance runner, so that
   build needs network.
+
+## Conformance runner prerequisites
+
+`scripts/build_runner.sh` needs:
+
+- CMake 3.16 or later (tested with 4.2.3), a C++17 compiler (gcc or clang),
+  and git, which FetchContent uses.
+- Ninja (optional), used when it is on `PATH`.
+- Network access to github.com on the first configure, for abseil-cpp
+  20250512.1 and jsoncpp 1.9.6.
+
+Install them with `apt-get install cmake ninja-build g++ git` on Ubuntu, or
+`brew install cmake ninja` on macOS (with the Xcode command line tools).
+
+If `.tools/bin/protoc` is the pinned 36.2, the script passes it as
+`WITH_PROTOC`, so the build skips protoc, libprotoc and upb. Otherwise it
+builds protoc from source. On a 16-core Linux box, the first build takes
+about 1.5 min with the pinned protoc and 2.3 min without it. Later runs skip
+configure and only rebuild what changed (under 1 s when nothing did). The
+runner ends up at `build/pb/conformance_test_runner`. The script prints that
+path on stdout and sends the build log to stderr. To reconfigure, delete
+`build/pb`. The macOS build is untested locally, and CI checks it
+(gpb-iip.9).
 - **Goose release assets**: `goose-v2026.3-{linux-x64,macos-arm64,macos-x64}.tar.gz`
   and `goose-v2026.3-windows-x64.zip`. On macOS, run `xattr -dr com.apple.quarantine`
   on the unpacked directory. On Linux, glibc 2.35 or later with `libc6-dev`.
