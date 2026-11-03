@@ -8,7 +8,8 @@ zig-pkg/
 /build/
 *.o
 
-# Goose / tooling caches
+# Pinned toolchain (scripts/install_toolchain.sh), Goose / tooling caches
+/.tools/
 .goose/
 
 # Editors / OS
