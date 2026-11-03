@@ -1,7 +1,6 @@
 // Golden and round-trip (tests/roundtrip/scalars/): every numeric and bool
 // scalar type and an enum, with implicit presence. Fields are declared out
-// of number order: encode follows field numbers, as protoc does. Fields of
-// kinds not stored yet (string) are kept as unknown fields.
+// of number order: encode follows field numbers, as protoc does.
 syntax = "proto3";
 
 package scalars;
@@ -30,7 +29,7 @@ message Scalars {
   // High field numbers: multi-byte tags.
   int32 f_big = 536870911;
   int32 f_mid = 16;
-  // Not stored yet.
+  // Stored in pb_bytes (tests/protos/strings.proto).
   string f_string = 20;
   // Stored, with a has-bit (tests/protos/optional.proto).
   optional int32 f_optional = 21;

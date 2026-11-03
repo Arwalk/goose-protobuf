@@ -26,6 +26,7 @@ let PB_OK = 0;
 let PB_ERR_TRUNCATED = 1;   // input ends inside a value, or a length overruns its window
 let PB_ERR_MALFORMED = 2;   // varint over 10 bytes, bad wire type, field number 0, ...
 let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
+let PB_ERR_UTF8 = 4;        // a proto3 string field that is not valid UTF-8
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
 
 // A decode window: buf[pos..end] is still to be read.
@@ -277,6 +278,73 @@ fn pb_bytes_append(s: pb_Span, src: const u8[:]) -> pb_Span {
 
 // Frees run s of pb_bytes; returns the empty span.
 fn pb_bytes_free(s: pb_Span) -> pb_Span { return pb_resize(pb_bytes, s, 0); }
+
+// Run s of pb_bytes replaced by a copy of v. v may be in pb_bytes (even
+// in s): it is copied out before s is freed.
+fn pb_bytes_set(s: pb_Span, v: const u8[:]) -> pb_Span {
+    var tmp: u8[>..] = [];
+    tmp.append(v);
+    let freed = pb_bytes_free(s);
+    return pb_bytes_append(freed, tmp);
+}
+
+// The encoded size of a length-delimited value: its length prefix and
+// its bytes.
+fn pb_bytes_size(s: pb_Span) -> i64 { return pb_varint_size(s.len) + s.len; }
+
+// Appends run s of pb_bytes as a length-delimited value (tag already
+// written).
+fn pb_write_bytes(out: u8[>..]&, s: pb_Span) {
+    pb_write_varint(out, s.len);
+    out.append(pb_run(pb_bytes, s));
+}
+
+// Reads a length-delimited value into a new run that replaces old (the
+// last value wins). After a failure old is kept.
+fn pb_read_bytes(r: pb_Reader&, old: pb_Span) -> pb_Span {
+    let n = pb_read_len(r);
+    if r.err != PB_OK { return old; }
+    let s = pb_bytes_append(pb_bytes_free(old), r.buf[r.pos..r.pos + n]);
+    r.pos += n;
+    return s;
+}
+
+// pb_read_bytes for a proto3 string: invalid UTF-8 fails with PB_ERR_UTF8.
+fn pb_read_string(r: pb_Reader&, old: pb_Span) -> pb_Span {
+    let n = pb_read_len(r);
+    if r.err != PB_OK { return old; }
+    let v = r.buf[r.pos..r.pos + n];
+    if !pb_utf8_valid(v) { pb_fail(r, PB_ERR_UTF8); return old; }
+    let s = pb_bytes_append(pb_bytes_free(old), v);
+    r.pos += n;
+    return s;
+}
+
+// True if b is well-formed UTF-8: no overlong forms, no surrogates
+// (U+D800..U+DFFF), nothing above U+10FFFF, no truncated sequence.
+fn pb_utf8_valid(b: const u8[:]) -> bool {
+    var i: i64 = 0;
+    while i < b.len {
+        let c = b[i];
+        if c < 0x80 { i++; continue; }
+        var n: i64 = 0;
+        var cp: u32 = 0;
+        var min: u32 = 0;
+        if c >= 0xc2 && c <= 0xdf { n = 1; cp = (c & 0x1f); min = 0x80; }
+        else if c >= 0xe0 && c <= 0xef { n = 2; cp = (c & 0x0f); min = 0x800; }
+        else if c >= 0xf0 && c <= 0xf4 { n = 3; cp = (c & 0x07); min = 0x10000; }
+        else { return false; }   // a continuation byte, C0, C1 or F5..FF
+        if b.len - i - 1 < n { return false; }
+        for k in n {
+            let d = b[i + 1 + k];
+            if (d & 0xc0) != 0x80 { return false; }
+            cp = cp << 6 | (d & 0x3f);
+        }
+        if cp < min || (cp >= 0xd800 && cp <= 0xdfff) || cp > 0x10ffff { return false; }
+        i += n + 1;
+    }
+    return true;
+}
 
 // ----------------------------------------------------- skipping, unknowns
 

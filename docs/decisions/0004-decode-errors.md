@@ -75,6 +75,7 @@ let PB_OK = 0;
 let PB_ERR_TRUNCATED = 1;   // input ends inside a value, or a length overruns its window
 let PB_ERR_MALFORMED = 2;   // varint over 10 bytes, bad wire type, field number 0, ...
 let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
+let PB_ERR_UTF8 = 4;        // a proto3 string that is not valid UTF-8 (gpb-8qn.4)
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
 
 fn pb_fail(r: pb_Reader&, code: i32)   // keeps the first code; pos = end

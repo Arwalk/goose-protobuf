@@ -1,0 +1,5 @@
+# proto-file: strings.proto
+# proto-message: strings.Text
+s: "hello"
+b: "\x00\xff\x80binary"
+n: 3

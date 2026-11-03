@@ -7,12 +7,15 @@
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
 //   M_clear_f(m)                 optional); m.f reads them
+//   M_f(m) -> u8[:]              string and bytes fields: a view into
+//   M_set_f(m, v)                pb_bytes, and a copying setter
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
+//                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, and later strings, bytes, repeated fields and sub-messages)
+// fields, strings and bytes, later repeated fields and sub-messages)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Copying a record copies spans, not their contents.
 
@@ -43,6 +46,7 @@ struct Scalars {
     f_color: i32,
     f_big: i32,
     f_mid: i32,
+    f_string: pb_Span,
     f_optional: i32,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -94,6 +98,8 @@ fn Scalars_decode_from(r: pb_Reader&, m: Scalars&) {
             m.f_big = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 128 {
             m.f_mid = pb_u64_to_int32(pb_read_varint(r));
+        } else if tag == 162 {
+            m.f_string = pb_read_string(r, m.f_string);
         } else if tag == 168 {
             m.f_optional = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
@@ -174,6 +180,10 @@ fn Scalars_encode(m: Scalars&, out: u8[>..]&) {
         pb_write_varint(out, 128);
         pb_write_varint(out, pb_int32_to_u64(m.f_mid));
     }
+    if m.f_string.len > 0 {
+        pb_write_varint(out, 162);
+        pb_write_bytes(out, m.f_string);
+    }
     if (m.pb_has0 & 0x00000001) != 0 {
         pb_write_varint(out, 168);
         pb_write_varint(out, pb_int32_to_u64(m.f_optional));
@@ -203,6 +213,7 @@ fn Scalars_size_of(m: Scalars&) -> i64 {
     if m.f_bool { n += 2; }
     if m.f_color != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.f_color)); }
     if m.f_mid != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.f_mid)); }
+    if m.f_string.len > 0 { n += 2 + pb_bytes_size(m.f_string); }
     if (m.pb_has0 & 0x00000001) != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.f_optional)); }
     if m.f_big != 0 { n += 5 + pb_varint_size(pb_int32_to_u64(m.f_big)); }
     n += m.pb_unknown.len;
@@ -227,12 +238,23 @@ fn Scalars_clear(m: Scalars&) {
     m.f_color = 0;
     m.f_big = 0;
     m.f_mid = 0;
+    m.f_string = pb_bytes_free(m.f_string);
     m.f_optional = 0;
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
-// Sets f_optional and marks it present: it is encoded even when 0.
+// The contents of f_string, in pb_bytes: valid until it is next set or m
+// is cleared.
+fn Scalars_f_string(m: Scalars&) -> u8[:] { return pb_run(pb_bytes, m.f_string); }
+
+// Sets f_string to a copy of v.
+fn Scalars_set_f_string(m: Scalars&, v: const u8[:]) {
+    m.f_string = pb_bytes_set(m.f_string, v);
+}
+
+// Sets f_optional and marks it present:
+// it is encoded even when 0.
 fn Scalars_set_f_optional(m: Scalars&, v: i32) {
     m.f_optional = v;
     m.pb_has0 |= 0x00000001;

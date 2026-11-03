@@ -332,9 +332,7 @@ pub const FileEmitter = struct {
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
         try self.emitClear(goose_name, path, fields.items, has_words);
-        for (fields.items) |f| {
-            if (f.bit != null) try self.emitPresenceAccessors(goose_name, path, f);
-        }
+        for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
 
         for (m.enum_type.items) |*e| try self.emitEnum(e, path, full);
         for (m.nested_type.items) |*n| try self.emitMessage(n, path, full);
@@ -381,7 +379,8 @@ pub const FileEmitter = struct {
         , .{ decode_from, goose_name });
         for (fields, 0..) |f, i| {
             try self.w.print("        {s}if tag == {d} {{\n", .{ if (i == 0) "" else "} else ", f.tag() });
-            try self.w.print("            m.{s} = {s};\n", .{ f.name, f.sc.read });
+            const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            try self.w.print("            {s} = {f};\n", .{ x, Subst{ .t = f.sc.read, .x = x } });
             if (f.bit) |b| try self.w.print("            m.pb_has{d} |= 0x{x:0>8};\n", .{ b / 32, bitMask(b) });
         }
         if (fields.len == 0) {
@@ -442,6 +441,7 @@ pub const FileEmitter = struct {
             switch (f.sc.size) {
                 .varint => try self.w.print("{d} + pb_varint_size({f});", .{ ts, Subst{ .t = f.sc.write_value, .x = x } }),
                 .fixed => |k| try self.w.print("{d};", .{ts + k}),
+                .bytes => try self.w.print("{d} + pb_bytes_size({s});", .{ ts, x }),
             }
             try self.w.writeAll(" }\n");
         }
@@ -455,38 +455,60 @@ pub const FileEmitter = struct {
             \\fn {s}(m: {s}&) {{
             \\
         , .{ try generatedName(self.a, path, "clear"), goose_name });
-        for (fields) |f| try self.w.print("    m.{s} = {s};\n", .{ f.name, f.sc.zero });
+        for (fields) |f| {
+            const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            try self.w.print("    {f};\n", .{Subst{ .t = f.sc.clear, .x = x }});
+        }
         for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
         try self.w.writeAll("    m.pb_unknown = pb_bytes_free(m.pb_unknown);\n}\n");
     }
 
-    /// set_, has_ and clear_ of a scalar field with presence.
-    fn emitPresenceAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
-        const b = f.bit.?;
+    /// The accessors of a stored field, per fieldAccessors: the getter
+    /// and set_ of strings and bytes, and set_, has_ and clear_ of fields
+    /// with presence.
+    fn emitAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
         const fname = f.fd.name orelse "";
+        const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+        const is_bytes = f.sc.size == .bytes;
+        if (is_bytes) {
+            try self.w.print(
+                \\
+                \\// The contents of {s}, in pb_bytes: valid until it is next set or m
+                \\// is cleared.
+                \\fn {s}(m: {s}&) -> u8[:] {{ return pb_run(pb_bytes, {s}); }}
+                \\
+            , .{ fname, try accessorName(self.a, path, fname, get_acc), goose_name, x });
+        }
+        if (!is_bytes and f.bit == null) return;
+        try self.w.print("\n// Sets {s}", .{fname});
+        if (is_bytes) try self.w.writeAll(" to a copy of v");
+        if (f.bit != null) try self.w.print(" and marks it present:\n// it is encoded even when {s}", .{if (is_bytes) "empty" else "0"});
         try self.w.print(
-            \\
-            \\// Sets {s} and marks it present: it is encoded even when 0.
+            \\.
             \\fn {s}(m: {s}&, v: {s}) {{
-            \\    m.{s} = v;
+            \\    {f};
+            \\
+        , .{ try accessorName(self.a, path, fname, set_acc), goose_name, f.sc.setType(), Subst{ .t = f.sc.set, .x = x } });
+        const b = f.bit orelse {
+            try self.w.writeAll("}\n");
+            return;
+        };
+        try self.w.print(
             \\    m.pb_has{d} |= 0x{x:0>8};
             \\}}
             \\
             \\fn {s}(m: {s}&) -> bool {{ return (m.pb_has{d} & 0x{x:0>8}) != 0; }}
             \\
             \\fn {s}(m: {s}&) {{
-            \\    m.{s} = {s};
+            \\    {f};
             \\    m.pb_has{d} &= 0x{x:0>8};
             \\}}
             \\
         , .{
-            fname,
-            try accessorName(self.a, path, fname, set_acc), goose_name, f.sc.goose,
-            f.name,
             b / 32, bitMask(b),
             try accessorName(self.a, path, fname, has_acc), goose_name, b / 32, bitMask(b),
             try accessorName(self.a, path, fname, clear_acc), goose_name,
-            f.name, f.sc.zero,
+            Subst{ .t = f.sc.clear, .x = x },
             b / 32, ~bitMask(b),
         });
     }
@@ -501,12 +523,15 @@ const api_comment =
     \\//   m.f, m.f = v                 scalar fields without presence
     \\//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
     \\//   M_clear_f(m)                 optional); m.f reads them
+    \\//   M_f(m) -> u8[:]              string and bytes fields: a view into
+    \\//   M_set_f(m, v)                pb_bytes, and a copying setter
     \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
     \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     \\//                                PB_ERR_* code and a partial m
+    \\//                                (PB_ERR_UTF8: a bad proto3 string)
     \\//   M_clear(m)                   frees what m owns, empties it
     \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-    \\// fields, and later strings, bytes, repeated fields and sub-messages)
+    \\// fields, strings and bytes, later repeated fields and sub-messages)
     \\// live in global pools (pb_bytes, M_pool, M_links): clear a message
     \\// to free them. Copying a record copies spans, not their contents.
     \\
@@ -564,24 +589,32 @@ fn bitMask(b: u32) u32 {
 const Scalar = struct {
     goose: []const u8,
     wire: u3,
-    zero: []const u8,
-    /// Decode expression, reading from `r`.
+    /// Statement resetting the value to the default, freeing what it owns.
+    clear: []const u8,
+    /// Decode expression, reading from `r` (`$` is the old value).
     read: []const u8,
     /// Encode statement, writing the value (tag already written) to `out`.
     write: []const u8,
     /// True if the value is not the default (implicit presence: only then
     /// is it encoded). Floats compare bits, so -0.0 is encoded.
     nonzero: []const u8,
-    size: union(enum) { varint, fixed: u64 },
+    size: union(enum) { varint, fixed: u64, bytes },
     /// For varints: the u64 written, whose pb_varint_size is the size.
     write_value: []const u8 = "",
+    /// The parameter type of set_, and its statement storing `v`.
+    set_type: []const u8 = "",
+    set: []const u8 = "$ = v",
+
+    fn setType(sc: *const Scalar) []const u8 {
+        return if (sc.set_type.len > 0) sc.set_type else sc.goose;
+    }
 };
 
 fn varintScalar(goose: []const u8, read: []const u8, value: []const u8) Scalar {
     return .{
         .goose = goose,
         .wire = 0,
-        .zero = "0",
+        .clear = "$ = 0",
         .read = read,
         .write = "pb_write_varint(out, " ++ value ++ ")",
         .nonzero = "$ != 0",
@@ -599,23 +632,41 @@ const sc_sint64 = varintScalar("i64", "pb_unzigzag64(pb_read_varint(r))", "pb_zi
 const sc_bool: Scalar = .{
     .goose = "bool",
     .wire = 0,
-    .zero = "false",
+    .clear = "$ = false",
     .read = "pb_read_varint(r) != 0",
     .write = "pb_write_varint(out, pb_bool_to_u64($))",
     .nonzero = "$",
     .size = .{ .fixed = 1 },
 };
-const sc_fixed32: Scalar = .{ .goose = "u32", .wire = 5, .zero = "0", .read = "pb_read_fixed32(r)", .write = "pb_write_fixed32(out, $)", .nonzero = "$ != 0", .size = .{ .fixed = 4 } };
-const sc_sfixed32: Scalar = .{ .goose = "i32", .wire = 5, .zero = "0", .read = "pb_read_fixed32(r) as! i32", .write = "pb_write_fixed32(out, $ as! u32)", .nonzero = "$ != 0", .size = .{ .fixed = 4 } };
-const sc_float: Scalar = .{ .goose = "f32", .wire = 5, .zero = "0.0", .read = "pb_read_float(r)", .write = "pb_write_float(out, $)", .nonzero = "pb_f32_to_bits($) != 0", .size = .{ .fixed = 4 } };
-const sc_fixed64: Scalar = .{ .goose = "u64", .wire = 1, .zero = "0", .read = "pb_read_fixed64(r)", .write = "pb_write_fixed64(out, $)", .nonzero = "$ != 0", .size = .{ .fixed = 8 } };
-const sc_sfixed64: Scalar = .{ .goose = "i64", .wire = 1, .zero = "0", .read = "pb_read_fixed64(r) as! i64", .write = "pb_write_fixed64(out, $ as! u64)", .nonzero = "$ != 0", .size = .{ .fixed = 8 } };
-const sc_double: Scalar = .{ .goose = "f64", .wire = 1, .zero = "0.0", .read = "pb_read_double(r)", .write = "pb_write_double(out, $)", .nonzero = "pb_f64_to_bits($) != 0", .size = .{ .fixed = 8 } };
+const sc_fixed32: Scalar = .{ .goose = "u32", .wire = 5, .clear = "$ = 0", .read = "pb_read_fixed32(r)", .write = "pb_write_fixed32(out, $)", .nonzero = "$ != 0", .size = .{ .fixed = 4 } };
+const sc_sfixed32: Scalar = .{ .goose = "i32", .wire = 5, .clear = "$ = 0", .read = "pb_read_fixed32(r) as! i32", .write = "pb_write_fixed32(out, $ as! u32)", .nonzero = "$ != 0", .size = .{ .fixed = 4 } };
+const sc_float: Scalar = .{ .goose = "f32", .wire = 5, .clear = "$ = 0.0", .read = "pb_read_float(r)", .write = "pb_write_float(out, $)", .nonzero = "pb_f32_to_bits($) != 0", .size = .{ .fixed = 4 } };
+const sc_fixed64: Scalar = .{ .goose = "u64", .wire = 1, .clear = "$ = 0", .read = "pb_read_fixed64(r)", .write = "pb_write_fixed64(out, $)", .nonzero = "$ != 0", .size = .{ .fixed = 8 } };
+const sc_sfixed64: Scalar = .{ .goose = "i64", .wire = 1, .clear = "$ = 0", .read = "pb_read_fixed64(r) as! i64", .write = "pb_write_fixed64(out, $ as! u64)", .nonzero = "$ != 0", .size = .{ .fixed = 8 } };
+const sc_double: Scalar = .{ .goose = "f64", .wire = 1, .clear = "$ = 0.0", .read = "pb_read_double(r)", .write = "pb_write_double(out, $)", .nonzero = "pb_f64_to_bits($) != 0", .size = .{ .fixed = 8 } };
+
+const sc_bytes: Scalar = .{
+    .goose = "pb_Span",
+    .wire = 2,
+    .clear = "$ = pb_bytes_free($)",
+    .read = "pb_read_bytes(r, $)",
+    .write = "pb_write_bytes(out, $)",
+    .nonzero = "$.len > 0",
+    .size = .bytes,
+    .set_type = "const u8[:]",
+    .set = "$ = pb_bytes_set($, v)",
+};
+/// proto3 strings must be valid UTF-8 (validated on decode).
+const sc_string: Scalar = blk: {
+    var sc = sc_bytes;
+    sc.read = "pb_read_string(r, $)";
+    break :blk sc;
+};
 
 /// The scalar storage of `fd`, or null if this generator does not store
-/// the field yet: only singular numeric, bool and enum fields of proto3,
-/// with implicit presence or `optional`, are stored (strings, bytes,
-/// messages, repeated fields, oneofs and proto2 come with later tasks).
+/// the field yet: only singular numeric, bool, enum, string and bytes
+/// fields of proto3, with implicit presence or `optional`, are stored
+/// (messages, repeated fields, oneofs and proto2 come with later tasks).
 fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
     if (fd.label == .LABEL_REPEATED) return null;
     if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return null;
@@ -636,6 +687,8 @@ fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.F
         .TYPE_FIXED64 => &sc_fixed64,
         .TYPE_SFIXED64 => &sc_sfixed64,
         .TYPE_DOUBLE => &sc_double,
+        .TYPE_STRING => &sc_string,
+        .TYPE_BYTES => &sc_bytes,
         else => null,
     };
 }
@@ -897,4 +950,14 @@ test "proto3 optional is stored with a has-bit; real oneofs and proto2 are not" 
 
     const p2: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
     try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &m.field.items[0]));
+}
+
+test "proto3 strings are validated, bytes are not" {
+    const p3: descriptor.FileDescriptorProto = .{ .syntax = "proto3" };
+    const s: descriptor.FieldDescriptorProto = .{ .name = "s", .label = .LABEL_OPTIONAL, .type = .TYPE_STRING };
+    const b: descriptor.FieldDescriptorProto = .{ .name = "b", .label = .LABEL_OPTIONAL, .type = .TYPE_BYTES };
+    try std.testing.expectEqualStrings("pb_read_string(r, $)", scalarOf(&p3, &s).?.read);
+    try std.testing.expectEqualStrings("pb_read_bytes(r, $)", scalarOf(&p3, &b).?.read);
+    try std.testing.expectEqualStrings("const u8[:]", scalarOf(&p3, &b).?.setType());
+    try std.testing.expectEqualStrings("i32", sc_int32.setType());
 }

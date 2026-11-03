@@ -1,0 +1,14 @@
+// Golden and round-trip (tests/roundtrip/strings/): string and bytes
+// fields, stored in pb_bytes. proto3 strings must be valid UTF-8; bytes
+// may hold anything.
+syntax = "proto3";
+
+package strings;
+
+message Text {
+  string s = 1;
+  bytes b = 2;
+  optional string os = 3;
+  optional bytes ob = 4;
+  int32 n = 5;
+}

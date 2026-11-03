@@ -1,0 +1,4 @@
+# proto-file: strings.proto
+# proto-message: strings.Text
+s: "h\303\251llo \342\202\254 \360\237\230\200"
+os: "\344\270\255"

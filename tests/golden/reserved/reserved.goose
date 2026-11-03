@@ -7,12 +7,15 @@
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
 //   M_clear_f(m)                 optional); m.f reads them
+//   M_f(m) -> u8[:]              string and bytes fields: a view into
+//   M_set_f(m, v)                pb_bytes, and a copying setter
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
+//                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, and later strings, bytes, repeated fields and sub-messages)
+// fields, strings and bytes, later repeated fields and sub-messages)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Copying a record copies spans, not their contents.
 
@@ -178,6 +181,7 @@ fn Outer_pool_clear(m: Outer_pool_&) {
 
 // message reserved.Node
 struct Node {
+    name: pb_Span,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -195,7 +199,11 @@ fn Node_decode_from(r: pb_Reader&, m: Node&) {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        if tag == 10 {
+            m.name = pb_read_string(r, m.name);
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -210,19 +218,34 @@ fn Node_decode(buf: const u8[:], m: Node&) -> i32 {
 
 // Appends m's wire encoding, Node_size_of(m) bytes, to out.
 fn Node_encode(m: Node&, out: u8[>..]&) {
+    if m.name.len > 0 {
+        pb_write_varint(out, 10);
+        pb_write_bytes(out, m.name);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Node_size_of(m: Node&) -> i64 {
     var n: i64 = 0;
+    if m.name.len > 0 { n += 1 + pb_bytes_size(m.name); }
     n += m.pb_unknown.len;
     return n;
 }
 
 // Frees what m owns and resets it to the empty message.
 fn Node_clear(m: Node&) {
+    m.name = pb_bytes_free(m.name);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// The contents of name, in pb_bytes: valid until it is next set or m
+// is cleared.
+fn Node_name(m: Node&) -> u8[:] { return pb_run(pb_bytes, m.name); }
+
+// Sets name to a copy of v.
+fn Node_set_name(m: Node&, v: const u8[:]) {
+    m.name = pb_bytes_set(m.name, v);
 }
 
 // message reserved.Node.set_name
@@ -521,6 +544,7 @@ fn thread_spawn_clear(m: thread_spawn_&) {
 
 // message reserved.E
 struct E {
+    x: pb_Span,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -538,7 +562,11 @@ fn E_decode_from(r: pb_Reader&, m: E&) {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        if tag == 10 {
+            m.x = pb_read_string(r, m.x);
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -553,17 +581,32 @@ fn E_decode(buf: const u8[:], m: E&) -> i32 {
 
 // Appends m's wire encoding, E_size_of(m) bytes, to out.
 fn E_encode(m: E&, out: u8[>..]&) {
+    if m.x.len > 0 {
+        pb_write_varint(out, 10);
+        pb_write_bytes(out, m.x);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn E_size_of(m: E&) -> i64 {
     var n: i64 = 0;
+    if m.x.len > 0 { n += 1 + pb_bytes_size(m.x); }
     n += m.pb_unknown.len;
     return n;
 }
 
 // Frees what m owns and resets it to the empty message.
 fn E_clear(m: E&) {
+    m.x = pb_bytes_free(m.x);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// The contents of x, in pb_bytes: valid until it is next set or m
+// is cleared.
+fn E_x(m: E&) -> u8[:] { return pb_run(pb_bytes, m.x); }
+
+// Sets x to a copy of v.
+fn E_set_x(m: E&, v: const u8[:]) {
+    m.x = pb_bytes_set(m.x, v);
 }

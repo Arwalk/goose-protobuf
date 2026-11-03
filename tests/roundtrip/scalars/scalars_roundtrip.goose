@@ -130,7 +130,7 @@ fn main() {
     neg.f_double = pb_f64_from_bits(0x8000000000000000);
     check_case("negative_zero", embed_file("negative_zero.bin"), neg);
 
-    // Fields of kinds not stored yet are unknown; the others still decode.
+    // Fields of other kinds between them: the scalars still decode.
     var skipped = scalars::Scalars { .. };
     if scalars::Scalars_decode(embed_file("skipped.bin"), skipped) != PB_OK
         || skipped.f_int32 != 1 || skipped.f_mid != 2 {

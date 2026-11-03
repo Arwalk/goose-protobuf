@@ -7,12 +7,15 @@
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
 //   M_clear_f(m)                 optional); m.f reads them
+//   M_f(m) -> u8[:]              string and bytes fields: a view into
+//   M_set_f(m, v)                pb_bytes, and a copying setter
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
+//                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, and later strings, bytes, repeated fields and sub-messages)
+// fields, strings and bytes, later repeated fields and sub-messages)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Copying a record copies spans, not their contents.
 
@@ -93,6 +96,7 @@ fn Known_clear(m: Known&) {
 struct Wide {
     a: i32,
     v: u64,
+    s: pb_Span,
     d: f64,
     f: u32,
     g: i64,
@@ -117,6 +121,8 @@ fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 16 {
             m.v = pb_read_varint(r);
+        } else if tag == 26 {
+            m.s = pb_read_string(r, m.s);
         } else if tag == 33 {
             m.d = pb_read_double(r);
         } else if tag == 45 {
@@ -148,6 +154,10 @@ fn Wide_encode(m: Wide&, out: u8[>..]&) {
         pb_write_varint(out, 16);
         pb_write_varint(out, m.v);
     }
+    if m.s.len > 0 {
+        pb_write_varint(out, 26);
+        pb_write_bytes(out, m.s);
+    }
     if pb_f64_to_bits(m.d) != 0 {
         pb_write_varint(out, 33);
         pb_write_double(out, m.d);
@@ -168,6 +178,7 @@ fn Wide_size_of(m: Wide&) -> i64 {
     var n: i64 = 0;
     if m.a != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.a)); }
     if m.v != 0 { n += 1 + pb_varint_size(m.v); }
+    if m.s.len > 0 { n += 1 + pb_bytes_size(m.s); }
     if pb_f64_to_bits(m.d) != 0 { n += 9; }
     if m.f != 0 { n += 5; }
     if m.g != 0 { n += 9; }
@@ -179,8 +190,18 @@ fn Wide_size_of(m: Wide&) -> i64 {
 fn Wide_clear(m: Wide&) {
     m.a = 0;
     m.v = 0;
+    m.s = pb_bytes_free(m.s);
     m.d = 0.0;
     m.f = 0;
     m.g = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// The contents of s, in pb_bytes: valid until it is next set or m
+// is cleared.
+fn Wide_s(m: Wide&) -> u8[:] { return pb_run(pb_bytes, m.s); }
+
+// Sets s to a copy of v.
+fn Wide_set_s(m: Wide&, v: const u8[:]) {
+    m.s = pb_bytes_set(m.s, v);
 }

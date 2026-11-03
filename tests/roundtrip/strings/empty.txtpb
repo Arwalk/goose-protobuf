@@ -1,0 +1,7 @@
+# proto-file: strings.proto
+# proto-message: strings.Text
+# Empty implicit-presence strings are not encoded; empty optional ones are.
+s: ""
+b: ""
+os: ""
+ob: ""

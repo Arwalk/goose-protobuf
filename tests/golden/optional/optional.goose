@@ -7,12 +7,15 @@
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
 //   M_clear_f(m)                 optional); m.f reads them
+//   M_f(m) -> u8[:]              string and bytes fields: a view into
+//   M_set_f(m, v)                pb_bytes, and a copying setter
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
+//                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, and later strings, bytes, repeated fields and sub-messages)
+// fields, strings and bytes, later repeated fields and sub-messages)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Copying a record copies spans, not their contents.
 
@@ -418,7 +421,8 @@ fn Opt_clear(m: Opt&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
-// Sets o_int32 and marks it present: it is encoded even when 0.
+// Sets o_int32 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_int32(m: Opt&, v: i32) {
     m.o_int32 = v;
     m.pb_has0 |= 0x00000001;
@@ -431,7 +435,8 @@ fn Opt_clear_o_int32(m: Opt&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
-// Sets o_sint64 and marks it present: it is encoded even when 0.
+// Sets o_sint64 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_sint64(m: Opt&, v: i64) {
     m.o_sint64 = v;
     m.pb_has0 |= 0x00000002;
@@ -444,7 +449,8 @@ fn Opt_clear_o_sint64(m: Opt&) {
     m.pb_has0 &= 0xfffffffd;
 }
 
-// Sets o_double and marks it present: it is encoded even when 0.
+// Sets o_double and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_double(m: Opt&, v: f64) {
     m.o_double = v;
     m.pb_has0 |= 0x00000004;
@@ -457,7 +463,8 @@ fn Opt_clear_o_double(m: Opt&) {
     m.pb_has0 &= 0xfffffffb;
 }
 
-// Sets o_float and marks it present: it is encoded even when 0.
+// Sets o_float and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_float(m: Opt&, v: f32) {
     m.o_float = v;
     m.pb_has0 |= 0x00000008;
@@ -470,7 +477,8 @@ fn Opt_clear_o_float(m: Opt&) {
     m.pb_has0 &= 0xfffffff7;
 }
 
-// Sets o_bool and marks it present: it is encoded even when 0.
+// Sets o_bool and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_bool(m: Opt&, v: bool) {
     m.o_bool = v;
     m.pb_has0 |= 0x00000010;
@@ -483,7 +491,8 @@ fn Opt_clear_o_bool(m: Opt&) {
     m.pb_has0 &= 0xffffffef;
 }
 
-// Sets o_mode and marks it present: it is encoded even when 0.
+// Sets o_mode and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_mode(m: Opt&, v: i32) {
     m.o_mode = v;
     m.pb_has0 |= 0x00000020;
@@ -496,7 +505,8 @@ fn Opt_clear_o_mode(m: Opt&) {
     m.pb_has0 &= 0xffffffdf;
 }
 
-// Sets o_fixed64 and marks it present: it is encoded even when 0.
+// Sets o_fixed64 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o_fixed64(m: Opt&, v: u64) {
     m.o_fixed64 = v;
     m.pb_has0 |= 0x00000040;
@@ -509,7 +519,8 @@ fn Opt_clear_o_fixed64(m: Opt&) {
     m.pb_has0 &= 0xffffffbf;
 }
 
-// Sets o9 and marks it present: it is encoded even when 0.
+// Sets o9 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o9(m: Opt&, v: u32) {
     m.o9 = v;
     m.pb_has0 |= 0x00000080;
@@ -522,7 +533,8 @@ fn Opt_clear_o9(m: Opt&) {
     m.pb_has0 &= 0xffffff7f;
 }
 
-// Sets o10 and marks it present: it is encoded even when 0.
+// Sets o10 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o10(m: Opt&, v: u32) {
     m.o10 = v;
     m.pb_has0 |= 0x00000100;
@@ -535,7 +547,8 @@ fn Opt_clear_o10(m: Opt&) {
     m.pb_has0 &= 0xfffffeff;
 }
 
-// Sets o11 and marks it present: it is encoded even when 0.
+// Sets o11 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o11(m: Opt&, v: u32) {
     m.o11 = v;
     m.pb_has0 |= 0x00000200;
@@ -548,7 +561,8 @@ fn Opt_clear_o11(m: Opt&) {
     m.pb_has0 &= 0xfffffdff;
 }
 
-// Sets o12 and marks it present: it is encoded even when 0.
+// Sets o12 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o12(m: Opt&, v: u32) {
     m.o12 = v;
     m.pb_has0 |= 0x00000400;
@@ -561,7 +575,8 @@ fn Opt_clear_o12(m: Opt&) {
     m.pb_has0 &= 0xfffffbff;
 }
 
-// Sets o13 and marks it present: it is encoded even when 0.
+// Sets o13 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o13(m: Opt&, v: u32) {
     m.o13 = v;
     m.pb_has0 |= 0x00000800;
@@ -574,7 +589,8 @@ fn Opt_clear_o13(m: Opt&) {
     m.pb_has0 &= 0xfffff7ff;
 }
 
-// Sets o14 and marks it present: it is encoded even when 0.
+// Sets o14 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o14(m: Opt&, v: u32) {
     m.o14 = v;
     m.pb_has0 |= 0x00001000;
@@ -587,7 +603,8 @@ fn Opt_clear_o14(m: Opt&) {
     m.pb_has0 &= 0xffffefff;
 }
 
-// Sets o15 and marks it present: it is encoded even when 0.
+// Sets o15 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o15(m: Opt&, v: u32) {
     m.o15 = v;
     m.pb_has0 |= 0x00002000;
@@ -600,7 +617,8 @@ fn Opt_clear_o15(m: Opt&) {
     m.pb_has0 &= 0xffffdfff;
 }
 
-// Sets o16 and marks it present: it is encoded even when 0.
+// Sets o16 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o16(m: Opt&, v: u32) {
     m.o16 = v;
     m.pb_has0 |= 0x00004000;
@@ -613,7 +631,8 @@ fn Opt_clear_o16(m: Opt&) {
     m.pb_has0 &= 0xffffbfff;
 }
 
-// Sets o17 and marks it present: it is encoded even when 0.
+// Sets o17 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o17(m: Opt&, v: u32) {
     m.o17 = v;
     m.pb_has0 |= 0x00008000;
@@ -626,7 +645,8 @@ fn Opt_clear_o17(m: Opt&) {
     m.pb_has0 &= 0xffff7fff;
 }
 
-// Sets o18 and marks it present: it is encoded even when 0.
+// Sets o18 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o18(m: Opt&, v: u32) {
     m.o18 = v;
     m.pb_has0 |= 0x00010000;
@@ -639,7 +659,8 @@ fn Opt_clear_o18(m: Opt&) {
     m.pb_has0 &= 0xfffeffff;
 }
 
-// Sets o19 and marks it present: it is encoded even when 0.
+// Sets o19 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o19(m: Opt&, v: u32) {
     m.o19 = v;
     m.pb_has0 |= 0x00020000;
@@ -652,7 +673,8 @@ fn Opt_clear_o19(m: Opt&) {
     m.pb_has0 &= 0xfffdffff;
 }
 
-// Sets o20 and marks it present: it is encoded even when 0.
+// Sets o20 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o20(m: Opt&, v: u32) {
     m.o20 = v;
     m.pb_has0 |= 0x00040000;
@@ -665,7 +687,8 @@ fn Opt_clear_o20(m: Opt&) {
     m.pb_has0 &= 0xfffbffff;
 }
 
-// Sets o21 and marks it present: it is encoded even when 0.
+// Sets o21 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o21(m: Opt&, v: u32) {
     m.o21 = v;
     m.pb_has0 |= 0x00080000;
@@ -678,7 +701,8 @@ fn Opt_clear_o21(m: Opt&) {
     m.pb_has0 &= 0xfff7ffff;
 }
 
-// Sets o22 and marks it present: it is encoded even when 0.
+// Sets o22 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o22(m: Opt&, v: u32) {
     m.o22 = v;
     m.pb_has0 |= 0x00100000;
@@ -691,7 +715,8 @@ fn Opt_clear_o22(m: Opt&) {
     m.pb_has0 &= 0xffefffff;
 }
 
-// Sets o23 and marks it present: it is encoded even when 0.
+// Sets o23 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o23(m: Opt&, v: u32) {
     m.o23 = v;
     m.pb_has0 |= 0x00200000;
@@ -704,7 +729,8 @@ fn Opt_clear_o23(m: Opt&) {
     m.pb_has0 &= 0xffdfffff;
 }
 
-// Sets o24 and marks it present: it is encoded even when 0.
+// Sets o24 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o24(m: Opt&, v: u32) {
     m.o24 = v;
     m.pb_has0 |= 0x00400000;
@@ -717,7 +743,8 @@ fn Opt_clear_o24(m: Opt&) {
     m.pb_has0 &= 0xffbfffff;
 }
 
-// Sets o25 and marks it present: it is encoded even when 0.
+// Sets o25 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o25(m: Opt&, v: u32) {
     m.o25 = v;
     m.pb_has0 |= 0x00800000;
@@ -730,7 +757,8 @@ fn Opt_clear_o25(m: Opt&) {
     m.pb_has0 &= 0xff7fffff;
 }
 
-// Sets o26 and marks it present: it is encoded even when 0.
+// Sets o26 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o26(m: Opt&, v: u32) {
     m.o26 = v;
     m.pb_has0 |= 0x01000000;
@@ -743,7 +771,8 @@ fn Opt_clear_o26(m: Opt&) {
     m.pb_has0 &= 0xfeffffff;
 }
 
-// Sets o27 and marks it present: it is encoded even when 0.
+// Sets o27 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o27(m: Opt&, v: u32) {
     m.o27 = v;
     m.pb_has0 |= 0x02000000;
@@ -756,7 +785,8 @@ fn Opt_clear_o27(m: Opt&) {
     m.pb_has0 &= 0xfdffffff;
 }
 
-// Sets o28 and marks it present: it is encoded even when 0.
+// Sets o28 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o28(m: Opt&, v: u32) {
     m.o28 = v;
     m.pb_has0 |= 0x04000000;
@@ -769,7 +799,8 @@ fn Opt_clear_o28(m: Opt&) {
     m.pb_has0 &= 0xfbffffff;
 }
 
-// Sets o29 and marks it present: it is encoded even when 0.
+// Sets o29 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o29(m: Opt&, v: u32) {
     m.o29 = v;
     m.pb_has0 |= 0x08000000;
@@ -782,7 +813,8 @@ fn Opt_clear_o29(m: Opt&) {
     m.pb_has0 &= 0xf7ffffff;
 }
 
-// Sets o30 and marks it present: it is encoded even when 0.
+// Sets o30 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o30(m: Opt&, v: u32) {
     m.o30 = v;
     m.pb_has0 |= 0x10000000;
@@ -795,7 +827,8 @@ fn Opt_clear_o30(m: Opt&) {
     m.pb_has0 &= 0xefffffff;
 }
 
-// Sets o31 and marks it present: it is encoded even when 0.
+// Sets o31 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o31(m: Opt&, v: u32) {
     m.o31 = v;
     m.pb_has0 |= 0x20000000;
@@ -808,7 +841,8 @@ fn Opt_clear_o31(m: Opt&) {
     m.pb_has0 &= 0xdfffffff;
 }
 
-// Sets o32 and marks it present: it is encoded even when 0.
+// Sets o32 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o32(m: Opt&, v: u32) {
     m.o32 = v;
     m.pb_has0 |= 0x40000000;
@@ -821,7 +855,8 @@ fn Opt_clear_o32(m: Opt&) {
     m.pb_has0 &= 0xbfffffff;
 }
 
-// Sets o33 and marks it present: it is encoded even when 0.
+// Sets o33 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o33(m: Opt&, v: u32) {
     m.o33 = v;
     m.pb_has0 |= 0x80000000;
@@ -834,7 +869,8 @@ fn Opt_clear_o33(m: Opt&) {
     m.pb_has0 &= 0x7fffffff;
 }
 
-// Sets o34 and marks it present: it is encoded even when 0.
+// Sets o34 and marks it present:
+// it is encoded even when 0.
 fn Opt_set_o34(m: Opt&, v: u32) {
     m.o34 = v;
     m.pb_has1 |= 0x00000001;

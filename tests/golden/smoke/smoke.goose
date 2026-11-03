@@ -7,12 +7,15 @@
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
 //   M_clear_f(m)                 optional); m.f reads them
+//   M_f(m) -> u8[:]              string and bytes fields: a view into
+//   M_set_f(m, v)                pb_bytes, and a copying setter
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
+//                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, and later strings, bytes, repeated fields and sub-messages)
+// fields, strings and bytes, later repeated fields and sub-messages)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Copying a record copies spans, not their contents.
 
@@ -23,6 +26,8 @@ import pb_wire;
 // message smoke.Smoke
 struct Smoke {
     id: i32,
+    name: pb_Span,
+    pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -42,6 +47,9 @@ fn Smoke_decode_from(r: pb_Reader&, m: Smoke&) {
         if r.err != PB_OK { break; }
         if tag == 8 {
             m.id = pb_u64_to_int32(pb_read_varint(r));
+        } else if tag == 18 {
+            m.name = pb_read_string(r, m.name);
+            m.pb_has0 |= 0x00000001;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -63,6 +71,10 @@ fn Smoke_encode(m: Smoke&, out: u8[>..]&) {
         pb_write_varint(out, 8);
         pb_write_varint(out, pb_int32_to_u64(m.id));
     }
+    if (m.pb_has0 & 0x00000001) != 0 {
+        pb_write_varint(out, 18);
+        pb_write_bytes(out, m.name);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
@@ -70,6 +82,7 @@ fn Smoke_encode(m: Smoke&, out: u8[>..]&) {
 fn Smoke_size_of(m: Smoke&) -> i64 {
     var n: i64 = 0;
     if m.id != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.id)); }
+    if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_bytes_size(m.name); }
     n += m.pb_unknown.len;
     return n;
 }
@@ -77,5 +90,25 @@ fn Smoke_size_of(m: Smoke&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn Smoke_clear(m: Smoke&) {
     m.id = 0;
+    m.name = pb_bytes_free(m.name);
+    m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// The contents of name, in pb_bytes: valid until it is next set or m
+// is cleared.
+fn Smoke_name(m: Smoke&) -> u8[:] { return pb_run(pb_bytes, m.name); }
+
+// Sets name to a copy of v and marks it present:
+// it is encoded even when empty.
+fn Smoke_set_name(m: Smoke&, v: const u8[:]) {
+    m.name = pb_bytes_set(m.name, v);
+    m.pb_has0 |= 0x00000001;
+}
+
+fn Smoke_has_name(m: Smoke&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
+
+fn Smoke_clear_name(m: Smoke&) {
+    m.name = pb_bytes_free(m.name);
+    m.pb_has0 &= 0xfffffffe;
 }
