@@ -13,6 +13,13 @@ test {
 
 /// CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL.
 pub const FEATURE_PROTO3_OPTIONAL: u64 = 1;
+/// CodeGeneratorResponse.Feature.FEATURE_SUPPORTS_EDITIONS.
+pub const FEATURE_SUPPORTS_EDITIONS: u64 = 2;
+
+/// The range of editions the plugin takes, as google.protobuf.Edition values:
+/// EDITION_PROTO2 and EDITION_2023.
+pub const MINIMUM_EDITION: i32 = 998;
+pub const MAXIMUM_EDITION: i32 = 1000;
 
 /// Decodes a serialized CodeGeneratorRequest from `input` and writes the
 /// serialized CodeGeneratorResponse to `out`: one .goose file per file to
@@ -27,7 +34,9 @@ pub fn run(gpa: std.mem.Allocator, input: []const u8, out: *std.Io.Writer) !void
     const request: plugin.CodeGeneratorRequest = try .decode(&reader, allocator);
 
     var response: plugin.CodeGeneratorResponse = .{
-        .supported_features = FEATURE_PROTO3_OPTIONAL,
+        .supported_features = FEATURE_PROTO3_OPTIONAL | FEATURE_SUPPORTS_EDITIONS,
+        .minimum_edition = MINIMUM_EDITION,
+        .maximum_edition = MAXIMUM_EDITION,
     };
     generate(allocator, &request, &response) catch |err| switch (err) {
         error.Rejected => response.file = .empty,
@@ -138,13 +147,16 @@ test "request with nothing to generate yields proto3 optional and no files" {
     defer out.deinit();
     try run(gpa, req_bytes.written(), &out.writer);
 
-    try std.testing.expectEqualSlices(u8, &.{ 0x10, 0x01 }, out.written());
+    // supported_features 3, minimum_edition 998, maximum_edition 1000.
+    try std.testing.expectEqualSlices(u8, &.{ 0x10, 0x03, 0x18, 0xe6, 0x07, 0x20, 0xe8, 0x07 }, out.written());
 
     var arena: std.heap.ArenaAllocator = .init(gpa);
     defer arena.deinit();
     var reader: std.Io.Reader = .fixed(out.written());
     const res: plugin.CodeGeneratorResponse = try .decode(&reader, arena.allocator());
-    try std.testing.expectEqual(@as(?u64, FEATURE_PROTO3_OPTIONAL), res.supported_features);
+    try std.testing.expectEqual(@as(?u64, FEATURE_PROTO3_OPTIONAL | FEATURE_SUPPORTS_EDITIONS), res.supported_features);
+    try std.testing.expectEqual(@as(?i32, MINIMUM_EDITION), res.minimum_edition);
+    try std.testing.expectEqual(@as(?i32, MAXIMUM_EDITION), res.maximum_edition);
     try std.testing.expectEqual(@as(usize, 0), res.file.items.len);
     try std.testing.expectEqual(@as(?[]const u8, null), res.@"error");
 }
