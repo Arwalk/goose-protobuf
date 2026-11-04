@@ -61,6 +61,8 @@ short strings, and a map of 10,000 about 2 µs and 10 µs.
 - `docs/usage.md` states the limit, with these figures, and both ways around it:
   decode once rather than calling `_put` or `M_decode` in a loop, or keep your own
   index beside the map.
-- A workload with larger maps built from code reopens this, with its figures. It
+- gpb-811 looks at this again once the rest of the backlog is done, starting with a
+  bulk append that decision did not weigh.
+- A workload with larger maps built from code reopens this sooner, with its figures. It
   would likely want a seeded hash, built lazily on the first lookup, so that the
   decode path and small maps pay nothing but the span.

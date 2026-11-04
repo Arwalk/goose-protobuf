@@ -1,6 +1,6 @@
 # 0009: the UTF-8 of a string extension is not validated
 
-- Status: accepted. The owner can reverse it: nothing else depends on it.
+- Status: accepted, confirmed by the project owner. Nothing else depends on it.
 - Date: 2026-11-04
 - Bead: gpb-dx9.10
 - Toolchain: protobuf v36.2 conformance suite
@@ -30,12 +30,20 @@ at them?
   coverage needs a registry at decode time, which is the reflection-like machinery
   the project's scope leaves out.
 - **The failure is small.** It is one recommended test, not a required one, and
-  every other recommended binary test passes. Protobuf's own runtimes treat an
-  extension they have not been told about as unknown, and do not look inside.
+  every other recommended binary test passes.
+
+## Known gap
+
+We expect protobuf's own runtimes to treat an extension they have not been told
+about as unknown, without looking inside, as this one does. That comes from general
+knowledge of them, and was not tested or checked against their source, so this
+decision does not rest on it. If they turn out to reject such bytes anyway, this
+runtime is the odd one out, and the choice is worth weighing again.
 
 ## Consequences
 
-- Invalid UTF-8 in a string extension decodes and re-encodes unchanged.
+- Invalid UTF-8 in a string extension decodes and re-encodes unchanged, so a program
+  that forwards messages can pass it to a stricter peer, which may reject them.
 - `docs/usage.md` lists this under its limitations.
 - If extensions ever get accessors, that work decides this again: an accessor that
   returns text must validate.
