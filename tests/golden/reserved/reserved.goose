@@ -242,7 +242,8 @@ reusable[] var Node_links: Node_Ref[>..] = [];
 // unknown fields.
 recursive fn Node_decode_from(r: pb_Reader&, m: Node&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len2: i64 = m.children.len;
+    let pb_had2: i64 = m.children.len;
+    var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -253,7 +254,7 @@ recursive fn Node_decode_from(r: pb_Reader&, m: Node&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Node_links, m.children, pb_len2);
+            pb_reserve(Node_links, m.children, pb_len2, pb_had2);
             let pb_sub .= Node_pool.alloc_ref(Node { .. });
             pb_run(Node_links, m.children)[pb_len2].m .= pb_sub;
             pb_len2++;

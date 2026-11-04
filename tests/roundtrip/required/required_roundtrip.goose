@@ -120,6 +120,12 @@ fn check_kinds() {
     // A value that is absent is an empty message, which lacks x.
     if holder::Uses_decode(map_absent, m) != PB_ERR_REQUIRED { fail_at("kinds", "map value absent"); }
     holder::Uses_clear(m);
+    // A value that lacks x, replaced by a later entry with its key, does not count.
+    var replaced: u8[>..] = [];
+    replaced.append(map_bad);
+    replaced.append(map_ok);
+    if holder::Uses_decode(replaced, m) != PB_OK { fail_at("kinds", "replaced map value"); }
+    holder::Uses_clear(m);
     if holder::Uses_decode(member_ok, m) != PB_OK { fail_at("kinds", "member ok"); }
     holder::Uses_clear(m);
     if holder::Uses_decode(member_bad, m) != PB_ERR_REQUIRED { fail_at("kinds", "oneof member"); }

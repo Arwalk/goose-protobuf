@@ -147,7 +147,8 @@ reusable[] var Wide_links: Wide_Ref[>..] = [];
 // unknown fields.
 fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len6: i64 = m.r.len;
+    let pb_had6: i64 = m.r.len;
+    var pb_len6: i64 = pb_had6;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -163,13 +164,13 @@ fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
         } else if tag == 45 {
             m.f = pb_read_fixed32(r);
         } else if tag == 48 {
-            pb_append(pb_i32s, m.r, pb_len6, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.r, pb_len6, pb_had6, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 50 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len6, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len6, pb_had6, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 58 {

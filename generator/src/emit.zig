@@ -87,12 +87,12 @@ pub fn nestedPath(a: std.mem.Allocator, prefix: []const u8, name: []const u8) ![
 /// Operations and globals generated for every message, as `<path>_<op>`
 /// (decisions 0001 and 0004: codecs, `M_copy`, the `M_Ref` link, the pools).
 pub const message_ops = [_][]const u8{
-    "decode", "decode_from", "encode", "size_of", "clear", "copy", "is_initialized", "Ref", "pool", "links",
+    "decode", "decode_from", "encode", "size_of", "clear", "copy", "is_initialized", "fold_maps", "Ref", "pool", "links",
 };
 
 /// What a map entry message has besides: its pool of runs (decision 0001) and
 /// the helpers of the map field that uses it.
-pub const map_entry_ops = [_][]const u8{ "entries", "find", "slot", "place" };
+pub const map_entry_ops = [_][]const u8{ "entries", "find", "slot", "place", "fold" };
 
 /// How a field is stored, which decides its accessors.
 pub const FieldKind = enum { scalar, oneof_scalar, string, message, repeated, repeated_message, map };
@@ -465,6 +465,28 @@ pub const FileEmitter = struct {
         return false;
     }
 
+    /// True if a message of type `t` can reach a map field that is stored: it
+    /// then has fold_maps. An entry counts what its value holds, not itself.
+    /// Call it only once the imports are written, like holdsRequired.
+    fn holdsMaps(self: *FileEmitter, t: []const u8, seen: *std.StringHashMapUnmanaged(void)) Error!bool {
+        if ((try seen.getOrPut(self.a, t)).found_existing) return false;
+        const info = self.messages.get(t) orelse (try self.foreignMessage(t)) orelse return false;
+        for (info.desc.field.items) |*fd| {
+            const s = storedMessageTypeIn(info.file, fd) orelse continue;
+            const sub = self.messages.get(s) orelse (try self.foreignMessage(s)) orelse continue;
+            if (isMapEntryType(sub)) return true;
+            if (try self.holdsMaps(s, seen)) return true;
+        }
+        return false;
+    }
+
+    /// True if the message that stored field `f` holds has fold_maps.
+    fn fieldHoldsMaps(self: *FileEmitter, f: Field) Error!bool {
+        const t = self.storedMessageType(f.fd) orelse return false;
+        var seen: std.StringHashMapUnmanaged(void) = .empty;
+        return self.holdsMaps(t, &seen);
+    }
+
     /// True if the message that stored field `f` holds has is_initialized.
     fn fieldHoldsRequired(self: *FileEmitter, f: Field) Error!bool {
         const t = self.storedMessageType(f.fd) orelse return false;
@@ -627,16 +649,19 @@ pub const FileEmitter = struct {
         self.fn_kw = if (try self.isRecursive(full)) "recursive fn" else "fn";
         var required_seen: std.StringHashMapUnmanaged(void) = .empty;
         const checked = try self.holdsRequired(full, &required_seen);
+        var maps_seen: std.StringHashMapUnmanaged(void) = .empty;
+        const folded = try self.holdsMaps(full, &maps_seen);
 
         try self.emitOneofTypes(oneofs.items, fields.items);
         try self.emitRecord(goose_name, fields.items, oneofs.items, has_words);
         try self.emitPools(goose_name, path);
-        try self.emitDecode(goose_name, path, fields.items, checked);
+        try self.emitDecode(goose_name, path, fields.items, checked, folded);
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
         try self.emitClear(goose_name, path, fields.items, oneofs.items, has_words);
         try self.emitCopy(goose_name, path, fields.items, oneofs.items, has_words);
         if (checked) try self.emitIsInitialized(goose_name, path, fields.items, has_words);
+        if (folded) try self.emitFoldMaps(goose_name, path, fields.items);
         for (oneofs.items) |o| try self.emitOneofClear(goose_name, o, fields.items);
         for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
         if (is_entry) try self.emitMapEntryHelpers(goose_name, path, fields.items);
@@ -711,7 +736,7 @@ pub const FileEmitter = struct {
         , .{ goose_name, pool, ref, goose_name, pool, pool, goose_name, try generatedName(self.a, path, "links"), ref });
     }
 
-    fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, checked: bool) Error!void {
+    fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, checked: bool, folded: bool) Error!void {
         const decode = try generatedName(self.a, path, "decode");
         const decode_from = try generatedName(self.a, path, "decode_from");
         try self.w.print(
@@ -724,7 +749,7 @@ pub const FileEmitter = struct {
             \\
         , .{ self.fn_kw, decode_from, goose_name });
         for (fields) |f| {
-            if (f.repeated or f.map != null) try self.w.print("    var pb_len{d}: i64 = m.{s}.len;\n", .{ f.number(), f.name });
+            if (f.repeated or f.map != null) try self.w.print("    let pb_had{d}: i64 = m.{s}.len;\n    var pb_len{d}: i64 = pb_had{d};\n", .{ f.number(), f.name, f.number(), f.number() });
         }
         try self.w.writeAll(
             \\    while r.pos < r.end {
@@ -787,6 +812,9 @@ pub const FileEmitter = struct {
             \\    {s}(r, m);
             \\
         , .{ decode, goose_name, decode_from });
+        if (folded) {
+            try self.w.print("    if r.err == PB_OK {{ {s}(m); }}\n", .{try generatedName(self.a, path, "fold_maps")});
+        }
         if (checked) {
             // On the whole message: a later occurrence may set what an
             // earlier one of a sub-message lacks.
@@ -809,7 +837,7 @@ pub const FileEmitter = struct {
                 \\            let pb_n = pb_read_len(r);
                 \\            if r.err != PB_OK {{ break; }}
                 \\            if r.depth >= PB_MAX_DEPTH {{ pb_fail(r, PB_ERR_DEPTH); break; }}
-                \\            pb_reserve({s}, m.{s}, pb_len{d});
+                \\            pb_reserve({s}, m.{s}, pb_len{d}, pb_had{d});
                 \\            let pb_sub .= {s}.alloc_ref({s} {{ .. }});
                 \\            pb_run({s}, m.{s})[pb_len{d}].m .= pb_sub;
                 \\            pb_len{d}++;
@@ -822,7 +850,7 @@ pub const FileEmitter = struct {
                 \\            r.end = pb_outer;
                 \\
             , .{
-                try self.runPool(f), f.name, f.number(),
+                try self.runPool(f), f.name, f.number(), f.number(),
                 pool, sub.goose_name,
                 try self.runPool(f), f.name, f.number(),
                 f.number(),
@@ -831,39 +859,40 @@ pub const FileEmitter = struct {
             return;
         }
         if (f.sc.size == .bytes) {
-            try self.w.print("            pb_append(pb_spans, m.{s}, pb_len{d}, {f});\n", .{
-                f.name, f.number(), Subst{ .t = f.sc.read, .x = "pb_Span { at: 0, len: 0 }" },
+            try self.w.print("            pb_append(pb_spans, m.{s}, pb_len{d}, pb_had{d}, {f});\n", .{
+                f.name, f.number(), f.number(), Subst{ .t = f.sc.read, .x = "pb_Span { at: 0, len: 0 }" },
             });
             return;
         }
         try self.w.print(
-            \\            pb_append({s}, m.{s}, pb_len{d}, {s});
+            \\            pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, {s});
             \\        }} else if tag == {d} {{
             \\            let pb_n = pb_read_len(r);
             \\            if r.err != PB_OK {{ break; }}
             \\            let pb_outer = r.end;
             \\            r.end = r.pos + pb_n;
-            \\            while r.pos < r.end {{ pb_append({s}, m.{s}, pb_len{d}, {s}); }}
+            \\            while r.pos < r.end {{ pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, {s}); }}
             \\            if r.err != PB_OK {{ break; }}
             \\            r.end = pb_outer;
             \\
         , .{
-            f.sc.pool(), f.name, f.number(), f.sc.read,
+            f.sc.pool(), f.name, f.number(), f.number(), f.sc.read,
             f.packedTag(),
-            f.sc.pool(), f.name, f.number(), f.sc.read,
+            f.sc.pool(), f.name, f.number(), f.number(), f.sc.read,
         });
     }
 
     /// The branch of decode_from for a map entry. It decodes into the next
-    /// slot of the run, which <entry>_place keeps or folds into an entry with
-    /// its key. A partial entry is freed: only whole ones are in the map.
+    /// slot of the run. Repeated keys are folded once, by M_decode (see
+    /// emitFoldMaps), as looking each one up would be quadratic. A partial
+    /// entry is freed: only whole ones are in the map.
     fn emitDecodeMapEntry(self: *FileEmitter, f: Field, entry: MessageInfo) Error!void {
         const pool = try self.runPool(f);
         try self.w.print(
             \\            let pb_n = pb_read_len(r);
             \\            if r.err != PB_OK {{ break; }}
             \\            if r.depth >= PB_MAX_DEPTH {{ pb_fail(r, PB_ERR_DEPTH); break; }}
-            \\            pb_reserve({s}, m.{s}, pb_len{d});
+            \\            pb_reserve({s}, m.{s}, pb_len{d}, pb_had{d});
             \\            let pb_e .= pb_run({s}, m.{s})[pb_len{d}];
             \\            let pb_outer = r.end;
             \\            r.end = r.pos + pb_n;
@@ -872,14 +901,16 @@ pub const FileEmitter = struct {
             \\            if r.err != PB_OK {{ {s}(pb_e); break; }}
             \\            r.depth--;
             \\            r.end = pb_outer;
-            \\            pb_len{d} = {s}(m.{s}, pb_len{d});
+            \\            {s}(pb_e);
+            \\            pb_len{d}++;
             \\
         , .{
-            pool, f.name, f.number(),
+            pool, f.name, f.number(), f.number(),
             pool, f.name, f.number(),
             try self.subName(entry, "decode_from"),
             try self.subName(entry, "clear"),
-            f.number(), try self.subName(entry, "place"), f.name, f.number(),
+            try self.subName(entry, "place"),
+            f.number(),
         });
     }
 
@@ -1172,6 +1203,62 @@ pub const FileEmitter = struct {
         try self.w.writeAll("    m.pb_unknown = pb_bytes_free(m.pb_unknown);\n}\n");
     }
 
+    /// fold_maps: folds repeated keys in every map of m and of what it holds.
+    /// M_decode runs it once, when all the input is read. Doing it when each
+    /// message ends would repeat it for a sub-message that repeats on the wire,
+    /// and one input could then make it quadratic. Top-down, so an entry that
+    /// is replaced is not folded first.
+    fn emitFoldMaps(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+        try self.w.print(
+            \\
+            \\// Folds repeated keys in the maps of m and of the messages it holds, which
+            \\// decoding appends without looking them up: the last value wins, in the
+            \\// place of the first occurrence.
+            \\{s} {s}(m: {s}&) {{
+            \\
+        , .{ self.fn_kw, try generatedName(self.a, path, "fold_maps"), goose_name });
+        for (fields) |f| {
+            if (f.map) |entry| try self.w.print("    m.{s} = {s}(m.{s});\n", .{ f.name, try self.subName(entry, "fold"), f.name });
+            if (!try self.fieldHoldsMaps(f)) continue;
+            if (f.map) |entry| {
+                try self.w.print(
+                    \\    for pb_i in m.{s}.len {{ {s}(pb_run({s}, m.{s})[pb_i]); }}
+                    \\
+                , .{ f.name, try self.subName(entry, "fold_maps"), try self.runPool(f), f.name });
+                continue;
+            }
+            const fold = try self.subName(f.sub.?, "fold_maps");
+            if (f.repeated) {
+                try self.w.print(
+                    \\    for pb_ref in pb_run({s}, m.{s}) {{
+                    \\        let pb_l = pb_ref.m;
+                    \\        guard pb_l else {{ continue; }}
+                    \\        {s}(pb_l);
+                    \\    }}
+                    \\
+                , .{ try self.runPool(f), f.name, fold });
+            } else if (f.oneof) |o| {
+                try self.w.print(
+                    \\    match m.{s} {{
+                    \\        {s} pb_p => {{
+                    \\            let pb_l = pb_p.v.m;
+                    \\            if pb_l {{ {s}(pb_l); }}
+                    \\        }},
+                    \\        _ => {{}},
+                    \\    }}
+                    \\
+                , .{ o.name, f.name, fold });
+            } else {
+                try self.w.print(
+                    \\    let pb_f{d} = m.{s}.m;
+                    \\    if pb_f{d} {{ {s}(pb_f{d}); }}
+                    \\
+                , .{ f.number(), f.name, f.number(), fold, f.number() });
+            }
+        }
+        try self.w.writeAll("}\n");
+    }
+
     /// is_initialized: every required field is set, in m and in what it holds.
     fn emitIsInitialized(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
         try self.w.print(
@@ -1437,29 +1524,68 @@ pub const FileEmitter = struct {
             \\    return pb_run({s}, s)[pb_i];
             \\}}
             \\
-            \\// Settles the entry just decoded into slot `used` of run s, and returns how
-            \\// many are in use now. A missing message value is an empty one, unknown
-            \\// fields are dropped, and an entry with its key already there replaces it.
-            \\fn {s}(s: pb_Span, used: i64) -> i64 {{
-            \\    let pb_e .= pb_run({s}, s)[used];
+            \\// Settles an entry just decoded: a missing message value is an empty one,
+            \\// and unknown fields are dropped.
+            \\fn {s}(pb_e: {s}&) {{
             \\
-        , .{ entries, try generatedName(self.a, path, "place"), entries });
+        , .{ entries, try generatedName(self.a, path, "place"), goose_name });
         if (value.sub != null) try self.w.print("    {s}(pb_e);\n", .{try accessorName(self.a, path, "value", mutable_acc)});
         try self.w.print(
             \\    pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-            \\    let pb_i = {s}(s, used, {s});
-            \\    if pb_i < 0 {{ return used + 1; }}
-            \\    {s}(pb_run({s}, s)[pb_i]);
-            \\    pb_run({s}, s)[pb_i] = pb_e;
-            \\    pb_run({s}, s)[used] = {s} {{ .. }};
-            \\    return used;
+            \\}}
+            \\
+            \\// Run s with each repeated key folded: the last value wins, in the place of
+            \\// the first occurrence, and what the others held is freed. O(n log n).
+            \\// fold_maps calls it; decoding leaves repeated keys for it.
+            \\fn {s}(s: pb_Span) -> pb_Span {{
+            \\    if s.len < 2 {{ return s; }}
+            \\    let pb_r = pb_run({s}, s);
+            \\    var pb_keys: {s}[>..] = [];
+            \\    for pb_i in pb_r.len {{ pb_keys.push({s} {{ key: {s}, at: pb_i as! u32 }}); }}
+            \\    {s}(pb_keys);
+            \\    var pb_gone: bool[>..] = [];
+            \\    var pb_i: i64 = 0;
+            \\    while pb_i < pb_keys.len {{
+            \\        var pb_j = pb_i + 1;
+            \\        while pb_j < pb_keys.len && {s}(pb_keys[pb_i], pb_keys[pb_j]) {{ pb_j++; }}
+            \\        if pb_j - pb_i > 1 {{
+            \\            if pb_gone.len == 0 {{ for pb_k in pb_r.len {{ pb_gone.push(false); }} }}
+            \\            let pb_first: i64 = pb_keys[pb_i].at;
+            \\            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            \\            for pb_k in pb_j - pb_i - 1 {{
+            \\                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+            \\                {s}(pb_r[pb_at]);
+            \\                pb_gone[pb_at] = true;
+            \\            }}
+            \\            pb_gone[pb_first] = false;
+            \\            pb_gone[pb_last] = true;
+            \\            pb_r[pb_first] = pb_r[pb_last];
+            \\            pb_r[pb_last] = {s} {{ .. }};
+            \\        }}
+            \\        pb_i = pb_j;
+            \\    }}
+            \\    if pb_gone.len == 0 {{ return s; }}
+            \\    var pb_kept: i64 = 0;
+            \\    for pb_k in pb_r.len {{
+            \\        if pb_gone[pb_k] {{ continue; }}
+            \\        if pb_kept != pb_k {{ pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = {s} {{ .. }}; }}
+            \\        pb_kept++;
+            \\    }}
+            \\    return pb_resize({s}, s, pb_kept);
             \\}}
             \\
         , .{
-            find, if (key_is_bytes) "pb_run(pb_bytes, pb_e.key)" else "pb_e.key",
-            try generatedName(self.a, path, "clear"), entries,
+            try generatedName(self.a, path, "fold"),
             entries,
-            entries, goose_name,
+            if (key_is_bytes) "pb_StrKey" else "pb_NumKey",
+            if (key_is_bytes) "pb_StrKey" else "pb_NumKey",
+            try foldKey(self.a, key.sc),
+            if (key_is_bytes) "pb_sort_str_keys" else "pb_sort_num_keys",
+            if (key_is_bytes) "pb_same_str_key" else "pb_same_num_key",
+            try generatedName(self.a, path, "clear"),
+            goose_name,
+            goose_name,
+            entries,
         });
     }
 
@@ -2063,6 +2189,15 @@ fn storedMessageTypeIn(file: *const descriptor.FileDescriptorProto, fd: *const d
     if (!stored) return null;
     const tn = fd.type_name orelse return null;
     return if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
+}
+
+/// What <entry>_fold sorts the key of entry pb_r[pb_i] by. Only grouping
+/// matters, so a signed key is simply widened, which keeps keys distinct.
+fn foldKey(a: std.mem.Allocator, sc: *const Scalar) ![]const u8 {
+    if (sc.size == .bytes) return "pb_r[pb_i].key";
+    if (std.mem.eql(u8, sc.goose, "bool")) return "pb_bool_to_u64(pb_r[pb_i].key)";
+    if (sc.goose[0] == 'u') return "pb_r[pb_i].key";
+    return std.fmt.allocPrint(a, "pb_r[pb_i].key as! u64", .{});
 }
 
 /// The field numbered `number` of a map entry.

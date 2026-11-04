@@ -1,0 +1,2 @@
+# proto-message: google.protobuf.Struct.FieldsEntry
+key: "n" value { number_value: 1 }

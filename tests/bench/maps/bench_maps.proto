@@ -1,0 +1,22 @@
+// Benchmark message for scripts/bench_maps.sh (gpb-dx9.7).
+syntax = "proto3";
+
+package bench;
+
+message B {
+  map<int32, int32> ints = 1;
+  map<string, int32> strs = 2;
+  repeated int32 list = 3;
+  bytes data = 4;
+}
+
+// A singular sub-message may repeat on the wire, each occurrence merging into
+// the last: one input, with one decode_from per occurrence.
+message Wrap {
+  B b = 1;
+  B other = 2;
+}
+
+message Outer {
+  repeated B items = 1;
+}

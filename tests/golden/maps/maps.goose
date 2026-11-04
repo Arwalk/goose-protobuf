@@ -45,6 +45,7 @@ namespace maps;
 
 import pb_wire;
 import pb_wire.wkt.duration;
+import pb_wire.wkt.struct_;
 
 // enum maps.Mode
 let Mode_MODE_UNSPECIFIED: i32 = 0;
@@ -68,7 +69,8 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len3: i64 = m.r.len;
+    let pb_had3: i64 = m.r.len;
+    var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -78,13 +80,13 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
         } else if tag == 18 {
             m.s = pb_read_string(r, m.s);
         } else if tag == 24 {
-            pb_append(pb_i32s, m.r, pb_len3, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len3, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
@@ -215,26 +217,46 @@ reusable[] var Maps_links: Maps_Ref[>..] = [];
 // unknown fields.
 recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.ss.len;
-    var pb_len2: i64 = m.sb.len;
-    var pb_len3: i64 = m.si.len;
-    var pb_len4: i64 = m.is.len;
-    var pb_len5: i64 = m.ll.len;
-    var pb_len6: i64 = m.uu.len;
-    var pb_len7: i64 = m.vv.len;
-    var pb_len8: i64 = m.zz.len;
-    var pb_len9: i64 = m.yy.len;
-    var pb_len10: i64 = m.ff.len;
-    var pb_len11: i64 = m.gg.len;
-    var pb_len12: i64 = m.hh.len;
-    var pb_len13: i64 = m.jj.len;
-    var pb_len14: i64 = m.bb.len;
-    var pb_len15: i64 = m.sf.len;
-    var pb_len16: i64 = m.sd.len;
-    var pb_len17: i64 = m.se.len;
-    var pb_len18: i64 = m.sm.len;
-    var pb_len19: i64 = m.dur.len;
-    var pb_len20: i64 = m.self_.len;
+    let pb_had1: i64 = m.ss.len;
+    var pb_len1: i64 = pb_had1;
+    let pb_had2: i64 = m.sb.len;
+    var pb_len2: i64 = pb_had2;
+    let pb_had3: i64 = m.si.len;
+    var pb_len3: i64 = pb_had3;
+    let pb_had4: i64 = m.is.len;
+    var pb_len4: i64 = pb_had4;
+    let pb_had5: i64 = m.ll.len;
+    var pb_len5: i64 = pb_had5;
+    let pb_had6: i64 = m.uu.len;
+    var pb_len6: i64 = pb_had6;
+    let pb_had7: i64 = m.vv.len;
+    var pb_len7: i64 = pb_had7;
+    let pb_had8: i64 = m.zz.len;
+    var pb_len8: i64 = pb_had8;
+    let pb_had9: i64 = m.yy.len;
+    var pb_len9: i64 = pb_had9;
+    let pb_had10: i64 = m.ff.len;
+    var pb_len10: i64 = pb_had10;
+    let pb_had11: i64 = m.gg.len;
+    var pb_len11: i64 = pb_had11;
+    let pb_had12: i64 = m.hh.len;
+    var pb_len12: i64 = pb_had12;
+    let pb_had13: i64 = m.jj.len;
+    var pb_len13: i64 = pb_had13;
+    let pb_had14: i64 = m.bb.len;
+    var pb_len14: i64 = pb_had14;
+    let pb_had15: i64 = m.sf.len;
+    var pb_len15: i64 = pb_had15;
+    let pb_had16: i64 = m.sd.len;
+    var pb_len16: i64 = pb_had16;
+    let pb_had17: i64 = m.se.len;
+    var pb_len17: i64 = pb_had17;
+    let pb_had18: i64 = m.sm.len;
+    var pb_len18: i64 = pb_had18;
+    let pb_had19: i64 = m.dur.len;
+    var pb_len19: i64 = pb_had19;
+    let pb_had20: i64 = m.self_.len;
+    var pb_len20: i64 = pb_had20;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -243,7 +265,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SsEntry_entries, m.ss, pb_len1);
+            pb_reserve(Maps_SsEntry_entries, m.ss, pb_len1, pb_had1);
             let pb_e .= pb_run(Maps_SsEntry_entries, m.ss)[pb_len1];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -252,12 +274,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SsEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len1 = Maps_SsEntry_place(m.ss, pb_len1);
+            Maps_SsEntry_place(pb_e);
+            pb_len1++;
         } else if tag == 18 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SbEntry_entries, m.sb, pb_len2);
+            pb_reserve(Maps_SbEntry_entries, m.sb, pb_len2, pb_had2);
             let pb_e .= pb_run(Maps_SbEntry_entries, m.sb)[pb_len2];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -266,12 +289,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SbEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len2 = Maps_SbEntry_place(m.sb, pb_len2);
+            Maps_SbEntry_place(pb_e);
+            pb_len2++;
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SiEntry_entries, m.si, pb_len3);
+            pb_reserve(Maps_SiEntry_entries, m.si, pb_len3, pb_had3);
             let pb_e .= pb_run(Maps_SiEntry_entries, m.si)[pb_len3];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -280,12 +304,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SiEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len3 = Maps_SiEntry_place(m.si, pb_len3);
+            Maps_SiEntry_place(pb_e);
+            pb_len3++;
         } else if tag == 34 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_IsEntry_entries, m.is, pb_len4);
+            pb_reserve(Maps_IsEntry_entries, m.is, pb_len4, pb_had4);
             let pb_e .= pb_run(Maps_IsEntry_entries, m.is)[pb_len4];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -294,12 +319,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_IsEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len4 = Maps_IsEntry_place(m.is, pb_len4);
+            Maps_IsEntry_place(pb_e);
+            pb_len4++;
         } else if tag == 42 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_LlEntry_entries, m.ll, pb_len5);
+            pb_reserve(Maps_LlEntry_entries, m.ll, pb_len5, pb_had5);
             let pb_e .= pb_run(Maps_LlEntry_entries, m.ll)[pb_len5];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -308,12 +334,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_LlEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len5 = Maps_LlEntry_place(m.ll, pb_len5);
+            Maps_LlEntry_place(pb_e);
+            pb_len5++;
         } else if tag == 50 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_UuEntry_entries, m.uu, pb_len6);
+            pb_reserve(Maps_UuEntry_entries, m.uu, pb_len6, pb_had6);
             let pb_e .= pb_run(Maps_UuEntry_entries, m.uu)[pb_len6];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -322,12 +349,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_UuEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len6 = Maps_UuEntry_place(m.uu, pb_len6);
+            Maps_UuEntry_place(pb_e);
+            pb_len6++;
         } else if tag == 58 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_VvEntry_entries, m.vv, pb_len7);
+            pb_reserve(Maps_VvEntry_entries, m.vv, pb_len7, pb_had7);
             let pb_e .= pb_run(Maps_VvEntry_entries, m.vv)[pb_len7];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -336,12 +364,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_VvEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len7 = Maps_VvEntry_place(m.vv, pb_len7);
+            Maps_VvEntry_place(pb_e);
+            pb_len7++;
         } else if tag == 66 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_ZzEntry_entries, m.zz, pb_len8);
+            pb_reserve(Maps_ZzEntry_entries, m.zz, pb_len8, pb_had8);
             let pb_e .= pb_run(Maps_ZzEntry_entries, m.zz)[pb_len8];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -350,12 +379,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_ZzEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len8 = Maps_ZzEntry_place(m.zz, pb_len8);
+            Maps_ZzEntry_place(pb_e);
+            pb_len8++;
         } else if tag == 74 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_YyEntry_entries, m.yy, pb_len9);
+            pb_reserve(Maps_YyEntry_entries, m.yy, pb_len9, pb_had9);
             let pb_e .= pb_run(Maps_YyEntry_entries, m.yy)[pb_len9];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -364,12 +394,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_YyEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len9 = Maps_YyEntry_place(m.yy, pb_len9);
+            Maps_YyEntry_place(pb_e);
+            pb_len9++;
         } else if tag == 82 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_FfEntry_entries, m.ff, pb_len10);
+            pb_reserve(Maps_FfEntry_entries, m.ff, pb_len10, pb_had10);
             let pb_e .= pb_run(Maps_FfEntry_entries, m.ff)[pb_len10];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -378,12 +409,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_FfEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len10 = Maps_FfEntry_place(m.ff, pb_len10);
+            Maps_FfEntry_place(pb_e);
+            pb_len10++;
         } else if tag == 90 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_GgEntry_entries, m.gg, pb_len11);
+            pb_reserve(Maps_GgEntry_entries, m.gg, pb_len11, pb_had11);
             let pb_e .= pb_run(Maps_GgEntry_entries, m.gg)[pb_len11];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -392,12 +424,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_GgEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len11 = Maps_GgEntry_place(m.gg, pb_len11);
+            Maps_GgEntry_place(pb_e);
+            pb_len11++;
         } else if tag == 98 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_HhEntry_entries, m.hh, pb_len12);
+            pb_reserve(Maps_HhEntry_entries, m.hh, pb_len12, pb_had12);
             let pb_e .= pb_run(Maps_HhEntry_entries, m.hh)[pb_len12];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -406,12 +439,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_HhEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len12 = Maps_HhEntry_place(m.hh, pb_len12);
+            Maps_HhEntry_place(pb_e);
+            pb_len12++;
         } else if tag == 106 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_JjEntry_entries, m.jj, pb_len13);
+            pb_reserve(Maps_JjEntry_entries, m.jj, pb_len13, pb_had13);
             let pb_e .= pb_run(Maps_JjEntry_entries, m.jj)[pb_len13];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -420,12 +454,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_JjEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len13 = Maps_JjEntry_place(m.jj, pb_len13);
+            Maps_JjEntry_place(pb_e);
+            pb_len13++;
         } else if tag == 114 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_BbEntry_entries, m.bb, pb_len14);
+            pb_reserve(Maps_BbEntry_entries, m.bb, pb_len14, pb_had14);
             let pb_e .= pb_run(Maps_BbEntry_entries, m.bb)[pb_len14];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -434,12 +469,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_BbEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len14 = Maps_BbEntry_place(m.bb, pb_len14);
+            Maps_BbEntry_place(pb_e);
+            pb_len14++;
         } else if tag == 122 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SfEntry_entries, m.sf, pb_len15);
+            pb_reserve(Maps_SfEntry_entries, m.sf, pb_len15, pb_had15);
             let pb_e .= pb_run(Maps_SfEntry_entries, m.sf)[pb_len15];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -448,12 +484,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SfEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len15 = Maps_SfEntry_place(m.sf, pb_len15);
+            Maps_SfEntry_place(pb_e);
+            pb_len15++;
         } else if tag == 130 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SdEntry_entries, m.sd, pb_len16);
+            pb_reserve(Maps_SdEntry_entries, m.sd, pb_len16, pb_had16);
             let pb_e .= pb_run(Maps_SdEntry_entries, m.sd)[pb_len16];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -462,12 +499,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SdEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len16 = Maps_SdEntry_place(m.sd, pb_len16);
+            Maps_SdEntry_place(pb_e);
+            pb_len16++;
         } else if tag == 138 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SeEntry_entries, m.se, pb_len17);
+            pb_reserve(Maps_SeEntry_entries, m.se, pb_len17, pb_had17);
             let pb_e .= pb_run(Maps_SeEntry_entries, m.se)[pb_len17];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -476,12 +514,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SeEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len17 = Maps_SeEntry_place(m.se, pb_len17);
+            Maps_SeEntry_place(pb_e);
+            pb_len17++;
         } else if tag == 146 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SmEntry_entries, m.sm, pb_len18);
+            pb_reserve(Maps_SmEntry_entries, m.sm, pb_len18, pb_had18);
             let pb_e .= pb_run(Maps_SmEntry_entries, m.sm)[pb_len18];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -490,12 +529,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SmEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len18 = Maps_SmEntry_place(m.sm, pb_len18);
+            Maps_SmEntry_place(pb_e);
+            pb_len18++;
         } else if tag == 154 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_DurEntry_entries, m.dur, pb_len19);
+            pb_reserve(Maps_DurEntry_entries, m.dur, pb_len19, pb_had19);
             let pb_e .= pb_run(Maps_DurEntry_entries, m.dur)[pb_len19];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -504,12 +544,13 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_DurEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len19 = Maps_DurEntry_place(m.dur, pb_len19);
+            Maps_DurEntry_place(pb_e);
+            pb_len19++;
         } else if tag == 162 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Maps_SelfEntry_entries, m.self_, pb_len20);
+            pb_reserve(Maps_SelfEntry_entries, m.self_, pb_len20, pb_had20);
             let pb_e .= pb_run(Maps_SelfEntry_entries, m.self_)[pb_len20];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -518,7 +559,8 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             if r.err != PB_OK { Maps_SelfEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len20 = Maps_SelfEntry_place(m.self_, pb_len20);
+            Maps_SelfEntry_place(pb_e);
+            pb_len20++;
         } else if tag == 168 {
             m.after = pb_u64_to_int32(pb_read_varint(r));
         } else {
@@ -553,6 +595,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
 fn Maps_decode(buf: const u8[:], m: Maps&) -> i32 {
     var r = pb_reader(buf);
     Maps_decode_from(r, m);
+    if r.err == PB_OK { Maps_fold_maps(m); }
     return r.err;
 }
 
@@ -866,6 +909,33 @@ recursive fn Maps_copy(dst: Maps&, src: Maps&) {
     }
     dst.after = src.after;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+recursive fn Maps_fold_maps(m: Maps&) {
+    m.ss = Maps_SsEntry_fold(m.ss);
+    m.sb = Maps_SbEntry_fold(m.sb);
+    m.si = Maps_SiEntry_fold(m.si);
+    m.is = Maps_IsEntry_fold(m.is);
+    m.ll = Maps_LlEntry_fold(m.ll);
+    m.uu = Maps_UuEntry_fold(m.uu);
+    m.vv = Maps_VvEntry_fold(m.vv);
+    m.zz = Maps_ZzEntry_fold(m.zz);
+    m.yy = Maps_YyEntry_fold(m.yy);
+    m.ff = Maps_FfEntry_fold(m.ff);
+    m.gg = Maps_GgEntry_fold(m.gg);
+    m.hh = Maps_HhEntry_fold(m.hh);
+    m.jj = Maps_JjEntry_fold(m.jj);
+    m.bb = Maps_BbEntry_fold(m.bb);
+    m.sf = Maps_SfEntry_fold(m.sf);
+    m.sd = Maps_SdEntry_fold(m.sd);
+    m.se = Maps_SeEntry_fold(m.se);
+    m.sm = Maps_SmEntry_fold(m.sm);
+    m.dur = Maps_DurEntry_fold(m.dur);
+    m.self_ = Maps_SelfEntry_fold(m.self_);
+    for pb_i in m.self_.len { Maps_SelfEntry_fold_maps(pb_run(Maps_SelfEntry_entries, m.self_)[pb_i]); }
 }
 
 // The entries of ss, in insertion order: its .len is their number, and
@@ -1730,18 +1800,50 @@ fn Maps_SsEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SsEntry& {
     return pb_run(Maps_SsEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SsEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SsEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SsEntry_place(pb_e: Maps_SsEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SsEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SsEntry_clear(pb_run(Maps_SsEntry_entries, s)[pb_i]);
-    pb_run(Maps_SsEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SsEntry_entries, s)[used] = Maps_SsEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SsEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SsEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SsEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SsEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SsEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SsEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SbEntry
@@ -1860,18 +1962,50 @@ fn Maps_SbEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SbEntry& {
     return pb_run(Maps_SbEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SbEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SbEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SbEntry_place(pb_e: Maps_SbEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SbEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SbEntry_clear(pb_run(Maps_SbEntry_entries, s)[pb_i]);
-    pb_run(Maps_SbEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SbEntry_entries, s)[used] = Maps_SbEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SbEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SbEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SbEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SbEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SbEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SbEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SiEntry
@@ -1981,18 +2115,50 @@ fn Maps_SiEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SiEntry& {
     return pb_run(Maps_SiEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SiEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SiEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SiEntry_place(pb_e: Maps_SiEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SiEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SiEntry_clear(pb_run(Maps_SiEntry_entries, s)[pb_i]);
-    pb_run(Maps_SiEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SiEntry_entries, s)[used] = Maps_SiEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SiEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SiEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SiEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SiEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SiEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SiEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.IsEntry
@@ -2102,18 +2268,50 @@ fn Maps_IsEntry_slot(s: pb_Span&, k: i32) -> Maps_IsEntry& {
     return pb_run(Maps_IsEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_IsEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_IsEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_IsEntry_place(pb_e: Maps_IsEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_IsEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_IsEntry_clear(pb_run(Maps_IsEntry_entries, s)[pb_i]);
-    pb_run(Maps_IsEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_IsEntry_entries, s)[used] = Maps_IsEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_IsEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_IsEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_IsEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_IsEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_IsEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_IsEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.LlEntry
@@ -2214,18 +2412,50 @@ fn Maps_LlEntry_slot(s: pb_Span&, k: i64) -> Maps_LlEntry& {
     return pb_run(Maps_LlEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_LlEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_LlEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_LlEntry_place(pb_e: Maps_LlEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_LlEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_LlEntry_clear(pb_run(Maps_LlEntry_entries, s)[pb_i]);
-    pb_run(Maps_LlEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_LlEntry_entries, s)[used] = Maps_LlEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_LlEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_LlEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_LlEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_LlEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_LlEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_LlEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.UuEntry
@@ -2326,18 +2556,50 @@ fn Maps_UuEntry_slot(s: pb_Span&, k: u32) -> Maps_UuEntry& {
     return pb_run(Maps_UuEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_UuEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_UuEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_UuEntry_place(pb_e: Maps_UuEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_UuEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_UuEntry_clear(pb_run(Maps_UuEntry_entries, s)[pb_i]);
-    pb_run(Maps_UuEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_UuEntry_entries, s)[used] = Maps_UuEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_UuEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_UuEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_UuEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_UuEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_UuEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_UuEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.VvEntry
@@ -2438,18 +2700,50 @@ fn Maps_VvEntry_slot(s: pb_Span&, k: u64) -> Maps_VvEntry& {
     return pb_run(Maps_VvEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_VvEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_VvEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_VvEntry_place(pb_e: Maps_VvEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_VvEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_VvEntry_clear(pb_run(Maps_VvEntry_entries, s)[pb_i]);
-    pb_run(Maps_VvEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_VvEntry_entries, s)[used] = Maps_VvEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_VvEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_VvEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_VvEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_VvEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_VvEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_VvEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.ZzEntry
@@ -2550,18 +2844,50 @@ fn Maps_ZzEntry_slot(s: pb_Span&, k: i32) -> Maps_ZzEntry& {
     return pb_run(Maps_ZzEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_ZzEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_ZzEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_ZzEntry_place(pb_e: Maps_ZzEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_ZzEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_ZzEntry_clear(pb_run(Maps_ZzEntry_entries, s)[pb_i]);
-    pb_run(Maps_ZzEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_ZzEntry_entries, s)[used] = Maps_ZzEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_ZzEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_ZzEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_ZzEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_ZzEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_ZzEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_ZzEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.YyEntry
@@ -2662,18 +2988,50 @@ fn Maps_YyEntry_slot(s: pb_Span&, k: i64) -> Maps_YyEntry& {
     return pb_run(Maps_YyEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_YyEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_YyEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_YyEntry_place(pb_e: Maps_YyEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_YyEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_YyEntry_clear(pb_run(Maps_YyEntry_entries, s)[pb_i]);
-    pb_run(Maps_YyEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_YyEntry_entries, s)[used] = Maps_YyEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_YyEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_YyEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_YyEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_YyEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_YyEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_YyEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.FfEntry
@@ -2774,18 +3132,50 @@ fn Maps_FfEntry_slot(s: pb_Span&, k: u32) -> Maps_FfEntry& {
     return pb_run(Maps_FfEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_FfEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_FfEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_FfEntry_place(pb_e: Maps_FfEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_FfEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_FfEntry_clear(pb_run(Maps_FfEntry_entries, s)[pb_i]);
-    pb_run(Maps_FfEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_FfEntry_entries, s)[used] = Maps_FfEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_FfEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_FfEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_FfEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_FfEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_FfEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_FfEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.GgEntry
@@ -2886,18 +3276,50 @@ fn Maps_GgEntry_slot(s: pb_Span&, k: u64) -> Maps_GgEntry& {
     return pb_run(Maps_GgEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_GgEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_GgEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_GgEntry_place(pb_e: Maps_GgEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_GgEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_GgEntry_clear(pb_run(Maps_GgEntry_entries, s)[pb_i]);
-    pb_run(Maps_GgEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_GgEntry_entries, s)[used] = Maps_GgEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_GgEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_GgEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_GgEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_GgEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_GgEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_GgEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.HhEntry
@@ -2998,18 +3420,50 @@ fn Maps_HhEntry_slot(s: pb_Span&, k: i32) -> Maps_HhEntry& {
     return pb_run(Maps_HhEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_HhEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_HhEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_HhEntry_place(pb_e: Maps_HhEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_HhEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_HhEntry_clear(pb_run(Maps_HhEntry_entries, s)[pb_i]);
-    pb_run(Maps_HhEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_HhEntry_entries, s)[used] = Maps_HhEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_HhEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_HhEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_HhEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_HhEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_HhEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_HhEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.JjEntry
@@ -3110,18 +3564,50 @@ fn Maps_JjEntry_slot(s: pb_Span&, k: i64) -> Maps_JjEntry& {
     return pb_run(Maps_JjEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_JjEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_JjEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_JjEntry_place(pb_e: Maps_JjEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_JjEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_JjEntry_clear(pb_run(Maps_JjEntry_entries, s)[pb_i]);
-    pb_run(Maps_JjEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_JjEntry_entries, s)[used] = Maps_JjEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_JjEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_JjEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_JjEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_JjEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_JjEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_JjEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.BbEntry
@@ -3222,18 +3708,50 @@ fn Maps_BbEntry_slot(s: pb_Span&, k: bool) -> Maps_BbEntry& {
     return pb_run(Maps_BbEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_BbEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_BbEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_BbEntry_place(pb_e: Maps_BbEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_BbEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_BbEntry_clear(pb_run(Maps_BbEntry_entries, s)[pb_i]);
-    pb_run(Maps_BbEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_BbEntry_entries, s)[used] = Maps_BbEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_BbEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_BbEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_bool_to_u64(pb_r[pb_i].key), at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_BbEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_BbEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_BbEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_BbEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SfEntry
@@ -3343,18 +3861,50 @@ fn Maps_SfEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SfEntry& {
     return pb_run(Maps_SfEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SfEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SfEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SfEntry_place(pb_e: Maps_SfEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SfEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SfEntry_clear(pb_run(Maps_SfEntry_entries, s)[pb_i]);
-    pb_run(Maps_SfEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SfEntry_entries, s)[used] = Maps_SfEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SfEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SfEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SfEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SfEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SfEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SfEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SdEntry
@@ -3464,18 +4014,50 @@ fn Maps_SdEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SdEntry& {
     return pb_run(Maps_SdEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SdEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SdEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SdEntry_place(pb_e: Maps_SdEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SdEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SdEntry_clear(pb_run(Maps_SdEntry_entries, s)[pb_i]);
-    pb_run(Maps_SdEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SdEntry_entries, s)[used] = Maps_SdEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SdEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SdEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SdEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SdEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SdEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SdEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SeEntry
@@ -3585,18 +4167,50 @@ fn Maps_SeEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SeEntry& {
     return pb_run(Maps_SeEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SeEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SeEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SeEntry_place(pb_e: Maps_SeEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SeEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SeEntry_clear(pb_run(Maps_SeEntry_entries, s)[pb_i]);
-    pb_run(Maps_SeEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SeEntry_entries, s)[used] = Maps_SeEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SeEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SeEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SeEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SeEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SeEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SeEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SmEntry
@@ -3746,19 +4360,51 @@ fn Maps_SmEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SmEntry& {
     return pb_run(Maps_SmEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SmEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SmEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SmEntry_place(pb_e: Maps_SmEntry&) {
     Maps_SmEntry_mutable_value(pb_e);
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SmEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SmEntry_clear(pb_run(Maps_SmEntry_entries, s)[pb_i]);
-    pb_run(Maps_SmEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SmEntry_entries, s)[used] = Maps_SmEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SmEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SmEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SmEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SmEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SmEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SmEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.DurEntry
@@ -3899,19 +4545,51 @@ fn Maps_DurEntry_slot(s: pb_Span&, k: i32) -> Maps_DurEntry& {
     return pb_run(Maps_DurEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_DurEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_DurEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_DurEntry_place(pb_e: Maps_DurEntry&) {
     Maps_DurEntry_mutable_value(pb_e);
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_DurEntry_find(s, used, pb_e.key);
-    if pb_i < 0 { return used + 1; }
-    Maps_DurEntry_clear(pb_run(Maps_DurEntry_entries, s)[pb_i]);
-    pb_run(Maps_DurEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_DurEntry_entries, s)[used] = Maps_DurEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_DurEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_DurEntry_entries, s);
+    var pb_keys: pb_NumKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_NumKey { key: pb_r[pb_i].key as! u64, at: pb_i as! u32 }); }
+    pb_sort_num_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_num_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_DurEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_DurEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_DurEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_DurEntry_entries, s, pb_kept);
 }
 
 // message maps.Maps.SelfEntry
@@ -3960,6 +4638,7 @@ recursive fn Maps_SelfEntry_decode_from(r: pb_Reader&, m: Maps_SelfEntry&) {
 fn Maps_SelfEntry_decode(buf: const u8[:], m: Maps_SelfEntry&) -> i32 {
     var r = pb_reader(buf);
     Maps_SelfEntry_decode_from(r, m);
+    if r.err == PB_OK { Maps_SelfEntry_fold_maps(m); }
     return r.err;
 }
 
@@ -4002,6 +4681,14 @@ recursive fn Maps_SelfEntry_copy(dst: Maps_SelfEntry&, src: Maps_SelfEntry&) {
     let pb_f2 = src.value.m;
     if pb_f2 { Maps_copy(Maps_SelfEntry_mutable_value(dst), pb_f2); }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+recursive fn Maps_SelfEntry_fold_maps(m: Maps_SelfEntry&) {
+    let pb_f2 = m.value.m;
+    if pb_f2 { Maps_fold_maps(pb_f2); }
 }
 
 // The contents of key, in pb_bytes: valid until it is next set or m
@@ -4061,17 +4748,559 @@ fn Maps_SelfEntry_slot(s: pb_Span&, k: const u8[:]) -> Maps_SelfEntry& {
     return pb_run(Maps_SelfEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Maps_SelfEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Maps_SelfEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Maps_SelfEntry_place(pb_e: Maps_SelfEntry&) {
     Maps_SelfEntry_mutable_value(pb_e);
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Maps_SelfEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Maps_SelfEntry_clear(pb_run(Maps_SelfEntry_entries, s)[pb_i]);
-    pb_run(Maps_SelfEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Maps_SelfEntry_entries, s)[used] = Maps_SelfEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Maps_SelfEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Maps_SelfEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Maps_SelfEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Maps_SelfEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Maps_SelfEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Maps_SelfEntry_entries, s, pb_kept);
+}
+
+// message maps.Holder
+enum Holder_pick {
+    pb_none,
+    member { v: Maps_Ref },
+}
+
+struct Holder {
+    one: Maps_Ref,
+    many: pb_Span,
+    imported: google_protobuf::Struct_Ref,
+    pick: Holder_pick = Holder_pick.pb_none,
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
+
+// A link to a Holder in Holder_pool, for sub-message fields.
+struct Holder_Ref { m: Holder&<u32 in Holder_pool>? }
+reusable var Holder_pool: Holder[>..] = [];
+reusable[] var Holder_links: Holder_Ref[>..] = [];
+
+// Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
+fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
+    var unknown_len: i64 = m.pb_unknown.len;
+    let pb_had2: i64 = m.many.len;
+    var pb_len2: i64 = pb_had2;
+    while r.pos < r.end {
+        let start = r.pos;
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { break; }
+        if tag == 10 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Maps_decode_from(r, Holder_mutable_one(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else if tag == 18 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            pb_reserve(Maps_links, m.many, pb_len2, pb_had2);
+            let pb_sub .= Maps_pool.alloc_ref(Maps { .. });
+            pb_run(Maps_links, m.many)[pb_len2].m .= pb_sub;
+            pb_len2++;
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Maps_decode_from(r, pb_sub);
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else if tag == 26 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Maps_decode_from(r, Holder_mutable_member(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else if tag == 34 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            google_protobuf::Struct_decode_from(r, Holder_mutable_imported(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
+    }
+    m.many = pb_trim(Maps_links, m.many, pb_len2);
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Holder_decode(buf: const u8[:], m: Holder&) -> i32 {
+    var r = pb_reader(buf);
+    Holder_decode_from(r, m);
+    if r.err == PB_OK { Holder_fold_maps(m); }
+    return r.err;
+}
+
+// Appends m's wire encoding, Holder_size_of(m) bytes, to out.
+fn Holder_encode(m: Holder&, out: u8[>..]&) {
+    let pb_f1 = m.one.m;
+    if pb_f1 {
+        pb_write_varint(out, 10);
+        pb_write_varint(out, Maps_size_of(pb_f1) as! u64);
+        Maps_encode(pb_f1, out);
+    }
+    for pb_ref in pb_run(Maps_links, m.many) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        pb_write_varint(out, 18);
+        pb_write_varint(out, Maps_size_of(pb_l) as! u64);
+        Maps_encode(pb_l, out);
+    }
+    match m.pick {
+        member pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l {
+                pb_write_varint(out, 26);
+                pb_write_varint(out, Maps_size_of(pb_l) as! u64);
+                Maps_encode(pb_l, out);
+            }
+        },
+        _ => {},
+    }
+    let pb_f4 = m.imported.m;
+    if pb_f4 {
+        pb_write_varint(out, 34);
+        pb_write_varint(out, google_protobuf::Struct_size_of(pb_f4) as! u64);
+        google_protobuf::Struct_encode(pb_f4, out);
+    }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
+}
+
+// The size of m's wire encoding, in bytes.
+fn Holder_size_of(m: Holder&) -> i64 {
+    var n: i64 = 0;
+    let pb_f1 = m.one.m;
+    if pb_f1 { n += 1 + pb_len_size(Maps_size_of(pb_f1)); }
+    for pb_ref in pb_run(Maps_links, m.many) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        n += 1 + pb_len_size(Maps_size_of(pb_l));
+    }
+    match m.pick {
+        member pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { n += 1 + pb_len_size(Maps_size_of(pb_l)); }
+        },
+        _ => {},
+    }
+    let pb_f4 = m.imported.m;
+    if pb_f4 { n += 1 + pb_len_size(google_protobuf::Struct_size_of(pb_f4)); }
+    n += m.pb_unknown.len;
+    return n;
+}
+
+// Frees what m owns and resets it to the empty message.
+fn Holder_clear(m: Holder&) {
+    Holder_clear_one(m);
+    Holder_clear_many(m);
+    Holder_clear_imported(m);
+    Holder_clear_pick(m);
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Holder_copy(dst: Holder&, src: Holder&) {
+    if dst .== src { return; }
+    Holder_clear(dst);
+    let pb_f1 = src.one.m;
+    if pb_f1 { Maps_copy(Holder_mutable_one(dst), pb_f1); }
+    dst.many = pb_resize(Maps_links, dst.many, src.many.len);
+    for pb_i in src.many.len {
+        let pb_l = pb_run(Maps_links, src.many)[pb_i].m;
+        guard pb_l else { continue; }
+        let pb_c .= Maps_pool.alloc_ref(Maps { .. });
+        pb_run(Maps_links, dst.many)[pb_i].m .= pb_c;
+        Maps_copy(pb_c, pb_l);
+    }
+    let pb_f4 = src.imported.m;
+    if pb_f4 { google_protobuf::Struct_copy(Holder_mutable_imported(dst), pb_f4); }
+    match src.pick {
+        member pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { Maps_copy(Holder_mutable_member(dst), pb_l); }
+        },
+        _ => {},
+    }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+fn Holder_fold_maps(m: Holder&) {
+    let pb_f1 = m.one.m;
+    if pb_f1 { Maps_fold_maps(pb_f1); }
+    for pb_ref in pb_run(Maps_links, m.many) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        Maps_fold_maps(pb_l);
+    }
+    match m.pick {
+        member pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { Maps_fold_maps(pb_l); }
+        },
+        _ => {},
+    }
+    let pb_f4 = m.imported.m;
+    if pb_f4 { google_protobuf::Struct_fold_maps(pb_f4); }
+}
+
+// Frees what oneof pick holds, and sets no member.
+fn Holder_clear_pick(m: Holder&) {
+    match m.pick {
+        member pb_p => {
+            let pb_sub = pb_p.v.m;
+            if pb_sub {
+                Maps_clear(pb_sub);
+                Maps_pool.free(Maps_pool.index_of(pb_sub));
+            }
+        },
+        _ => {},
+    }
+    m.pick = Holder_pick.pb_none;
+}
+
+// The sub-message one, or null if it is not set. Valid until it or m is
+// cleared.
+fn Holder_one(m: Holder&) -> Maps&? { return m.one.m; }
+
+// The sub-message one, set to an empty one first if it is not set.
+fn Holder_mutable_one(m: Holder&) -> Maps& {
+    let pb_sub = m.one.m;
+    if pb_sub { return pb_sub; }
+    let pb_new .= Maps_pool.alloc_ref(Maps { .. });
+    m.one.m .= pb_new;
+    return pb_new;
+}
+
+fn Holder_has_one(m: Holder&) -> bool { return m.one.m != null; }
+
+// Frees the sub-message one and everything it owns.
+fn Holder_clear_one(m: Holder&) {
+    let pb_sub = m.one.m;
+    guard pb_sub else { return; }
+    Maps_clear(pb_sub);
+    Maps_pool.free(Maps_pool.index_of(pb_sub));
+    m.one.m .= null;
+}
+
+// The links of many, in Maps_links: its .len is the number of messages.
+fn Holder_many(m: Holder&) -> Maps_Ref[:] { return pb_run(Maps_links, m.many); }
+
+// Message i of many. Valid until it or m is cleared.
+fn Holder_many_at(m: Holder&, i: i64) -> Maps& {
+    let pb_l = pb_run(Maps_links, m.many)[i].m;
+    assert(pb_l);
+    return pb_l;
+}
+
+// Adds an empty message to many and returns it.
+fn Holder_add_many(m: Holder&) -> Maps& {
+    let pb_i: i64 = m.many.len;
+    m.many = pb_resize(Maps_links, m.many, pb_i + 1);
+    let pb_new .= Maps_pool.alloc_ref(Maps { .. });
+    pb_run(Maps_links, m.many)[pb_i].m .= pb_new;
+    return pb_new;
+}
+
+// Frees the messages of many and everything they own.
+fn Holder_clear_many(m: Holder&) {
+    for pb_ref in pb_run(Maps_links, m.many) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        Maps_clear(pb_l);
+        Maps_pool.free(Maps_pool.index_of(pb_l));
+    }
+    m.many = pb_resize(Maps_links, m.many, 0);
+}
+
+// The sub-message member, or null if it is not the member set. Valid until
+// oneof pick changes or m is cleared.
+fn Holder_member(m: Holder&) -> Maps&? {
+    match m.pick {
+        member pb_p => { return pb_p.v.m; },
+        _ => {},
+    }
+    return null;
+}
+
+// The sub-message member, first made the member set, and empty, if it is not.
+fn Holder_mutable_member(m: Holder&) -> Maps& {
+    match m.pick {
+        member pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { return pb_l; }
+        },
+        _ => {},
+    }
+    Holder_clear_pick(m);
+    let pb_new .= Maps_pool.alloc_ref(Maps { .. });
+    m.pick = Holder_pick.member { v: Maps_Ref { m: pb_new } };
+    return pb_new;
+}
+
+fn Holder_has_member(m: Holder&) -> bool { return match m.pick { member => true, _ => false }; }
+
+// Clears oneof pick if member is the member set.
+fn Holder_clear_member(m: Holder&) { if Holder_has_member(m) { Holder_clear_pick(m); } }
+
+// The sub-message imported, or null if it is not set. Valid until it or m is
+// cleared.
+fn Holder_imported(m: Holder&) -> google_protobuf::Struct&? { return m.imported.m; }
+
+// The sub-message imported, set to an empty one first if it is not set.
+fn Holder_mutable_imported(m: Holder&) -> google_protobuf::Struct& {
+    let pb_sub = m.imported.m;
+    if pb_sub { return pb_sub; }
+    let pb_new .= google_protobuf::Struct_pool.alloc_ref(google_protobuf::Struct { .. });
+    m.imported.m .= pb_new;
+    return pb_new;
+}
+
+fn Holder_has_imported(m: Holder&) -> bool { return m.imported.m != null; }
+
+// Frees the sub-message imported and everything it owns.
+fn Holder_clear_imported(m: Holder&) {
+    let pb_sub = m.imported.m;
+    guard pb_sub else { return; }
+    google_protobuf::Struct_clear(pb_sub);
+    google_protobuf::Struct_pool.free(google_protobuf::Struct_pool.index_of(pb_sub));
+    m.imported.m .= null;
+}
+
+// message maps.NoMaps
+struct NoMaps {
+    sub: Sub_Ref,
+    more: pb_Span,
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
+
+// A link to a NoMaps in NoMaps_pool, for sub-message fields.
+struct NoMaps_Ref { m: NoMaps&<u32 in NoMaps_pool>? }
+reusable var NoMaps_pool: NoMaps[>..] = [];
+reusable[] var NoMaps_links: NoMaps_Ref[>..] = [];
+
+// Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
+recursive fn NoMaps_decode_from(r: pb_Reader&, m: NoMaps&) {
+    var unknown_len: i64 = m.pb_unknown.len;
+    let pb_had2: i64 = m.more.len;
+    var pb_len2: i64 = pb_had2;
+    while r.pos < r.end {
+        let start = r.pos;
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { break; }
+        if tag == 10 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Sub_decode_from(r, NoMaps_mutable_sub(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else if tag == 18 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            pb_reserve(NoMaps_links, m.more, pb_len2, pb_had2);
+            let pb_sub .= NoMaps_pool.alloc_ref(NoMaps { .. });
+            pb_run(NoMaps_links, m.more)[pb_len2].m .= pb_sub;
+            pb_len2++;
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            NoMaps_decode_from(r, pb_sub);
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
+    }
+    m.more = pb_trim(NoMaps_links, m.more, pb_len2);
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn NoMaps_decode(buf: const u8[:], m: NoMaps&) -> i32 {
+    var r = pb_reader(buf);
+    NoMaps_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, NoMaps_size_of(m) bytes, to out.
+recursive fn NoMaps_encode(m: NoMaps&, out: u8[>..]&) {
+    let pb_f1 = m.sub.m;
+    if pb_f1 {
+        pb_write_varint(out, 10);
+        pb_write_varint(out, Sub_size_of(pb_f1) as! u64);
+        Sub_encode(pb_f1, out);
+    }
+    for pb_ref in pb_run(NoMaps_links, m.more) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        pb_write_varint(out, 18);
+        pb_write_varint(out, NoMaps_size_of(pb_l) as! u64);
+        NoMaps_encode(pb_l, out);
+    }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
+}
+
+// The size of m's wire encoding, in bytes.
+recursive fn NoMaps_size_of(m: NoMaps&) -> i64 {
+    var n: i64 = 0;
+    let pb_f1 = m.sub.m;
+    if pb_f1 { n += 1 + pb_len_size(Sub_size_of(pb_f1)); }
+    for pb_ref in pb_run(NoMaps_links, m.more) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        n += 1 + pb_len_size(NoMaps_size_of(pb_l));
+    }
+    n += m.pb_unknown.len;
+    return n;
+}
+
+// Frees what m owns and resets it to the empty message.
+recursive fn NoMaps_clear(m: NoMaps&) {
+    NoMaps_clear_sub(m);
+    NoMaps_clear_more(m);
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn NoMaps_copy(dst: NoMaps&, src: NoMaps&) {
+    if dst .== src { return; }
+    NoMaps_clear(dst);
+    let pb_f1 = src.sub.m;
+    if pb_f1 { Sub_copy(NoMaps_mutable_sub(dst), pb_f1); }
+    dst.more = pb_resize(NoMaps_links, dst.more, src.more.len);
+    for pb_i in src.more.len {
+        let pb_l = pb_run(NoMaps_links, src.more)[pb_i].m;
+        guard pb_l else { continue; }
+        let pb_c .= NoMaps_pool.alloc_ref(NoMaps { .. });
+        pb_run(NoMaps_links, dst.more)[pb_i].m .= pb_c;
+        NoMaps_copy(pb_c, pb_l);
+    }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// The sub-message sub, or null if it is not set. Valid until it or m is
+// cleared.
+fn NoMaps_sub(m: NoMaps&) -> Sub&? { return m.sub.m; }
+
+// The sub-message sub, set to an empty one first if it is not set.
+fn NoMaps_mutable_sub(m: NoMaps&) -> Sub& {
+    let pb_sub = m.sub.m;
+    if pb_sub { return pb_sub; }
+    let pb_new .= Sub_pool.alloc_ref(Sub { .. });
+    m.sub.m .= pb_new;
+    return pb_new;
+}
+
+fn NoMaps_has_sub(m: NoMaps&) -> bool { return m.sub.m != null; }
+
+// Frees the sub-message sub and everything it owns.
+recursive fn NoMaps_clear_sub(m: NoMaps&) {
+    let pb_sub = m.sub.m;
+    guard pb_sub else { return; }
+    Sub_clear(pb_sub);
+    Sub_pool.free(Sub_pool.index_of(pb_sub));
+    m.sub.m .= null;
+}
+
+// The links of more, in NoMaps_links: its .len is the number of messages.
+fn NoMaps_more(m: NoMaps&) -> NoMaps_Ref[:] { return pb_run(NoMaps_links, m.more); }
+
+// Message i of more. Valid until it or m is cleared.
+fn NoMaps_more_at(m: NoMaps&, i: i64) -> NoMaps& {
+    let pb_l = pb_run(NoMaps_links, m.more)[i].m;
+    assert(pb_l);
+    return pb_l;
+}
+
+// Adds an empty message to more and returns it.
+fn NoMaps_add_more(m: NoMaps&) -> NoMaps& {
+    let pb_i: i64 = m.more.len;
+    m.more = pb_resize(NoMaps_links, m.more, pb_i + 1);
+    let pb_new .= NoMaps_pool.alloc_ref(NoMaps { .. });
+    pb_run(NoMaps_links, m.more)[pb_i].m .= pb_new;
+    return pb_new;
+}
+
+// Frees the messages of more and everything they own.
+recursive fn NoMaps_clear_more(m: NoMaps&) {
+    for pb_ref in pb_run(NoMaps_links, m.more) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        NoMaps_clear(pb_l);
+        NoMaps_pool.free(NoMaps_pool.index_of(pb_l));
+    }
+    m.more = pb_resize(NoMaps_links, m.more, 0);
 }

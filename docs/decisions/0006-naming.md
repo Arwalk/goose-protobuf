@@ -160,7 +160,8 @@ the reserved list, in `generator/src/emit.zig`:
   `<M>_<f>_put(m, k)`, which returns the value, added empty if there is none;
   `<M>_<f>_remove(m, k)`, true if it removed one; and `<M>_clear_<f>`. Its entry
   message `<M>_<F>Entry` keeps a message's functions, and adds the generated
-  `_entries`, `_find`, `_slot` and `_place`.
+  `_entries`, `_find`, `_slot`, `_place` and `_fold`. `<M>_fold_maps` (0008) is on
+  any message that can reach a map; the name is claimed for every message.
 
 A generated file imports the files whose types its stored fields use, as
 `import a.b_c;`, sorted, and writes their names as `ns::Name` (gpb-8qn.9).

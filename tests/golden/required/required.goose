@@ -71,8 +71,10 @@ reusable[] var Uses_links: Uses_Ref[>..] = [];
 // unknown fields.
 fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len2: i64 = m.many.len;
-    var pb_len3: i64 = m.by_name.len;
+    let pb_had2: i64 = m.many.len;
+    var pb_len2: i64 = pb_had2;
+    let pb_had3: i64 = m.by_name.len;
+    var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -92,7 +94,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(req::Inner_links, m.many, pb_len2);
+            pb_reserve(req::Inner_links, m.many, pb_len2, pb_had2);
             let pb_sub .= req::Inner_pool.alloc_ref(req::Inner { .. });
             pb_run(req::Inner_links, m.many)[pb_len2].m .= pb_sub;
             pb_len2++;
@@ -107,7 +109,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Uses_ByNameEntry_entries, m.by_name, pb_len3);
+            pb_reserve(Uses_ByNameEntry_entries, m.by_name, pb_len3, pb_had3);
             let pb_e .= pb_run(Uses_ByNameEntry_entries, m.by_name)[pb_len3];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -116,7 +118,8 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             if r.err != PB_OK { Uses_ByNameEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len3 = Uses_ByNameEntry_place(m.by_name, pb_len3);
+            Uses_ByNameEntry_place(pb_e);
+            pb_len3++;
         } else if tag == 34 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
@@ -147,6 +150,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
 fn Uses_decode(buf: const u8[:], m: Uses&) -> i32 {
     var r = pb_reader(buf);
     Uses_decode_from(r, m);
+    if r.err == PB_OK { Uses_fold_maps(m); }
     if r.err == PB_OK && !Uses_is_initialized(m) { return PB_ERR_REQUIRED; }
     return r.err;
 }
@@ -280,6 +284,13 @@ fn Uses_is_initialized(m: Uses&) -> bool {
         _ => {},
     }
     return true;
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+fn Uses_fold_maps(m: Uses&) {
+    m.by_name = Uses_ByNameEntry_fold(m.by_name);
 }
 
 // Frees what oneof pick holds, and sets no member.
@@ -594,19 +605,51 @@ fn Uses_ByNameEntry_slot(s: pb_Span&, k: const u8[:]) -> Uses_ByNameEntry& {
     return pb_run(Uses_ByNameEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Uses_ByNameEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Uses_ByNameEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Uses_ByNameEntry_place(pb_e: Uses_ByNameEntry&) {
     Uses_ByNameEntry_mutable_value(pb_e);
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Uses_ByNameEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Uses_ByNameEntry_clear(pb_run(Uses_ByNameEntry_entries, s)[pb_i]);
-    pb_run(Uses_ByNameEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Uses_ByNameEntry_entries, s)[used] = Uses_ByNameEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Uses_ByNameEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Uses_ByNameEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Uses_ByNameEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Uses_ByNameEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Uses_ByNameEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Uses_ByNameEntry_entries, s, pb_kept);
 }
 
 // message holder.Plain
@@ -626,7 +669,8 @@ reusable[] var Plain_links: Plain_Ref[>..] = [];
 // unknown fields.
 recursive fn Plain_decode_from(r: pb_Reader&, m: Plain&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len2: i64 = m.more.len;
+    let pb_had2: i64 = m.more.len;
+    var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -646,7 +690,7 @@ recursive fn Plain_decode_from(r: pb_Reader&, m: Plain&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Plain_links, m.more, pb_len2);
+            pb_reserve(Plain_links, m.more, pb_len2, pb_had2);
             let pb_sub .= Plain_pool.alloc_ref(Plain { .. });
             pb_run(Plain_links, m.more)[pb_len2].m .= pb_sub;
             pb_len2++;

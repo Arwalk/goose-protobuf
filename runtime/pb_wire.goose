@@ -20,6 +20,8 @@
 // r.pos to r.end so every field loop stops, and returns 0. Nothing here
 // aborts on bad input. Writers append to a u8[>..] and cannot fail.
 
+import std;
+
 // ------------------------------------------------------------------ errors
 
 let PB_OK = 0;
@@ -293,19 +295,23 @@ fn pb_copy_run<T>(pool: T[>..]&, src: pb_Span) -> pb_Span {
 
 fn pb_bytes_copy(src: pb_Span) -> pb_Span { return pb_copy_run(pb_bytes, src); }
 
-// Appends v to run s of pool, of which the first `used` elements are in use.
-// The run grows by doubling, so a decode loop calls pb_trim(pool, s, used)
-// when it ends.
-fn pb_append<T>(pool: T[>..]&, s: pb_Span&, used: i64&, v: T) {
-    pb_reserve(pool, s, used);
+// Appends v to run s of pool, of which the first `used` elements are in use and
+// the first `had` were there when this decode loop began. A decode loop calls
+// pb_trim(pool, s, used) when it ends.
+fn pb_append<T>(pool: T[>..]&, s: pb_Span&, used: i64&, had: i64, v: T) {
+    pb_reserve(pool, s, used, had);
     let at: i64 = s.at;
     pool[at + used] = v;
     used++;
 }
 
-// Makes room in run s of pool for an element after the first `used`.
-fn pb_reserve<T>(pool: T[>..]&, s: pb_Span&, used: i64) {
-    if used == s.len { s = pb_resize(pool, s, used * 2 + 1); }
+// Makes room in run s of pool for an element after the first `used`. It doubles
+// what this decode loop added, not the run: growing writes a default in every new
+// slot, and a sub-message that repeats on the wire runs a loop per occurrence, so
+// doubling the run would cost its whole length each time, and one input could
+// make decoding quadratic.
+fn pb_reserve<T>(pool: T[>..]&, s: pb_Span&, used: i64, had: i64) {
+    if used == s.len { s = pb_resize(pool, s, used + (used - had) + 1); }
 }
 
 // Frees run s of pb_spans and every run of pb_bytes it holds; returns the
@@ -432,6 +438,47 @@ fn pb_utf8_valid(b: const u8[:]) -> bool {
         i += n + 1;
     }
     return true;
+}
+
+// --------------------------------------------------------------------- maps
+// Decoding appends a map's entries without looking keys up, which would be
+// quadratic, and M_decode folds repeated keys once, when all the input is read:
+// a sub-message may repeat on the wire, so doing it when a message ends would
+// repeat it. It sorts the keys with their positions, so equal ones are together
+// with the first occurrence first. Only grouping matters, not what order keys take. sort has
+// an O(n log n) worst case, so no input makes this slow; a hash would have to
+// defend against crafted collisions.
+
+// A key that fits a u64, and the position of its entry in the run.
+struct pb_NumKey { key: u64, at: u32 }
+
+// A string key, as a run of pb_bytes, and the position of its entry.
+struct pb_StrKey { key: pb_Span, at: u32 }
+
+fn pb_sort_num_keys(xs: pb_NumKey[:]) {
+    sort(xs) { a, b => if a.key != b.key { a.key < b.key } else { a.at < b.at } }
+}
+
+// Below 0, 0 or above 0 as a sorts before, with or after b, bytewise.
+fn pb_bytes_cmp(a: const u8[:], b: const u8[:]) -> i32 {
+    let n = if a.len < b.len { a.len } else { b.len };
+    for i in n {
+        if a[i] != b[i] { return if a[i] < b[i] { -1 } else { 1 }; }
+    }
+    return if a.len < b.len { -1 } else if a.len > b.len { 1 } else { 0 };
+}
+
+fn pb_sort_str_keys(xs: pb_StrKey[:]) {
+    sort(xs) { a, b =>
+        let c = pb_bytes_cmp(pb_run(pb_bytes, a.key), pb_run(pb_bytes, b.key));
+        if c != 0 { c < 0 } else { a.at < b.at }
+    }
+}
+
+fn pb_same_num_key(a: pb_NumKey, b: pb_NumKey) -> bool { return a.key == b.key; }
+
+fn pb_same_str_key(a: pb_StrKey, b: pb_StrKey) -> bool {
+    return pb_run(pb_bytes, a.key) == pb_run(pb_bytes, b.key);
 }
 
 // ----------------------------------------------------- skipping, unknowns

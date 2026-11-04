@@ -80,175 +80,190 @@ reusable[] var Packed_links: Packed_Ref[>..] = [];
 // unknown fields.
 fn Packed_decode_from(r: pb_Reader&, m: Packed&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.f_int32.len;
-    var pb_len2: i64 = m.f_int64.len;
-    var pb_len3: i64 = m.f_uint32.len;
-    var pb_len4: i64 = m.f_uint64.len;
-    var pb_len5: i64 = m.f_sint32.len;
-    var pb_len6: i64 = m.f_sint64.len;
-    var pb_len7: i64 = m.f_fixed32.len;
-    var pb_len8: i64 = m.f_fixed64.len;
-    var pb_len9: i64 = m.f_sfixed32.len;
-    var pb_len10: i64 = m.f_sfixed64.len;
-    var pb_len11: i64 = m.f_float.len;
-    var pb_len12: i64 = m.f_double.len;
-    var pb_len13: i64 = m.f_bool.len;
-    var pb_len14: i64 = m.f_enum.len;
-    var pb_len2000: i64 = m.far.len;
+    let pb_had1: i64 = m.f_int32.len;
+    var pb_len1: i64 = pb_had1;
+    let pb_had2: i64 = m.f_int64.len;
+    var pb_len2: i64 = pb_had2;
+    let pb_had3: i64 = m.f_uint32.len;
+    var pb_len3: i64 = pb_had3;
+    let pb_had4: i64 = m.f_uint64.len;
+    var pb_len4: i64 = pb_had4;
+    let pb_had5: i64 = m.f_sint32.len;
+    var pb_len5: i64 = pb_had5;
+    let pb_had6: i64 = m.f_sint64.len;
+    var pb_len6: i64 = pb_had6;
+    let pb_had7: i64 = m.f_fixed32.len;
+    var pb_len7: i64 = pb_had7;
+    let pb_had8: i64 = m.f_fixed64.len;
+    var pb_len8: i64 = pb_had8;
+    let pb_had9: i64 = m.f_sfixed32.len;
+    var pb_len9: i64 = pb_had9;
+    let pb_had10: i64 = m.f_sfixed64.len;
+    var pb_len10: i64 = pb_had10;
+    let pb_had11: i64 = m.f_float.len;
+    var pb_len11: i64 = pb_had11;
+    let pb_had12: i64 = m.f_double.len;
+    var pb_len12: i64 = pb_had12;
+    let pb_had13: i64 = m.f_bool.len;
+    var pb_len13: i64 = pb_had13;
+    let pb_had14: i64 = m.f_enum.len;
+    var pb_len14: i64 = pb_had14;
+    let pb_had2000: i64 = m.far.len;
+    var pb_len2000: i64 = pb_had2000;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
-            pb_append(pb_i32s, m.f_int32, pb_len1, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.f_int32, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_int32, pb_len1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_int32, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 16 {
-            pb_append(pb_i64s, m.f_int64, pb_len2, pb_u64_to_int64(pb_read_varint(r)));
+            pb_append(pb_i64s, m.f_int64, pb_len2, pb_had2, pb_u64_to_int64(pb_read_varint(r)));
         } else if tag == 18 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i64s, m.f_int64, pb_len2, pb_u64_to_int64(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i64s, m.f_int64, pb_len2, pb_had2, pb_u64_to_int64(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 24 {
-            pb_append(pb_u32s, m.f_uint32, pb_len3, pb_read_varint(r) as! u32);
+            pb_append(pb_u32s, m.f_uint32, pb_len3, pb_had3, pb_read_varint(r) as! u32);
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u32s, m.f_uint32, pb_len3, pb_read_varint(r) as! u32); }
+            while r.pos < r.end { pb_append(pb_u32s, m.f_uint32, pb_len3, pb_had3, pb_read_varint(r) as! u32); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 32 {
-            pb_append(pb_u64s, m.f_uint64, pb_len4, pb_read_varint(r));
+            pb_append(pb_u64s, m.f_uint64, pb_len4, pb_had4, pb_read_varint(r));
         } else if tag == 34 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u64s, m.f_uint64, pb_len4, pb_read_varint(r)); }
+            while r.pos < r.end { pb_append(pb_u64s, m.f_uint64, pb_len4, pb_had4, pb_read_varint(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 40 {
-            pb_append(pb_i32s, m.f_sint32, pb_len5, pb_unzigzag32(pb_read_varint(r) as! u32));
+            pb_append(pb_i32s, m.f_sint32, pb_len5, pb_had5, pb_unzigzag32(pb_read_varint(r) as! u32));
         } else if tag == 42 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_sint32, pb_len5, pb_unzigzag32(pb_read_varint(r) as! u32)); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_sint32, pb_len5, pb_had5, pb_unzigzag32(pb_read_varint(r) as! u32)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 48 {
-            pb_append(pb_i64s, m.f_sint64, pb_len6, pb_unzigzag64(pb_read_varint(r)));
+            pb_append(pb_i64s, m.f_sint64, pb_len6, pb_had6, pb_unzigzag64(pb_read_varint(r)));
         } else if tag == 50 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i64s, m.f_sint64, pb_len6, pb_unzigzag64(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i64s, m.f_sint64, pb_len6, pb_had6, pb_unzigzag64(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 61 {
-            pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_read_fixed32(r));
+            pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_had7, pb_read_fixed32(r));
         } else if tag == 58 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_read_fixed32(r)); }
+            while r.pos < r.end { pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_had7, pb_read_fixed32(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 65 {
-            pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_read_fixed64(r));
+            pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_had8, pb_read_fixed64(r));
         } else if tag == 66 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_read_fixed64(r)); }
+            while r.pos < r.end { pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_had8, pb_read_fixed64(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 77 {
-            pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_read_fixed32(r) as! i32);
+            pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_had9, pb_read_fixed32(r) as! i32);
         } else if tag == 74 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_read_fixed32(r) as! i32); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_had9, pb_read_fixed32(r) as! i32); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 81 {
-            pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_read_fixed64(r) as! i64);
+            pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_had10, pb_read_fixed64(r) as! i64);
         } else if tag == 82 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_read_fixed64(r) as! i64); }
+            while r.pos < r.end { pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_had10, pb_read_fixed64(r) as! i64); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 93 {
-            pb_append(pb_f32s, m.f_float, pb_len11, pb_read_float(r));
+            pb_append(pb_f32s, m.f_float, pb_len11, pb_had11, pb_read_float(r));
         } else if tag == 90 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_f32s, m.f_float, pb_len11, pb_read_float(r)); }
+            while r.pos < r.end { pb_append(pb_f32s, m.f_float, pb_len11, pb_had11, pb_read_float(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 97 {
-            pb_append(pb_f64s, m.f_double, pb_len12, pb_read_double(r));
+            pb_append(pb_f64s, m.f_double, pb_len12, pb_had12, pb_read_double(r));
         } else if tag == 98 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_f64s, m.f_double, pb_len12, pb_read_double(r)); }
+            while r.pos < r.end { pb_append(pb_f64s, m.f_double, pb_len12, pb_had12, pb_read_double(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 104 {
-            pb_append(pb_bools, m.f_bool, pb_len13, pb_read_varint(r) != 0);
+            pb_append(pb_bools, m.f_bool, pb_len13, pb_had13, pb_read_varint(r) != 0);
         } else if tag == 106 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_bools, m.f_bool, pb_len13, pb_read_varint(r) != 0); }
+            while r.pos < r.end { pb_append(pb_bools, m.f_bool, pb_len13, pb_had13, pb_read_varint(r) != 0); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 112 {
-            pb_append(pb_i32s, m.f_enum, pb_len14, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.f_enum, pb_len14, pb_had14, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 114 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_enum, pb_len14, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_enum, pb_len14, pb_had14, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 120 {
             m.single = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 16000 {
-            pb_append(pb_i32s, m.far, pb_len2000, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.far, pb_len2000, pb_had2000, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 16002 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.far, pb_len2000, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.far, pb_len2000, pb_had2000, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
@@ -750,175 +765,190 @@ reusable[] var Unpacked_links: Unpacked_Ref[>..] = [];
 // unknown fields.
 fn Unpacked_decode_from(r: pb_Reader&, m: Unpacked&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.f_int32.len;
-    var pb_len2: i64 = m.f_int64.len;
-    var pb_len3: i64 = m.f_uint32.len;
-    var pb_len4: i64 = m.f_uint64.len;
-    var pb_len5: i64 = m.f_sint32.len;
-    var pb_len6: i64 = m.f_sint64.len;
-    var pb_len7: i64 = m.f_fixed32.len;
-    var pb_len8: i64 = m.f_fixed64.len;
-    var pb_len9: i64 = m.f_sfixed32.len;
-    var pb_len10: i64 = m.f_sfixed64.len;
-    var pb_len11: i64 = m.f_float.len;
-    var pb_len12: i64 = m.f_double.len;
-    var pb_len13: i64 = m.f_bool.len;
-    var pb_len14: i64 = m.f_enum.len;
-    var pb_len2000: i64 = m.far.len;
+    let pb_had1: i64 = m.f_int32.len;
+    var pb_len1: i64 = pb_had1;
+    let pb_had2: i64 = m.f_int64.len;
+    var pb_len2: i64 = pb_had2;
+    let pb_had3: i64 = m.f_uint32.len;
+    var pb_len3: i64 = pb_had3;
+    let pb_had4: i64 = m.f_uint64.len;
+    var pb_len4: i64 = pb_had4;
+    let pb_had5: i64 = m.f_sint32.len;
+    var pb_len5: i64 = pb_had5;
+    let pb_had6: i64 = m.f_sint64.len;
+    var pb_len6: i64 = pb_had6;
+    let pb_had7: i64 = m.f_fixed32.len;
+    var pb_len7: i64 = pb_had7;
+    let pb_had8: i64 = m.f_fixed64.len;
+    var pb_len8: i64 = pb_had8;
+    let pb_had9: i64 = m.f_sfixed32.len;
+    var pb_len9: i64 = pb_had9;
+    let pb_had10: i64 = m.f_sfixed64.len;
+    var pb_len10: i64 = pb_had10;
+    let pb_had11: i64 = m.f_float.len;
+    var pb_len11: i64 = pb_had11;
+    let pb_had12: i64 = m.f_double.len;
+    var pb_len12: i64 = pb_had12;
+    let pb_had13: i64 = m.f_bool.len;
+    var pb_len13: i64 = pb_had13;
+    let pb_had14: i64 = m.f_enum.len;
+    var pb_len14: i64 = pb_had14;
+    let pb_had2000: i64 = m.far.len;
+    var pb_len2000: i64 = pb_had2000;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
-            pb_append(pb_i32s, m.f_int32, pb_len1, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.f_int32, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_int32, pb_len1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_int32, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 16 {
-            pb_append(pb_i64s, m.f_int64, pb_len2, pb_u64_to_int64(pb_read_varint(r)));
+            pb_append(pb_i64s, m.f_int64, pb_len2, pb_had2, pb_u64_to_int64(pb_read_varint(r)));
         } else if tag == 18 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i64s, m.f_int64, pb_len2, pb_u64_to_int64(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i64s, m.f_int64, pb_len2, pb_had2, pb_u64_to_int64(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 24 {
-            pb_append(pb_u32s, m.f_uint32, pb_len3, pb_read_varint(r) as! u32);
+            pb_append(pb_u32s, m.f_uint32, pb_len3, pb_had3, pb_read_varint(r) as! u32);
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u32s, m.f_uint32, pb_len3, pb_read_varint(r) as! u32); }
+            while r.pos < r.end { pb_append(pb_u32s, m.f_uint32, pb_len3, pb_had3, pb_read_varint(r) as! u32); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 32 {
-            pb_append(pb_u64s, m.f_uint64, pb_len4, pb_read_varint(r));
+            pb_append(pb_u64s, m.f_uint64, pb_len4, pb_had4, pb_read_varint(r));
         } else if tag == 34 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u64s, m.f_uint64, pb_len4, pb_read_varint(r)); }
+            while r.pos < r.end { pb_append(pb_u64s, m.f_uint64, pb_len4, pb_had4, pb_read_varint(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 40 {
-            pb_append(pb_i32s, m.f_sint32, pb_len5, pb_unzigzag32(pb_read_varint(r) as! u32));
+            pb_append(pb_i32s, m.f_sint32, pb_len5, pb_had5, pb_unzigzag32(pb_read_varint(r) as! u32));
         } else if tag == 42 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_sint32, pb_len5, pb_unzigzag32(pb_read_varint(r) as! u32)); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_sint32, pb_len5, pb_had5, pb_unzigzag32(pb_read_varint(r) as! u32)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 48 {
-            pb_append(pb_i64s, m.f_sint64, pb_len6, pb_unzigzag64(pb_read_varint(r)));
+            pb_append(pb_i64s, m.f_sint64, pb_len6, pb_had6, pb_unzigzag64(pb_read_varint(r)));
         } else if tag == 50 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i64s, m.f_sint64, pb_len6, pb_unzigzag64(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i64s, m.f_sint64, pb_len6, pb_had6, pb_unzigzag64(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 61 {
-            pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_read_fixed32(r));
+            pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_had7, pb_read_fixed32(r));
         } else if tag == 58 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_read_fixed32(r)); }
+            while r.pos < r.end { pb_append(pb_u32s, m.f_fixed32, pb_len7, pb_had7, pb_read_fixed32(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 65 {
-            pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_read_fixed64(r));
+            pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_had8, pb_read_fixed64(r));
         } else if tag == 66 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_read_fixed64(r)); }
+            while r.pos < r.end { pb_append(pb_u64s, m.f_fixed64, pb_len8, pb_had8, pb_read_fixed64(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 77 {
-            pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_read_fixed32(r) as! i32);
+            pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_had9, pb_read_fixed32(r) as! i32);
         } else if tag == 74 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_read_fixed32(r) as! i32); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_sfixed32, pb_len9, pb_had9, pb_read_fixed32(r) as! i32); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 81 {
-            pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_read_fixed64(r) as! i64);
+            pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_had10, pb_read_fixed64(r) as! i64);
         } else if tag == 82 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_read_fixed64(r) as! i64); }
+            while r.pos < r.end { pb_append(pb_i64s, m.f_sfixed64, pb_len10, pb_had10, pb_read_fixed64(r) as! i64); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 93 {
-            pb_append(pb_f32s, m.f_float, pb_len11, pb_read_float(r));
+            pb_append(pb_f32s, m.f_float, pb_len11, pb_had11, pb_read_float(r));
         } else if tag == 90 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_f32s, m.f_float, pb_len11, pb_read_float(r)); }
+            while r.pos < r.end { pb_append(pb_f32s, m.f_float, pb_len11, pb_had11, pb_read_float(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 97 {
-            pb_append(pb_f64s, m.f_double, pb_len12, pb_read_double(r));
+            pb_append(pb_f64s, m.f_double, pb_len12, pb_had12, pb_read_double(r));
         } else if tag == 98 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_f64s, m.f_double, pb_len12, pb_read_double(r)); }
+            while r.pos < r.end { pb_append(pb_f64s, m.f_double, pb_len12, pb_had12, pb_read_double(r)); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 104 {
-            pb_append(pb_bools, m.f_bool, pb_len13, pb_read_varint(r) != 0);
+            pb_append(pb_bools, m.f_bool, pb_len13, pb_had13, pb_read_varint(r) != 0);
         } else if tag == 106 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_bools, m.f_bool, pb_len13, pb_read_varint(r) != 0); }
+            while r.pos < r.end { pb_append(pb_bools, m.f_bool, pb_len13, pb_had13, pb_read_varint(r) != 0); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 112 {
-            pb_append(pb_i32s, m.f_enum, pb_len14, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.f_enum, pb_len14, pb_had14, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 114 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.f_enum, pb_len14, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.f_enum, pb_len14, pb_had14, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 120 {
             m.single = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 16000 {
-            pb_append(pb_i32s, m.far, pb_len2000, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.far, pb_len2000, pb_had2000, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 16002 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.far, pb_len2000, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.far, pb_len2000, pb_had2000, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
@@ -1398,19 +1428,20 @@ reusable[] var Tree_links: Tree_Ref[>..] = [];
 // unknown fields.
 recursive fn Tree_decode_from(r: pb_Reader&, m: Tree&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.values.len;
+    let pb_had1: i64 = m.values.len;
+    var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
-            pb_append(pb_i32s, m.values, pb_len1, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.values, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.values, pb_len1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.values, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 18 {

@@ -67,24 +67,29 @@ reusable[] var Lists_links: Lists_Ref[>..] = [];
 // unknown fields.
 fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.names.len;
-    var pb_len2: i64 = m.blobs.len;
-    var pb_len3: i64 = m.items.len;
-    var pb_len4: i64 = m.timeouts.len;
-    var pb_len6: i64 = m.counts.len;
+    let pb_had1: i64 = m.names.len;
+    var pb_len1: i64 = pb_had1;
+    let pb_had2: i64 = m.blobs.len;
+    var pb_len2: i64 = pb_had2;
+    let pb_had3: i64 = m.items.len;
+    var pb_len3: i64 = pb_had3;
+    let pb_had4: i64 = m.timeouts.len;
+    var pb_len4: i64 = pb_had4;
+    let pb_had6: i64 = m.counts.len;
+    var pb_len6: i64 = pb_had6;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
-            pb_append(pb_spans, m.names, pb_len1, pb_read_string(r, pb_Span { at: 0, len: 0 }));
+            pb_append(pb_spans, m.names, pb_len1, pb_had1, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 18 {
-            pb_append(pb_spans, m.blobs, pb_len2, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
+            pb_append(pb_spans, m.blobs, pb_len2, pb_had2, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Item_links, m.items, pb_len3);
+            pb_reserve(Item_links, m.items, pb_len3, pb_had3);
             let pb_sub .= Item_pool.alloc_ref(Item { .. });
             pb_run(Item_links, m.items)[pb_len3].m .= pb_sub;
             pb_len3++;
@@ -99,7 +104,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(google_protobuf::Duration_links, m.timeouts, pb_len4);
+            pb_reserve(google_protobuf::Duration_links, m.timeouts, pb_len4, pb_had4);
             let pb_sub .= google_protobuf::Duration_pool.alloc_ref(google_protobuf::Duration { .. });
             pb_run(google_protobuf::Duration_links, m.timeouts)[pb_len4].m .= pb_sub;
             pb_len4++;
@@ -116,7 +121,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Lists_CountsEntry_entries, m.counts, pb_len6);
+            pb_reserve(Lists_CountsEntry_entries, m.counts, pb_len6, pb_had6);
             let pb_e .= pb_run(Lists_CountsEntry_entries, m.counts)[pb_len6];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -125,7 +130,8 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             if r.err != PB_OK { Lists_CountsEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len6 = Lists_CountsEntry_place(m.counts, pb_len6);
+            Lists_CountsEntry_place(pb_e);
+            pb_len6++;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -143,6 +149,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
 fn Lists_decode(buf: const u8[:], m: Lists&) -> i32 {
     var r = pb_reader(buf);
     Lists_decode_from(r, m);
+    if r.err == PB_OK { Lists_fold_maps(m); }
     return r.err;
 }
 
@@ -246,6 +253,13 @@ fn Lists_copy(dst: Lists&, src: Lists&) {
         Lists_CountsEntry_copy(pb_run(Lists_CountsEntry_entries, dst.counts)[pb_i], pb_run(Lists_CountsEntry_entries, src.counts)[pb_i]);
     }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+fn Lists_fold_maps(m: Lists&) {
+    m.counts = Lists_CountsEntry_fold(m.counts);
 }
 
 // The spans of names, in pb_spans: its .len is the number of values.
@@ -482,18 +496,50 @@ fn Lists_CountsEntry_slot(s: pb_Span&, k: const u8[:]) -> Lists_CountsEntry& {
     return pb_run(Lists_CountsEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Lists_CountsEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Lists_CountsEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Lists_CountsEntry_place(pb_e: Lists_CountsEntry&) {
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Lists_CountsEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Lists_CountsEntry_clear(pb_run(Lists_CountsEntry_entries, s)[pb_i]);
-    pb_run(Lists_CountsEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Lists_CountsEntry_entries, s)[used] = Lists_CountsEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Lists_CountsEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Lists_CountsEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Lists_CountsEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Lists_CountsEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Lists_CountsEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Lists_CountsEntry_entries, s, pb_kept);
 }
 
 // message lists.Item
@@ -514,7 +560,8 @@ reusable[] var Item_links: Item_Ref[>..] = [];
 // unknown fields.
 fn Item_decode_from(r: pb_Reader&, m: Item&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len3: i64 = m.tags.len;
+    let pb_had3: i64 = m.tags.len;
+    var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -524,7 +571,7 @@ fn Item_decode_from(r: pb_Reader&, m: Item&) {
         } else if tag == 18 {
             m.label = pb_read_string(r, m.label);
         } else if tag == 26 {
-            pb_append(pb_spans, m.tags, pb_len3, pb_read_string(r, pb_Span { at: 0, len: 0 }));
+            pb_append(pb_spans, m.tags, pb_len3, pb_had3, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -628,7 +675,8 @@ reusable[] var Tree_links: Tree_Ref[>..] = [];
 // unknown fields.
 recursive fn Tree_decode_from(r: pb_Reader&, m: Tree&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len2: i64 = m.children.len;
+    let pb_had2: i64 = m.children.len;
+    var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -639,7 +687,7 @@ recursive fn Tree_decode_from(r: pb_Reader&, m: Tree&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Tree_links, m.children, pb_len2);
+            pb_reserve(Tree_links, m.children, pb_len2, pb_had2);
             let pb_sub .= Tree_pool.alloc_ref(Tree { .. });
             pb_run(Tree_links, m.children)[pb_len2].m .= pb_sub;
             pb_len2++;
@@ -774,7 +822,8 @@ reusable[] var Forest_links: Forest_Ref[>..] = [];
 // unknown fields.
 recursive fn Forest_decode_from(r: pb_Reader&, m: Forest&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.groves.len;
+    let pb_had1: i64 = m.groves.len;
+    var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -783,7 +832,7 @@ recursive fn Forest_decode_from(r: pb_Reader&, m: Forest&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Grove_links, m.groves, pb_len1);
+            pb_reserve(Grove_links, m.groves, pb_len1, pb_had1);
             let pb_sub .= Grove_pool.alloc_ref(Grove { .. });
             pb_run(Grove_links, m.groves)[pb_len1].m .= pb_sub;
             pb_len1++;

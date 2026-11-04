@@ -6,6 +6,7 @@ syntax = "proto3";
 package maps;
 
 import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
 
 enum Mode {
   MODE_UNSPECIFIED = 0;
@@ -40,4 +41,20 @@ message Maps {
   map<int32, google.protobuf.Duration> dur = 19;
   map<string, Maps> self = 20;
   int32 after = 21;
+}
+
+// Holds maps through every kind of field: decoding folds repeated keys in each.
+message Holder {
+  Maps one = 1;
+  repeated Maps many = 2;
+  oneof pick {
+    Maps member = 3;
+  }
+  google.protobuf.Struct imported = 4;
+}
+
+// Can reach no map: it has no fold pass.
+message NoMaps {
+  Sub sub = 1;
+  repeated NoMaps more = 2;
 }

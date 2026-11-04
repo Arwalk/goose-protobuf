@@ -64,7 +64,8 @@ reusable[] var Struct_links: Struct_Ref[>..] = [];
 // unknown fields.
 recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.fields_.len;
+    let pb_had1: i64 = m.fields_.len;
+    var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -73,7 +74,7 @@ recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Struct_FieldsEntry_entries, m.fields_, pb_len1);
+            pb_reserve(Struct_FieldsEntry_entries, m.fields_, pb_len1, pb_had1);
             let pb_e .= pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_len1];
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
@@ -82,7 +83,8 @@ recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
             if r.err != PB_OK { Struct_FieldsEntry_clear(pb_e); break; }
             r.depth--;
             r.end = pb_outer;
-            pb_len1 = Struct_FieldsEntry_place(m.fields_, pb_len1);
+            Struct_FieldsEntry_place(pb_e);
+            pb_len1++;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -96,6 +98,7 @@ recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
 fn Struct_decode(buf: const u8[:], m: Struct&) -> i32 {
     var r = pb_reader(buf);
     Struct_decode_from(r, m);
+    if r.err == PB_OK { Struct_fold_maps(m); }
     return r.err;
 }
 
@@ -136,6 +139,14 @@ recursive fn Struct_copy(dst: Struct&, src: Struct&) {
         Struct_FieldsEntry_copy(pb_run(Struct_FieldsEntry_entries, dst.fields_)[pb_i], pb_run(Struct_FieldsEntry_entries, src.fields_)[pb_i]);
     }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+recursive fn Struct_fold_maps(m: Struct&) {
+    m.fields_ = Struct_FieldsEntry_fold(m.fields_);
+    for pb_i in m.fields_.len { Struct_FieldsEntry_fold_maps(pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i]); }
 }
 
 // The entries of fields, in insertion order: its .len is their number, and
@@ -222,6 +233,7 @@ recursive fn Struct_FieldsEntry_decode_from(r: pb_Reader&, m: Struct_FieldsEntry
 fn Struct_FieldsEntry_decode(buf: const u8[:], m: Struct_FieldsEntry&) -> i32 {
     var r = pb_reader(buf);
     Struct_FieldsEntry_decode_from(r, m);
+    if r.err == PB_OK { Struct_FieldsEntry_fold_maps(m); }
     return r.err;
 }
 
@@ -264,6 +276,14 @@ recursive fn Struct_FieldsEntry_copy(dst: Struct_FieldsEntry&, src: Struct_Field
     let pb_f2 = src.value.m;
     if pb_f2 { Value_copy(Struct_FieldsEntry_mutable_value(dst), pb_f2); }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+recursive fn Struct_FieldsEntry_fold_maps(m: Struct_FieldsEntry&) {
+    let pb_f2 = m.value.m;
+    if pb_f2 { Value_fold_maps(pb_f2); }
 }
 
 // The contents of key, in pb_bytes: valid until it is next set or m
@@ -323,19 +343,51 @@ fn Struct_FieldsEntry_slot(s: pb_Span&, k: const u8[:]) -> Struct_FieldsEntry& {
     return pb_run(Struct_FieldsEntry_entries, s)[pb_i];
 }
 
-// Settles the entry just decoded into slot `used` of run s, and returns how
-// many are in use now. A missing message value is an empty one, unknown
-// fields are dropped, and an entry with its key already there replaces it.
-fn Struct_FieldsEntry_place(s: pb_Span, used: i64) -> i64 {
-    let pb_e .= pb_run(Struct_FieldsEntry_entries, s)[used];
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Struct_FieldsEntry_place(pb_e: Struct_FieldsEntry&) {
     Struct_FieldsEntry_mutable_value(pb_e);
     pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
-    let pb_i = Struct_FieldsEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
-    if pb_i < 0 { return used + 1; }
-    Struct_FieldsEntry_clear(pb_run(Struct_FieldsEntry_entries, s)[pb_i]);
-    pb_run(Struct_FieldsEntry_entries, s)[pb_i] = pb_e;
-    pb_run(Struct_FieldsEntry_entries, s)[used] = Struct_FieldsEntry { .. };
-    return used;
+}
+
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Struct_FieldsEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Struct_FieldsEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Struct_FieldsEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Struct_FieldsEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Struct_FieldsEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Struct_FieldsEntry_entries, s, pb_kept);
 }
 
 // message google.protobuf.Value
@@ -422,6 +474,7 @@ recursive fn Value_decode_from(r: pb_Reader&, m: Value&) {
 fn Value_decode(buf: const u8[:], m: Value&) -> i32 {
     var r = pb_reader(buf);
     Value_decode_from(r, m);
+    if r.err == PB_OK { Value_fold_maps(m); }
     return r.err;
 }
 
@@ -544,6 +597,26 @@ recursive fn Value_copy(dst: Value&, src: Value&) {
         _ => {},
     }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+recursive fn Value_fold_maps(m: Value&) {
+    match m.kind {
+        struct_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { Struct_fold_maps(pb_l); }
+        },
+        _ => {},
+    }
+    match m.kind {
+        list_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { ListValue_fold_maps(pb_l); }
+        },
+        _ => {},
+    }
 }
 
 // Frees what oneof kind holds, and sets no member.
@@ -727,7 +800,8 @@ reusable[] var ListValue_links: ListValue_Ref[>..] = [];
 // unknown fields.
 recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len1: i64 = m.values.len;
+    let pb_had1: i64 = m.values.len;
+    var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -736,7 +810,7 @@ recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            pb_reserve(Value_links, m.values, pb_len1);
+            pb_reserve(Value_links, m.values, pb_len1, pb_had1);
             let pb_sub .= Value_pool.alloc_ref(Value { .. });
             pb_run(Value_links, m.values)[pb_len1].m .= pb_sub;
             pb_len1++;
@@ -760,6 +834,7 @@ recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
 fn ListValue_decode(buf: const u8[:], m: ListValue&) -> i32 {
     var r = pb_reader(buf);
     ListValue_decode_from(r, m);
+    if r.err == PB_OK { ListValue_fold_maps(m); }
     return r.err;
 }
 
@@ -807,6 +882,17 @@ recursive fn ListValue_copy(dst: ListValue&, src: ListValue&) {
         Value_copy(pb_c, pb_l);
     }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+recursive fn ListValue_fold_maps(m: ListValue&) {
+    for pb_ref in pb_run(Value_links, m.values) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        Value_fold_maps(pb_l);
+    }
 }
 
 // The links of values, in Value_links: its .len is the number of messages.

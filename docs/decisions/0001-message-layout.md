@@ -134,15 +134,16 @@ namespace, how packages map to names) belongs to the emitter task
   `assert`. `index_of` cannot name the slot of a bare link element (it
   dereferences the link), so `pb_resize` needs the link wrapped in a
   one-field struct.
-- **Doubling while decoding.** Repeated runs grow by doubling during
-  decode, with the used length in a fixed local, which recursion permits.
+- **Doubling while decoding.** Repeated runs grow by doubling what the
+  decode loop added ([0008](0008-map-decode.md)), with the used length in
+  a fixed local, which recursion permits.
   They are trimmed when the message ends, on error too, so `M_clear`
   frees exact runs. Without doubling, appending to a run that is not at
   the pool's end moves it every time, which is quadratic.
 - **Maps as entry runs, last key wins.** Entries are inline records
   (`key`, `value` spans). Nobody holds references to entries, so the run
-  may move. Decode replaces the value of an existing key. Lookup is
-  linear, and a hash index can come later if a benchmark asks for one.
+  may move. On decode the last value of a key wins. Lookup is linear;
+  [0008](0008-map-decode.md) has how decode avoids it.
 
 ## Consequences and limits
 
@@ -236,12 +237,11 @@ The design above is unchanged. gpb-41j.6 and gpb-8qn.1 put it in place:
   `<Entry>_entries`. An entry is the generated entry message: its `key` and
   `value` are stored like any field, with a message value in a slot of its own,
   so a reference to one outlives other changes to the map. An entry decodes
-  into the next slot of the run, then `<Entry>_place` folds it into an entry
-  with the same key, which keeps its place. Entries keep insertion order and
+  into the next slot of the run, and repeated keys are folded once all the
+  input is read ([0008](0008-map-decode.md)). Entries keep insertion order and
   encode their key and value even at the defaults, as protoc does. A message
   value is never absent, and unknown fields in an entry are dropped, as protobuf
-  C++ does. Lookup is linear as chosen above, so decode is quadratic in the
-  entries: 160,000 entries (1.26 MB) take 5.4 s, which gpb-dx9.7 tracks.
+  C++ does.
 - A sub-message field holds a link into its type's pool, also when that
   type is in an imported file (gpb-8qn.9). A message that can hold another
   of its own type has `recursive fn` codecs (gpb-8qn.3).

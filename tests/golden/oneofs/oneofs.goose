@@ -68,7 +68,8 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
-    var pb_len3: i64 = m.r.len;
+    let pb_had3: i64 = m.r.len;
+    var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -78,13 +79,13 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
         } else if tag == 18 {
             m.s = pb_read_string(r, m.s);
         } else if tag == 24 {
-            pb_append(pb_i32s, m.r, pb_len3, pb_u64_to_int32(pb_read_varint(r)));
+            pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len3, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
