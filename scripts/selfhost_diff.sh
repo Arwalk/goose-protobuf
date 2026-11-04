@@ -3,12 +3,13 @@
 # their output must be byte-identical. For each tests/protos/<name>.proto, as
 # scripts/golden.sh does, the file alone and with its import closure; the
 # well-known types with the `wkt` parameter (scripts/wkt.sh); the conformance
-# protos of scripts/build_testee.sh, when the submodule is checked out; and whole
+# protos of scripts/build_testee.sh, when the submodule is checked out; the
+# plugin's own bindings; and whole
 # responses, byte for byte, for requests protoc makes and for those the plugin must
 # reject. Every file the self-hosted plugin writes then goes through `goose check`,
 # failing on warnings too, unless --no-check is given.
 # Usage: scripts/selfhost_diff.sh [--no-check] [names]
-#   names: protos of tests/protos, or wkt, conformance, responses (default: all)
+#   names: protos of tests/protos, or wkt, conformance, plugin, responses (default: all)
 # Exits nonzero on any difference or failed check.
 # Env: PLUGIN (default: zig build), SELF (default: scripts/build_selfhost.sh),
 #      PROTOC, GOOSE (default protoc, goose; .tools/bin first)
@@ -167,6 +168,16 @@ if wanted conformance; then
     fi
   else
     echo "skipped conformance: the submodule is not checked out"
+  fi
+fi
+
+# Its own input: the bindings the self-hosted plugin is built on, which the Zig
+# plugin generated, come out the same from the self-hosted one.
+if wanted plugin; then
+  if gen_both "" "${includes[@]}" google/protobuf/compiler/plugin.proto google/protobuf/descriptor.proto; then
+    compare plugin
+  else
+    fail "plugin: protoc failed"
   fi
 fi
 

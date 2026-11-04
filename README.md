@@ -4,7 +4,7 @@
 [Goose](https://aardappel.github.io/goose/) code for the **protobuf binary
 wire format**. It is tested against the official protobuf conformance suite.
 
-Status: Phase 5 complete. The plugin emits one `.goose` file per `.proto`
+Status: Phase 6 complete. The plugin emits one `.goose` file per `.proto`
 file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
 those (packed or not), oneofs as ADTs and maps, with `optional` presence and
@@ -15,7 +15,9 @@ an enum does not declare stays an unknown field, as extensions do. The
 well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt`
 covers them. Every
 required binary conformance test passes for proto3, proto2 and editions up to
-2023, whose fields go through the same code, driven by their resolved features. The backlog lives in beads
+2023, whose fields go through the same code, driven by their resolved features.
+The generator also exists in Goose, and writes the same bytes as the Zig one.
+The backlog lives in beads
 (`bd ready`).
 
 ## Scope
@@ -28,8 +30,10 @@ required binary conformance test passes for proto3, proto2 and editions up to
 
 - The generator is written in Zig (`generator/`). It reads
   `descriptor.proto` / `plugin.proto` through
-  [zig-protobuf](https://github.com/Arwalk/zig-protobuf). Self-hosting in
-  Goose is a late, optional phase.
+  [zig-protobuf](https://github.com/Arwalk/zig-protobuf). `generator-goose/` is
+  a port to Goose over its own generated bindings, built from the Zig plugin's
+  output, and `scripts/selfhost_diff.sh` checks that the two agree. The Zig one
+  remains the one to build and the specification.
 - Generated code is self-contained per message: `encode`, `decode` and
   `size_of`. The only shared code is `runtime/pb_wire.goose`, which holds
   the wire primitives.
@@ -40,6 +44,7 @@ required binary conformance test passes for proto3, proto2 and editions up to
 
 ```
 generator/      Zig protoc plugin (protoc-gen-goose)
+generator-goose/ the same plugin in Goose
 pb_wire.goose   entry of the pb_wire package (this repository)
 runtime/        pb_wire.goose: shared wire-format primitives
 wkt/            well-known types, generated and committed (scripts/wkt.sh)

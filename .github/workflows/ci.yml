@@ -120,6 +120,10 @@ jobs:
       - name: Check well-known types
         run: scripts/wkt.sh
 
+      # generator-goose/ writes what generator/ writes, byte for byte.
+      - name: Self-hosted generator
+        run: scripts/selfhost_diff.sh
+
       # The feature defaults that the generator tests against match protoc's.
       - name: Check edition defaults
         run: scripts/edition_defaults.sh
