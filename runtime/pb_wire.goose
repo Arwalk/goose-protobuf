@@ -9,7 +9,7 @@
 //   - skip_field, including groups and a nesting depth limit (gpb-41j.2)
 //   - unknown-field copy (gpb-41j.2)
 //   - the pb_bytes pool and pb_Span runs (decision 0001), which hold
-//     unknown fields (gpb-41j.6) and, later, strings and bytes
+//     unknown fields (gpb-41j.6), strings and bytes
 //
 // Goose `varint` is NOT the protobuf varint; do not use it here.
 // Every message's encode/decode/size_of is generated per message; nothing
@@ -228,8 +228,8 @@ fn pb_read_len(r: pb_Reader&) -> i64 {
 // Elements [at, at + len) of a pool. An empty span owns nothing.
 struct pb_Span { at: u32, len: u32 }
 
-// The contents of every unknown-field run (and, later, string and bytes
-// field) of every message.
+// The contents of every unknown-field run and string and bytes field of
+// every message.
 reusable[] var pb_bytes: u8[>..] = [];
 
 // Runs of repeated fields: one pool per scalar element type (enums are
@@ -291,6 +291,10 @@ fn pb_bytes_set(s: pb_Span, v: const u8[:]) -> pb_Span {
 // The encoded size of a length-delimited value: its length prefix and
 // its bytes.
 fn pb_bytes_size(s: pb_Span) -> i64 { return pb_varint_size(s.len) + s.len; }
+
+// The encoded size of a sub-message of n bytes: its length prefix and its
+// bytes.
+fn pb_len_size(n: i64) -> i64 { return pb_varint_size(n as! u64) + n; }
 
 // Appends run s of pb_bytes as a length-delimited value (tag already
 // written).

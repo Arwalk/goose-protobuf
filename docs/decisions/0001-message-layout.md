@@ -220,5 +220,9 @@ The design above is unchanged. gpb-41j.6 and gpb-8qn.1 put it in place:
   message gets `M_Ref`, `M_pool` and `M_links`, whether or not a field
   uses them yet, so that a type in another file can link to it.
 - The generated file header documents the user-facing API.
-- Sub-message, string, bytes and repeated fields use these pools from
-  gpb-8qn.2, gpb-8qn.4 and Phase 3 on.
+- String and bytes fields use these pools since gpb-8qn.4, singular
+  sub-messages since gpb-8qn.2, and repeated fields from Phase 3 on.
+- gpb-8qn.2 stores a sub-message field only if its type is in the same
+  file and not in a cycle with the field's message. Fields in a cycle wait
+  for recursive functions (gpb-8qn.3) and fields of imported types for
+  imports (gpb-8qn.9). Both stay unknown fields until then.

@@ -127,8 +127,11 @@ the reserved list, in `generator/src/emit.zig`:
   also has `<M>_has_<f>` and `<M>_clear_<f>`. Has-bits live in record
   fields `pb_has<k>: u32`, which no proto field can take because `pb_`
   names are escaped.
-- The accessors of singular message fields (`<f>`, `has_<f>`,
-  `clear_<f>`) and of repeated fields (`<f>`, `<f>_at`, `add_<f>`) are
+- A singular message field (gpb-8qn.2) has `<M>_<f>`, which returns the
+  sub-message or null; `<M>_mutable_<f>`, which first sets an empty one
+  if there is none; and `<M>_has_<f>` and `<M>_clear_<f>`. Its link is
+  its presence, so it takes no has-bit.
+- The accessors of repeated fields (`<f>`, `<f>_at`, `add_<f>`) are
   provisional: 0001 does not fix them. The task that emits a field kind
   updates the table, its goldens and this note.
 

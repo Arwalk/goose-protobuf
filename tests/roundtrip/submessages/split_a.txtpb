@@ -1,0 +1,6 @@
+# proto-file: submessages.proto
+# proto-message: submessages.Outer
+# Part one of a sub-message split over two occurrences.
+inner { a: 1 s: "first" leaf { x: 2 y: 3 } }
+nested { n: 9 }
+after: 1

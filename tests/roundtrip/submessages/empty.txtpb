@@ -1,0 +1,7 @@
+# proto-file: submessages.proto
+# proto-message: submessages.Outer
+# Present but empty sub-messages are encoded, at every level.
+inner { leaf { } }
+nested { }
+opt_leaf { }
+far_leaf { }

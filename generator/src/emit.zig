@@ -109,7 +109,7 @@ pub fn fieldAccessors(kind: FieldKind, presence: bool) []const Accessor {
             &(.{ get_acc, set_acc } ++ presence_accessors)
         else
             &.{ get_acc, set_acc },
-        .message => &(.{get_acc} ++ presence_accessors),
+        .message => &(.{ get_acc, mutable_acc } ++ presence_accessors),
         .repeated => &.{
             .{ .prefix = "", .suffix = "" },
             .{ .prefix = "", .suffix = "_at" },
@@ -123,6 +123,7 @@ const get_acc: Accessor = .{ .prefix = "", .suffix = "" };
 const set_acc: Accessor = .{ .prefix = "set_", .suffix = "" };
 const has_acc: Accessor = .{ .prefix = "has_", .suffix = "" };
 const clear_acc: Accessor = .{ .prefix = "clear_", .suffix = "" };
+const mutable_acc: Accessor = .{ .prefix = "mutable_", .suffix = "" };
 
 /// The accessors every field with explicit presence has.
 const presence_accessors = [_]Accessor{ has_acc, clear_acc };
@@ -169,6 +170,10 @@ pub const FileEmitter = struct {
     /// Unescaped message path -> full name. Two messages with one path
     /// also share every generated name; this reports the types instead.
     message_paths: std.StringHashMapUnmanaged([]const u8) = .empty,
+    /// Full name of a type or enum value in this file -> its Goose name.
+    decls: std.StringHashMapUnmanaged([]const u8) = .empty,
+    /// Full name of a message in this file -> the message.
+    messages: std.StringHashMapUnmanaged(MessageInfo) = .empty,
     diag: []const u8 = "",
 
     pub fn emit(self: *FileEmitter) Error!void {
@@ -188,8 +193,10 @@ pub const FileEmitter = struct {
         try self.w.writeAll("import pb_wire;\n");
 
         for (f.message_type.items) |*m| try self.claimGenerated(m, "", package);
+        for (f.enum_type.items) |*e| try self.claimEnum(e, "", package);
+        for (f.message_type.items) |*m| try self.claimMessage(m, "", package);
 
-        for (f.enum_type.items) |*e| try self.emitEnum(e, "", package);
+        for (f.enum_type.items) |*e| try self.emitEnum(e, package);
         for (f.message_type.items) |*m| try self.emitMessage(m, "", package);
     }
 
@@ -265,7 +272,9 @@ pub const FileEmitter = struct {
         for (m.nested_type.items) |*n| try self.claimGenerated(n, path, full);
     }
 
-    fn emitEnum(
+    /// Claims the names of an enum and its values, in the order they are
+    /// emitted.
+    fn claimEnum(
         self: *FileEmitter,
         e: *const descriptor.EnumDescriptorProto,
         prefix: []const u8,
@@ -274,15 +283,74 @@ pub const FileEmitter = struct {
         const name = e.name orelse "";
         const path = try nestedPath(self.a, prefix, name);
         const full = try self.fullName(scope, name);
-        _ = try self.claimDecl(path, full, prefix.len > 0);
-        try self.w.print("\n// enum {s}\n", .{full});
+        try self.decls.put(self.a, full, try self.claimDecl(path, full, prefix.len > 0));
         for (e.value.items) |v| {
             const vname = v.name orelse "";
-            const const_name = try self.claimDecl(
-                try nestedPath(self.a, path, vname),
-                try self.fullName(full, vname),
-                true,
-            );
+            const vfull = try self.fullName(full, vname);
+            try self.decls.put(self.a, vfull, try self.claimDecl(try nestedPath(self.a, path, vname), vfull, true));
+        }
+    }
+
+    /// Claims the names of a message and what is nested in it, in the
+    /// order they are emitted. Fields name their types through this, and
+    /// a type may be declared after the field that uses it.
+    fn claimMessage(
+        self: *FileEmitter,
+        m: *const descriptor.DescriptorProto,
+        prefix: []const u8,
+        scope: []const u8,
+    ) Error!void {
+        const name = m.name orelse "";
+        const path = try nestedPath(self.a, prefix, name);
+        const full = try self.fullName(scope, name);
+        const goose_name = try self.claimDecl(path, full, prefix.len > 0);
+        try self.decls.put(self.a, full, goose_name);
+        try self.messages.put(self.a, full, .{ .desc = m, .path = path, .goose_name = goose_name });
+        for (m.enum_type.items) |*e| try self.claimEnum(e, path, full);
+        for (m.nested_type.items) |*n| try self.claimMessage(n, path, full);
+    }
+
+    /// The message that field `fd` of message `owner` stores as a
+    /// sub-message, or null if it is not stored. Fields of a type in
+    /// another file are not stored yet, nor are those in a cycle of
+    /// message types, which needs recursive functions (gpb-8qn.3).
+    fn subMessageOf(self: *FileEmitter, owner: []const u8, fd: *const descriptor.FieldDescriptorProto) Error!?MessageInfo {
+        const t = self.sameFileMessageType(fd) orelse return null;
+        var seen: std.StringHashMapUnmanaged(void) = .empty;
+        if (try self.reaches(t, owner, &seen)) return null;
+        return self.messages.get(t);
+    }
+
+    /// The full name of the message in this file that `fd` holds, if it
+    /// is a field kind this generator stores.
+    fn sameFileMessageType(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) ?[]const u8 {
+        if (!isStorable(self.file, fd) or fd.type != .TYPE_MESSAGE) return null;
+        const tn = fd.type_name orelse return null;
+        const t = if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
+        return if (self.messages.contains(t)) t else null;
+    }
+
+    /// True if a message of type `from` can hold one of type `target`.
+    fn reaches(self: *FileEmitter, from: []const u8, target: []const u8, seen: *std.StringHashMapUnmanaged(void)) Error!bool {
+        if (std.mem.eql(u8, from, target)) return true;
+        if ((try seen.getOrPut(self.a, from)).found_existing) return false;
+        const info = self.messages.get(from) orelse return false;
+        for (info.desc.field.items) |*fd| {
+            const t = self.sameFileMessageType(fd) orelse continue;
+            if (try self.reaches(t, target, seen)) return true;
+        }
+        return false;
+    }
+
+    fn emitEnum(
+        self: *FileEmitter,
+        e: *const descriptor.EnumDescriptorProto,
+        scope: []const u8,
+    ) Error!void {
+        const full = try self.fullName(scope, e.name orelse "");
+        try self.w.print("\n// enum {s}\n", .{full});
+        for (e.value.items) |v| {
+            const const_name = self.decls.get(try self.fullName(full, v.name orelse "")).?;
             try self.w.print("let {s}: i32 = {d};\n", .{ const_name, v.number orelse 0 });
         }
     }
@@ -296,7 +364,7 @@ pub const FileEmitter = struct {
         const name = m.name orelse "";
         const path = try nestedPath(self.a, prefix, name);
         const full = try self.fullName(scope, name);
-        const goose_name = try self.claimDecl(path, full, prefix.len > 0);
+        const goose_name = self.decls.get(full).?;
         try self.w.print("\n// message {s}\n", .{full});
 
         // The fields this generator stores; every other field is kept as an
@@ -305,7 +373,8 @@ pub const FileEmitter = struct {
         var record_names: std.StringHashMapUnmanaged(void) = .empty;
         var bits: u32 = 0;
         for (m.field.items) |*fd| {
-            const sc = scalarOf(self.file, fd) orelse continue;
+            const sub = try self.subMessageOf(full, fd);
+            const sc = if (sub) |s| try self.refStorage(s) else scalarOf(self.file, fd) orelse continue;
             const rname = try ident(self.a, fd.name orelse "");
             if ((try record_names.getOrPut(self.a, rname)).found_existing) {
                 self.diag = try std.fmt.allocPrint(
@@ -316,11 +385,11 @@ pub const FileEmitter = struct {
                 return error.NameCollision;
             }
             var bit: ?u32 = null;
-            if (hasPresence(self.file, fd)) {
+            if (sub == null and hasPresence(self.file, fd)) {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit });
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
@@ -334,8 +403,25 @@ pub const FileEmitter = struct {
         try self.emitClear(goose_name, path, fields.items, has_words);
         for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
 
-        for (m.enum_type.items) |*e| try self.emitEnum(e, path, full);
+        for (m.enum_type.items) |*e| try self.emitEnum(e, full);
         for (m.nested_type.items) |*n| try self.emitMessage(n, path, full);
+    }
+
+    /// The storage of a sub-message field: a link, whose presence is the
+    /// field's. Only its type and wire type apply: the emitters handle
+    /// the rest of a field with `sub` set themselves.
+    fn refStorage(self: *FileEmitter, sub: MessageInfo) Error!*const Scalar {
+        const sc = try self.a.create(Scalar);
+        sc.* = .{
+            .goose = try generatedName(self.a, sub.path, "Ref"),
+            .wire = 2,
+            .clear = "",
+            .read = "",
+            .write = "",
+            .nonzero = "",
+            .size = .message,
+        };
+        return sc;
     }
 
     fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, has_words: u32) Error!void {
@@ -380,6 +466,10 @@ pub const FileEmitter = struct {
         for (fields, 0..) |f, i| {
             try self.w.print("        {s}if tag == {d} {{\n", .{ if (i == 0) "" else "} else ", f.tag() });
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.sub) |sub| {
+                try self.emitDecodeSubMessage(path, f, sub);
+                continue;
+            }
             try self.w.print("            {s} = {f};\n", .{ x, Subst{ .t = f.sc.read, .x = x } });
             if (f.bit) |b| try self.w.print("            m.pb_has{d} |= 0x{x:0>8};\n", .{ b / 32, bitMask(b) });
         }
@@ -409,6 +499,25 @@ pub const FileEmitter = struct {
         , .{ decode, goose_name, decode_from });
     }
 
+    /// The branch of decode_from for a sub-message: an occurrence merges
+    /// into the message already there (decision 0004). After a failure
+    /// r.end is not restored: the caller stops on r.err too.
+    fn emitDecodeSubMessage(self: *FileEmitter, path: []const u8, f: Field, sub: MessageInfo) Error!void {
+        try self.w.print(
+            \\            let pb_n = pb_read_len(r);
+            \\            if r.err != PB_OK {{ break; }}
+            \\            if r.depth >= PB_MAX_DEPTH {{ pb_fail(r, PB_ERR_DEPTH); break; }}
+            \\            let pb_outer = r.end;
+            \\            r.end = r.pos + pb_n;
+            \\            r.depth++;
+            \\            {s}(r, {s}(m));
+            \\            if r.err != PB_OK {{ break; }}
+            \\            r.depth--;
+            \\            r.end = pb_outer;
+            \\
+        , .{ try generatedName(self.a, sub.path, "decode_from"), try accessorName(self.a, path, f.fd.name orelse "", mutable_acc) });
+    }
+
     fn emitEncode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
         try self.w.print(
             \\
@@ -418,6 +527,22 @@ pub const FileEmitter = struct {
         , .{ try generatedName(self.a, path, "size_of"), try generatedName(self.a, path, "encode"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.sub) |sub| {
+                try self.w.print(
+                    \\    let pb_f{d} = {s}.m;
+                    \\    if pb_f{d} {{
+                    \\        pb_write_varint(out, {d});
+                    \\        pb_write_varint(out, {s}(pb_f{d}) as! u64);
+                    \\        {s}(pb_f{d}, out);
+                    \\    }}
+                    \\
+                , .{
+                    f.number(), x, f.number(), f.tag(),
+                    try generatedName(self.a, sub.path, "size_of"), f.number(),
+                    try generatedName(self.a, sub.path, "encode"), f.number(),
+                });
+                continue;
+            }
             try self.w.print("    if {f} {{\n", .{f.isSet(x)});
             try self.w.print("        pb_write_varint(out, {d});\n", .{f.tag()});
             try self.w.print("        {f};\n", .{Subst{ .t = f.sc.write, .x = x }});
@@ -437,11 +562,19 @@ pub const FileEmitter = struct {
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             const ts = varintSize(f.tag());
+            if (f.sub) |sub| {
+                try self.w.print("    let pb_f{d} = {s}.m;\n", .{ f.number(), x });
+                try self.w.print("    if pb_f{d} {{ n += {d} + pb_len_size({s}(pb_f{d})); }}\n", .{
+                    f.number(), ts, try generatedName(self.a, sub.path, "size_of"), f.number(),
+                });
+                continue;
+            }
             try self.w.print("    if {f} {{ n += ", .{f.isSet(x)});
             switch (f.sc.size) {
                 .varint => try self.w.print("{d} + pb_varint_size({f});", .{ ts, Subst{ .t = f.sc.write_value, .x = x } }),
                 .fixed => |k| try self.w.print("{d};", .{ts + k}),
                 .bytes => try self.w.print("{d} + pb_bytes_size({s});", .{ ts, x }),
+                .message => unreachable,
             }
             try self.w.writeAll(" }\n");
         }
@@ -457,6 +590,10 @@ pub const FileEmitter = struct {
         , .{ try generatedName(self.a, path, "clear"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.sub != null) {
+                try self.w.print("    {s}(m);\n", .{try accessorName(self.a, path, f.fd.name orelse "", clear_acc)});
+                continue;
+            }
             try self.w.print("    {f};\n", .{Subst{ .t = f.sc.clear, .x = x }});
         }
         for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
@@ -465,8 +602,9 @@ pub const FileEmitter = struct {
 
     /// The accessors of a stored field, per fieldAccessors: the getter
     /// and set_ of strings and bytes, and set_, has_ and clear_ of fields
-    /// with presence.
+    /// with presence; a sub-message has its own (emitSubMessageAccessors).
     fn emitAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
+        if (f.sub) |sub| return self.emitSubMessageAccessors(goose_name, path, f, sub);
         const fname = f.fd.name orelse "";
         const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
         const is_bytes = f.sc.size == .bytes;
@@ -512,6 +650,56 @@ pub const FileEmitter = struct {
             b / 32, ~bitMask(b),
         });
     }
+
+    /// The getter, mutable_, has_ and clear_ of a sub-message. Its slot in
+    /// the pool is the sub-message's own, so a reference to it stays valid
+    /// until the field is cleared.
+    fn emitSubMessageAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field, sub: MessageInfo) Error!void {
+        const fname = f.fd.name orelse "";
+        const pool = try generatedName(self.a, sub.path, "pool");
+        try self.w.print(
+            \\
+            \\// The sub-message {s}, or null if it is not set. Valid until it or m is
+            \\// cleared.
+            \\fn {s}(m: {s}&) -> {s}&? {{ return m.{s}.m; }}
+            \\
+            \\// The sub-message {s}, set to an empty one first if it is not set.
+            \\fn {s}(m: {s}&) -> {s}& {{
+            \\    let pb_sub = m.{s}.m;
+            \\    if pb_sub {{ return pb_sub; }}
+            \\    let pb_new .= {s}.alloc_ref({s} {{ .. }});
+            \\    m.{s}.m .= pb_new;
+            \\    return pb_new;
+            \\}}
+            \\
+            \\fn {s}(m: {s}&) -> bool {{ return m.{s}.m != null; }}
+            \\
+            \\// Frees the sub-message {s} and everything it owns.
+            \\fn {s}(m: {s}&) {{
+            \\    let pb_sub = m.{s}.m;
+            \\    guard pb_sub else {{ return; }}
+            \\    {s}(pb_sub);
+            \\    {s}.free({s}.index_of(pb_sub));
+            \\    m.{s}.m .= null;
+            \\}}
+            \\
+        , .{
+            fname,
+            try accessorName(self.a, path, fname, get_acc), goose_name, sub.goose_name, f.name,
+            fname,
+            try accessorName(self.a, path, fname, mutable_acc), goose_name, sub.goose_name,
+            f.name,
+            pool, sub.goose_name,
+            f.name,
+            try accessorName(self.a, path, fname, has_acc), goose_name, f.name,
+            fname,
+            try accessorName(self.a, path, fname, clear_acc), goose_name,
+            f.name,
+            try generatedName(self.a, sub.path, "clear"),
+            pool, pool,
+            f.name,
+        });
+    }
 };
 
 /// The header comment of every generated file: the user-facing API
@@ -525,18 +713,29 @@ const api_comment =
     \\//   M_clear_f(m)                 optional); m.f reads them
     \\//   M_f(m) -> u8[:]              string and bytes fields: a view into
     \\//   M_set_f(m, v)                pb_bytes, and a copying setter
+    \\//   M_f(m) -> S&?                sub-message fields: null if not set;
+    \\//   M_mutable_f(m) -> S&         mutable_ first sets an empty one
+    \\//   M_has_f(m), M_clear_f(m)
     \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
     \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     \\//                                PB_ERR_* code and a partial m
     \\//                                (PB_ERR_UTF8: a bad proto3 string)
     \\//   M_clear(m)                   frees what m owns, empties it
     \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-    \\// fields, strings and bytes, later repeated fields and sub-messages)
+    \\// fields, strings and bytes, sub-messages, later repeated fields)
     \\// live in global pools (pb_bytes, M_pool, M_links): clear a message
     \\// to free them. Copying a record copies spans, not their contents.
     \\
     \\
 ;
+
+/// A message declared in the file being generated.
+const MessageInfo = struct {
+    desc: *const descriptor.DescriptorProto,
+    /// The unescaped path generated names are built from.
+    path: []const u8,
+    goose_name: []const u8,
+};
 
 /// A field stored in the record.
 const Field = struct {
@@ -546,6 +745,8 @@ const Field = struct {
     name: []const u8,
     /// The has-bit of a field with presence: bit bit % 32 of pb_has<bit / 32>.
     bit: ?u32 = null,
+    /// The message of a sub-message field, whose presence is its link.
+    sub: ?MessageInfo = null,
 
     /// The condition under which the field, whose value is `x`, is encoded.
     fn isSet(f: Field, x: []const u8) Cond {
@@ -598,7 +799,7 @@ const Scalar = struct {
     /// True if the value is not the default (implicit presence: only then
     /// is it encoded). Floats compare bits, so -0.0 is encoded.
     nonzero: []const u8,
-    size: union(enum) { varint, fixed: u64, bytes },
+    size: union(enum) { varint, fixed: u64, bytes, message },
     /// For varints: the u64 written, whose pb_varint_size is the size.
     write_value: []const u8 = "",
     /// The parameter type of set_, and its statement storing `v`.
@@ -663,16 +864,21 @@ const sc_string: Scalar = blk: {
     break :blk sc;
 };
 
-/// The scalar storage of `fd`, or null if this generator does not store
-/// the field yet: only singular numeric, bool, enum, string and bytes
-/// fields of proto3, with implicit presence or `optional`, are stored
-/// (messages, repeated fields, oneofs and proto2 come with later tasks).
-fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
-    if (fd.label == .LABEL_REPEATED) return null;
-    if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return null;
+/// True if this generator stores fields like `fd` yet: only singular fields
+/// of proto3, with implicit presence or `optional`, are stored (repeated
+/// fields, oneofs and proto2 come with later tasks).
+fn isStorable(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) bool {
+    if (fd.label == .LABEL_REPEATED) return false;
+    if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return false;
     // A proto3 optional is in a synthetic oneof, which is not an ADT: its
-    // field is stored like any other, with a has-bit.
-    if (fd.oneof_index != null and !(fd.proto3_optional orelse false)) return null;
+    // field is stored like any other.
+    return fd.oneof_index == null or (fd.proto3_optional orelse false);
+}
+
+/// The scalar storage of `fd`, or null if it is not a stored numeric, bool,
+/// enum, string or bytes field.
+fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
+    if (!isStorable(file, fd)) return null;
     return switch (fd.type orelse return null) {
         .TYPE_INT32, .TYPE_ENUM => &sc_int32,
         .TYPE_INT64 => &sc_int64,
@@ -930,7 +1136,7 @@ test "accessors depend on kind and presence" {
     try std.testing.expectEqualStrings("has_", p[1].prefix);
     try std.testing.expectEqualStrings("clear_", p[2].prefix);
     try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.string, true).len);
-    try std.testing.expectEqual(@as(usize, 3), fieldAccessors(.message, true).len);
+    try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.message, true).len);
 }
 
 test "proto3 optional is stored with a has-bit; real oneofs and proto2 are not" {
@@ -960,4 +1166,29 @@ test "proto3 strings are validated, bytes are not" {
     try std.testing.expectEqualStrings("pb_read_bytes(r, $)", scalarOf(&p3, &b).?.read);
     try std.testing.expectEqualStrings("const u8[:]", scalarOf(&p3, &b).?.setType());
     try std.testing.expectEqualStrings("i32", sc_int32.setType());
+}
+
+test "sub-message fields are stored unless their type is in a cycle or another file" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var m: descriptor.DescriptorProto = .{ .name = "M" };
+    try m.field.append(a, .{ .name = "later", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Later" });
+    try m.field.append(a, .{ .name = "self_", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.M" });
+    try m.field.append(a, .{ .name = "co", .number = 3, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Co" });
+    try m.field.append(a, .{ .name = "other", .number = 4, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".q.Other" });
+    var co: descriptor.DescriptorProto = .{ .name = "Co" };
+    try co.field.append(a, .{ .name = "back", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.M" });
+    var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .package = "p", .syntax = "proto3" };
+    try file.message_type.append(a, m);
+    try file.message_type.append(a, co);
+    try file.message_type.append(a, .{ .name = "Later" });
+    var diag: []const u8 = "";
+    const out = try generateForTest(a, &file, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    later: Later_Ref,\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "fn M_mutable_later(m: M&) -> Later& {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    self_: ") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    co: ") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    other: ") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    back: ") == null);
 }

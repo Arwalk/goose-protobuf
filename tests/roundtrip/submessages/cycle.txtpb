@@ -1,0 +1,5 @@
+# proto-file: submessages.proto
+# proto-message: submessages.Outer
+# Loop.next, in a cycle of message types, is kept as an unknown field.
+after: 1
+loop { next { } }

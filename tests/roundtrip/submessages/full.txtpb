@@ -1,0 +1,8 @@
+# proto-file: submessages.proto
+# proto-message: submessages.Outer
+inner { a: 1 s: "x" leaf { x: 2 y: 3 } }
+nested { n: 4 label: "lbl" }
+opt_leaf { x: 5 }
+after: 6
+far_leaf { y: 7 }
+sub_n { r: 8 }

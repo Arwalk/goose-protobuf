@@ -9,13 +9,16 @@
 //   M_clear_f(m)                 optional); m.f reads them
 //   M_f(m) -> u8[:]              string and bytes fields: a view into
 //   M_set_f(m, v)                pb_bytes, and a copying setter
+//   M_f(m) -> S&?                sub-message fields: null if not set;
+//   M_mutable_f(m) -> S&         mutable_ first sets an empty one
+//   M_has_f(m), M_clear_f(m)
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, strings and bytes, later repeated fields and sub-messages)
+// fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Copying a record copies spans, not their contents.
 
@@ -99,6 +102,7 @@ struct Wide {
     s: pb_Span,
     d: f64,
     f: u32,
+    sub: Known_Ref,
     g: i64,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
@@ -127,6 +131,17 @@ fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
             m.d = pb_read_double(r);
         } else if tag == 45 {
             m.f = pb_read_fixed32(r);
+        } else if tag == 58 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Known_decode_from(r, Wide_mutable_sub(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
         } else if tag == 65 {
             m.g = pb_read_fixed64(r) as! i64;
         } else {
@@ -166,6 +181,12 @@ fn Wide_encode(m: Wide&, out: u8[>..]&) {
         pb_write_varint(out, 45);
         pb_write_fixed32(out, m.f);
     }
+    let pb_f7 = m.sub.m;
+    if pb_f7 {
+        pb_write_varint(out, 58);
+        pb_write_varint(out, Known_size_of(pb_f7) as! u64);
+        Known_encode(pb_f7, out);
+    }
     if m.g != 0 {
         pb_write_varint(out, 65);
         pb_write_fixed64(out, m.g as! u64);
@@ -181,6 +202,8 @@ fn Wide_size_of(m: Wide&) -> i64 {
     if m.s.len > 0 { n += 1 + pb_bytes_size(m.s); }
     if pb_f64_to_bits(m.d) != 0 { n += 9; }
     if m.f != 0 { n += 5; }
+    let pb_f7 = m.sub.m;
+    if pb_f7 { n += 1 + pb_len_size(Known_size_of(pb_f7)); }
     if m.g != 0 { n += 9; }
     n += m.pb_unknown.len;
     return n;
@@ -193,6 +216,7 @@ fn Wide_clear(m: Wide&) {
     m.s = pb_bytes_free(m.s);
     m.d = 0.0;
     m.f = 0;
+    Wide_clear_sub(m);
     m.g = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
@@ -204,4 +228,28 @@ fn Wide_s(m: Wide&) -> u8[:] { return pb_run(pb_bytes, m.s); }
 // Sets s to a copy of v.
 fn Wide_set_s(m: Wide&, v: const u8[:]) {
     m.s = pb_bytes_set(m.s, v);
+}
+
+// The sub-message sub, or null if it is not set. Valid until it or m is
+// cleared.
+fn Wide_sub(m: Wide&) -> Known&? { return m.sub.m; }
+
+// The sub-message sub, set to an empty one first if it is not set.
+fn Wide_mutable_sub(m: Wide&) -> Known& {
+    let pb_sub = m.sub.m;
+    if pb_sub { return pb_sub; }
+    let pb_new .= Known_pool.alloc_ref(Known { .. });
+    m.sub.m .= pb_new;
+    return pb_new;
+}
+
+fn Wide_has_sub(m: Wide&) -> bool { return m.sub.m != null; }
+
+// Frees the sub-message sub and everything it owns.
+fn Wide_clear_sub(m: Wide&) {
+    let pb_sub = m.sub.m;
+    guard pb_sub else { return; }
+    Known_clear(pb_sub);
+    Known_pool.free(Known_pool.index_of(pb_sub));
+    m.sub.m .= null;
 }

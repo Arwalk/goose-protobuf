@@ -1,0 +1,44 @@
+// Golden and round-trip: singular sub-message fields (gpb-8qn.2).
+syntax = "proto3";
+
+package submessages;
+
+message Outer {
+  message Nested {
+    int32 n = 1;
+    string label = 2;
+  }
+
+  // Declared after its use.
+  Inner inner = 1;
+  Nested nested = 2;
+  optional Leaf opt_leaf = 3;
+  int32 after = 4;
+  // A two-byte tag.
+  Leaf far_leaf = 2000;
+  // Message and type names the generated locals must not capture.
+  n sub_n = 5;
+  // Holds a cycle of message types, but is not in it: stored.
+  Loop loop = 6;
+}
+
+message Inner {
+  int32 a = 1;
+  string s = 2;
+  optional int32 o = 3;
+  Leaf leaf = 4;
+}
+
+message Leaf {
+  int32 x = 1;
+  int32 y = 2;
+}
+
+message n {
+  int32 r = 1;
+}
+
+message Loop {
+  // In a cycle of message types: not stored yet (gpb-8qn.3).
+  Loop next = 1;
+}

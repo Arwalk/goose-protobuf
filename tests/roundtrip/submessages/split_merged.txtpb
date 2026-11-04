@@ -1,0 +1,7 @@
+# proto-file: submessages.proto
+# proto-message: submessages.Outer
+# What decoding split_a then split_b must produce.
+inner { a: 1 s: "second" o: 0 leaf { x: 2 y: 4 } }
+nested { n: 9 label: "l" }
+after: 1
+far_leaf { x: 1 }
