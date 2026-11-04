@@ -1,7 +1,7 @@
 # 0005: generated code imports pb_wire by bare name
 
-- Status: accepted for the import form. The repository layout is left to
-  gpb-dx9.1, with what it needs to know below.
+- Status: accepted. The owner chose to publish from this repository
+  (gpb-dx9.6), and that is done: only the host and path remain (gpb-dx9.1).
 - Date: 2026-11-04
 - Bead: gpb-wof.5
 - Toolchain: Goose v2026.3 (`goose runtime 4d3da949e563`), linux-x64
@@ -25,8 +25,12 @@ chooses, in its root file:
 | The program | Root file line | Result |
 |---|---|---|
 | vendors a copy next to its root file | none | builds |
-| uses a checkout | `import pb_wire from "../goose-protobuf/runtime";` | builds |
-| uses a git repository | `import pb_wire from "owner/repo@v1.2.3";` | builds if the entry is at the repository's root |
+| uses a checkout | `import pb_wire from "../goose-protobuf";` | builds |
+| uses a git repository | `import pb_wire from "owner/repo@v1.2.3";` | builds |
+
+A vendored copy that needs well-known types also has `wkt/` at
+`pb_wire/wkt/` (`scripts/vendor_runtime.sh`, decision 0007). `.../runtime` as
+the path still builds a program that uses none.
 
 This follows Goose's own rule, "only the root file declares packages": a
 generated file writing a source would be a requirement every program had to
@@ -59,19 +63,19 @@ Measured, and not obvious from the documentation:
    `.gitmodules` keeps it out.
 
 So publishing from this repository takes the entry file and `update = none`,
-and the second has a cost here: a plain `git submodule update --init` then
-skips the submodule, so `scripts/`, CI and the README would need `--checkout`.
-Neither is worth doing before there is a remote, so neither is done yet.
+and **both are in place**. The second has a cost here: a plain
+`git submodule update --init` skips the submodule, so the scripts, CI and the
+README say `--checkout`.
 
-The alternative is a separate repository holding only `pb_wire.goose` at its
-root, which has no such costs but has to be kept in step, and whose tags say
-nothing about the generator's version. **This is for gpb-dx9.1 to decide**, as
-it is tied to where the code is hosted. The recommendation is this repository:
-the generator and runtime change together, and one tag then names both.
+The rejected alternative was a separate repository holding only
+`pb_wire.goose` at its root, which has no such costs but has to be kept in
+step, and whose tags say nothing about the generator's version. Here the
+generator, runtime and well-known types change together, and one tag names all
+three.
 
 ## Release procedure
 
-Once gpb-dx9.1 has settled the path, for version `X.Y.Z`:
+Once there is a remote (gpb-dx9.1 settles the path), for version `X.Y.Z`:
 
 1. On `main`, with every gate green (the commands in AGENTS.md).
 2. `git tag -a vX.Y.Z -m "vX.Y.Z"`, then push the tag.
@@ -95,6 +99,7 @@ keep them together.
   place to change versions and enable nothing.
 - **Generated code embedding the runtime**: two generated files would declare
   it twice, and nothing would be shared.
+- **A separate runtime repository**: see above.
 - **Moving `runtime/pb_wire.goose` to the repository root**: it works, but the
   entry file does the same without moving anything, and the runtime is not
   what most of this repository is about.

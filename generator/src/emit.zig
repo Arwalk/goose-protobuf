@@ -165,13 +165,43 @@ pub fn outputName(a: std.mem.Allocator, proto_name: []const u8) ![]const u8 {
     return out.items;
 }
 
-/// How a generated file imports the file generated from `proto_name`.
-/// Goose resolves it from the root file's directory.
-pub fn importPath(a: std.mem.Allocator, proto_name: []const u8) ![]const u8 {
-    const out = try outputName(a, proto_name);
+/// The well-known types with special semantics, such as a JSON form of their
+/// own. Their bindings ship in the pb_wire package, under wkt/, so that one
+/// copy exists to attach those semantics to (decision 0007). Other files of
+/// google/protobuf/ are ordinary protos.
+const well_known_files = [_][]const u8{
+    "google/protobuf/any.proto",
+    "google/protobuf/duration.proto",
+    "google/protobuf/empty.proto",
+    "google/protobuf/field_mask.proto",
+    "google/protobuf/struct.proto",
+    "google/protobuf/timestamp.proto",
+    "google/protobuf/wrappers.proto",
+};
+
+pub fn isWellKnown(file: *const descriptor.FileDescriptorProto) bool {
+    if (!std.mem.eql(u8, file.package orelse "", "google.protobuf")) return false;
+    for (well_known_files) |name| {
+        if (std.mem.eql(u8, file.name orelse "", name)) return true;
+    }
+    return false;
+}
+
+/// A well-known type's file in this repository, which `import pb_wire.wkt.x;`
+/// loads: `google/protobuf/any.proto` -> `wkt/any.goose`.
+pub fn wellKnownOutputName(a: std.mem.Allocator, proto_name: []const u8) ![]const u8 {
+    return std.fmt.allocPrint(a, "wkt/{s}", .{try outputName(a, std.fs.path.basename(proto_name))});
+}
+
+/// How a generated file imports the file generated from `file`. Goose resolves
+/// it from the root file's directory, or for pb_wire from the package.
+pub fn importPath(a: std.mem.Allocator, file: *const descriptor.FileDescriptorProto) ![]const u8 {
+    const proto_name = file.name orelse "";
+    const well_known = isWellKnown(file);
+    const out = if (well_known) try wellKnownOutputName(a, proto_name) else try outputName(a, proto_name);
     const path = try a.dupe(u8, out[0 .. out.len - ".goose".len]);
     std.mem.replaceScalar(u8, path, '/', '.');
-    return path;
+    return if (well_known) std.fmt.allocPrint(a, "pb_wire.{s}", .{path}) else path;
 }
 
 pub const Error = error{NameCollision} || std.mem.Allocator.Error || std.Io.Writer.Error;
@@ -408,7 +438,7 @@ pub const FileEmitter = struct {
                 var info = e.value_ptr.*;
                 info.ns = ns;
                 info.goose_name = try std.fmt.allocPrint(self.a, "{s}{s}", .{ ns, info.goose_name });
-                info.import_path = try importPath(self.a, fname);
+                info.import_path = try importPath(self.a, f);
                 try self.foreign.put(self.a, e.key_ptr.*, info);
             }
             break;
@@ -1799,6 +1829,26 @@ test "a repeated message field makes a cycle; a map field does not store" {
     try std.testing.expect(std.mem.indexOf(u8, out, "    children: pb_Span,\n") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "fn Node_add_children(m: Node&) -> Node& {") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "    a: pb_Span,\n") == null);
+}
+
+test "well-known files are recognised by name and package" {
+    const any: descriptor.FileDescriptorProto = .{ .name = "google/protobuf/any.proto", .package = "google.protobuf" };
+    try std.testing.expect(isWellKnown(&any));
+    const other: descriptor.FileDescriptorProto = .{ .name = "google/protobuf/any.proto", .package = "mine" };
+    try std.testing.expect(!isWellKnown(&other));
+    const api: descriptor.FileDescriptorProto = .{ .name = "google/protobuf/api.proto", .package = "google.protobuf" };
+    try std.testing.expect(!isWellKnown(&api));
+}
+
+test "well-known files live in the pb_wire package" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    try std.testing.expectEqualStrings("wkt/any.goose", try wellKnownOutputName(a, "google/protobuf/any.proto"));
+    const st: descriptor.FileDescriptorProto = .{ .name = "google/protobuf/struct.proto", .package = "google.protobuf" };
+    try std.testing.expectEqualStrings("pb_wire.wkt.struct_", try importPath(a, &st));
+    const api: descriptor.FileDescriptorProto = .{ .name = "google/protobuf/api.proto", .package = "google.protobuf" };
+    try std.testing.expectEqualStrings("google.protobuf.api", try importPath(a, &api));
 }
 
 test "fields of an imported type are qualified and import its file" {

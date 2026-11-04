@@ -33,7 +33,7 @@
 namespace copying;
 
 import pb_wire;
-import google.protobuf.duration;
+import pb_wire.wkt.duration;
 
 // message copying.Msg
 struct Msg {

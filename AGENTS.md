@@ -16,6 +16,7 @@ scripts/golden.sh                               # golden tests (--update to acce
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
+scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
 ```
 
 Golden tests: each `tests/protos/<name>.proto` is generated twice (the two
@@ -24,7 +25,8 @@ directory means no files), and every golden `.goose` file goes through
 `goose check` next to a copy of `runtime/pb_wire.goose` and the generated
 files it imports. After an
 intended generator change, run `scripts/golden.sh --update` and review the
-golden diff in the commit. `scripts/test_golden.sh`,
+golden diff in the commit, and the same with `scripts/wkt.sh --update` for the
+well-known types in `wkt/`. `scripts/test_golden.sh`,
 `scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`,
 `scripts/test_check_generated.sh` and `scripts/test_run_conformance.sh`
 self-test the harnesses.

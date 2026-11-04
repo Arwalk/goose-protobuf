@@ -96,7 +96,7 @@ for proto in "${protos[@]}"; do
     "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$chk" \
       "${includes[@]}" "${closure[@]}"
     cp -R "$golden/." "$chk/"
-    cp "$root/runtime/pb_wire.goose" "$chk/pb_wire.goose"
+    "$root/scripts/vendor_runtime.sh" "$chk"
     while IFS= read -r f; do
       rel="${f#$golden/}"
       if ! (cd "$chk" && "$goose" check "$rel") >"$tmp/$name/check.log" 2>&1; then

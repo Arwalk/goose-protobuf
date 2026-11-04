@@ -16,7 +16,7 @@ protoc_version="36.2"
 die() { echo "error: $*" >&2; exit 1; }
 
 [ -f "$src/CMakeLists.txt" ] ||
-  die "$src missing; run: git submodule update --init"
+  die "$src missing; run: git submodule update --init --checkout"
 command -v cmake >/dev/null ||
   die "cmake not found (need >= 3.16); see TOOLCHAIN.md"
 command -v c++ >/dev/null || command -v g++ >/dev/null || command -v clang++ >/dev/null ||

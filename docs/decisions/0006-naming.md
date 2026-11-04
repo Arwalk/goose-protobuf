@@ -149,7 +149,8 @@ A generated file imports the files whose types its stored fields use, as
 `::Name` is a type in no package seen from a file in one. Goose resolves
 imports from the root file's directory, so a program's root file sits at the
 `--goose_out` directory. `pb_wire` is imported by bare name too, whichever way
-the program provides it (decision 0005).
+the program provides it (decision 0005). The one exception to the import form
+is the well-known types, `import pb_wire.wkt.x;` (decision 0007).
 
 gpb-8qn.8 implemented output file names, with one addition to the rule
 above: any character an identifier cannot hold is replaced, not only `-`

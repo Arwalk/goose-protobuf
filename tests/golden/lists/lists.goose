@@ -33,7 +33,7 @@
 namespace lists;
 
 import pb_wire;
-import google.protobuf.duration;
+import pb_wire.wkt.duration;
 
 // message lists.Lists
 struct Lists {

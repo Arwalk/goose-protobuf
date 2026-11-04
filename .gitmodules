@@ -2,3 +2,4 @@
 	path = third_party/protobuf
 	url = https://github.com/protocolbuffers/protobuf
 	shallow = true
+	update = none

@@ -37,17 +37,31 @@ pub fn run(gpa: std.mem.Allocator, input: []const u8, out: *std.Io.Writer) !void
 }
 
 /// Fills response.file, or sets response.error and returns error.Rejected.
+/// The well-known types ship in the pb_wire package, so a file naming one
+/// writes nothing. The parameter `wkt` writes those instead, as wkt/x.goose:
+/// scripts/wkt.sh regenerates the package's copy with it.
 fn generate(
     a: std.mem.Allocator,
     request: *const plugin.CodeGeneratorRequest,
     response: *plugin.CodeGeneratorResponse,
 ) !void {
+    const parameter = request.parameter orelse "";
+    const wkt = std.mem.eql(u8, parameter, "wkt");
+    if (parameter.len > 0 and !wkt) {
+        response.@"error" = try std.fmt.allocPrint(a, "unknown parameter: {s}", .{parameter});
+        return error.Rejected;
+    }
     var outputs: std.StringHashMapUnmanaged([]const u8) = .empty;
     for (request.file_to_generate.items) |name| {
         const file = findFile(request, name) orelse {
             response.@"error" = try std.fmt.allocPrint(a, "{s}: not in proto_file", .{name});
             return error.Rejected;
         };
+        if (emit.isWellKnown(file) != wkt) {
+            if (!wkt) continue;
+            response.@"error" = try std.fmt.allocPrint(a, "{s}: not a well-known type", .{name});
+            return error.Rejected;
+        }
         var content: std.Io.Writer.Allocating = .init(a);
         var diag: []const u8 = "";
         emit.generateFile(a, file, request.proto_file.items, &content.writer, &diag) catch |err| switch (err) {
@@ -57,7 +71,7 @@ fn generate(
             },
             else => return err,
         };
-        const output = try emit.outputName(a, name);
+        const output = if (wkt) try emit.wellKnownOutputName(a, name) else try emit.outputName(a, name);
         const gop = try outputs.getOrPut(a, output);
         if (gop.found_existing) {
             response.@"error" = try std.fmt.allocPrint(
@@ -224,5 +238,39 @@ test "two protos with one output file are a response error with no files" {
 
     const res = try runOn(a, &req);
     try std.testing.expectEqualStrings("a.b.proto and a-b.proto both map to the Goose file a_b.goose", res.@"error".?);
+    try std.testing.expectEqual(@as(usize, 0), res.file.items.len);
+}
+
+test "a well-known file writes nothing, unless the parameter asks for it" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var req: plugin.CodeGeneratorRequest = .{};
+    try req.file_to_generate.append(a, "google/protobuf/empty.proto");
+    try req.proto_file.append(a, .{ .name = "google/protobuf/empty.proto", .package = "google.protobuf" });
+
+    var res = try runOn(a, &req);
+    try std.testing.expectEqual(@as(?[]const u8, null), res.@"error");
+    try std.testing.expectEqual(@as(usize, 0), res.file.items.len);
+
+    req.parameter = "wkt";
+    res = try runOn(a, &req);
+    try std.testing.expectEqual(@as(?[]const u8, null), res.@"error");
+    try std.testing.expectEqualStrings("wkt/empty.goose", res.file.items[0].name.?);
+}
+
+test "the wkt parameter refuses other files, and others are refused" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var req: plugin.CodeGeneratorRequest = .{ .parameter = "wkt" };
+    try req.file_to_generate.append(a, "a.proto");
+    try req.proto_file.append(a, .{ .name = "a.proto" });
+    var res = try runOn(a, &req);
+    try std.testing.expectEqualStrings("a.proto: not a well-known type", res.@"error".?);
+
+    req.parameter = "nope";
+    res = try runOn(a, &req);
+    try std.testing.expectEqualStrings("unknown parameter: nope", res.@"error".?);
     try std.testing.expectEqual(@as(usize, 0), res.file.items.len);
 }

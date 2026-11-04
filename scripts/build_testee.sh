@@ -24,7 +24,7 @@ stage="$root/build/testee-src"
 
 die() { echo "error: $*" >&2; exit 1; }
 [ -f "$src/google/protobuf/test_messages_proto3.proto" ] ||
-  die "no $src/google/protobuf/test_messages_proto3.proto; git submodule update --init"
+  die "no $src/google/protobuf/test_messages_proto3.proto; git submodule update --init --checkout"
 command -v "$goose" >/dev/null || die "goose not found; see TOOLCHAIN.md"
 
 (cd "$root/generator" && zig build) || die "zig build failed"
@@ -37,7 +37,8 @@ while IFS= read -r i; do closure+=("$i"); done \
 "$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage" \
   -I "$src" "${closure[@]}"
 cp "$root"/conformance/testee.goose "$root"/conformance/io.c \
-   "$root"/conformance/testee.build "$root"/runtime/pb_wire.goose "$stage/"
+   "$root"/conformance/testee.build "$stage/"
+"$root/scripts/vendor_runtime.sh" "$stage"
 
 mkdir -p "$(dirname "$out")"
 # shellcheck disable=SC2086

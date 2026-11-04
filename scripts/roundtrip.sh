@@ -56,7 +56,7 @@ for name in "${names[@]}"; do
   [ -f "$proto" ] || { fail "no $proto"; continue; }
   mkdir -p "$work"
   cp "$src"/* "$work"/
-  cp "$root/runtime/pb_wire.goose" "$work"/
+  "$root/scripts/vendor_runtime.sh" "$work"
   closure=()
   while IFS= read -r i; do closure+=("$i"); done \
     < <("$root/scripts/proto_closure.sh" -I "$proto_dir" "$proto" 2>"$work/log")

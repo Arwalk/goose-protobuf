@@ -8,7 +8,7 @@ Status: Phase 3 in progress. The plugin emits one `.goose` file per `.proto`
 file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
 those (packed or not), with `optional` presence and unknown fields kept. Oneofs
-and maps are kept as unknown fields for now, and so is proto2 until Phase 4. `tests/roundtrip/wkt` covers the scalar well-known types. Every
+and maps are kept as unknown fields for now, and so is proto2 until Phase 4. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers the scalar ones. Every
 required proto3 binary conformance test passes. The backlog lives in beads
 (`bd ready`).
 
@@ -34,7 +34,9 @@ required proto3 binary conformance test passes. The backlog lives in beads
 
 ```
 generator/      Zig protoc plugin (protoc-gen-goose)
+pb_wire.goose   entry of the pb_wire package (this repository)
 runtime/        pb_wire.goose: shared wire-format primitives
+wkt/            well-known types, generated and committed (scripts/wkt.sh)
 conformance/    Goose testee + failure list (may only shrink)
 tests/          golden/, protos/, roundtrip/, fuzz/
 third_party/    protobuf (submodule, pinned; conformance runner source)
@@ -53,10 +55,17 @@ protoc --plugin=protoc-gen-goose=generator/zig-out/bin/protoc-gen-goose \
 goose build app.goose        # app.goose imports out/foo.goose + pb_wire
 ```
 
+The root file of a program names this repository as the `pb_wire` package:
+`import pb_wire from "../goose-protobuf";` for a checkout. Well-known types
+come from the package, not from protoc: a field of type
+`google.protobuf.Duration` generates `import pb_wire.wkt.duration;`, and the
+plugin writes nothing for `google/protobuf/duration.proto`
+([decision 0007](docs/decisions/0007-well-known-types.md)).
+
 Conformance:
 
 ```sh
-git submodule update --init
+git submodule update --init --checkout
 scripts/build_runner.sh                            # once: builds the runner
 scripts/run_conformance.sh                         # builds + runs build/testee
 scripts/run_conformance.sh --maximum_edition 2023  # runner flags pass through

@@ -28,7 +28,7 @@ protoc --version   # libprotoc 36.2
 
 `.tools/bin/goose` is a symlink into the unpacked release, and Goose finds
 its stdlib through it. `.tools/protoc-36.2/include` holds the well-known
-types. A pin change updates the version and all three sha256 sums in the
+types' `.proto` files, which `scripts/wkt.sh` generates `wkt/` from. A pin change updates the version and all three sha256 sums in the
 script.
 
 ## Notes

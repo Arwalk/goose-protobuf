@@ -74,8 +74,11 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
-        with:
-          submodules: true
+
+      # update = none in .gitmodules keeps it out of what package users fetch
+      # (decision 0005), so it takes --checkout.
+      - name: Check out the protobuf submodule
+        run: git submodule update --init --checkout third_party/protobuf
 
       - name: Cache pinned protoc and Goose
         uses: actions/cache@v4
@@ -98,12 +101,9 @@ jobs:
           scripts/check_generated.sh -I third_party/protobuf/src \
             google/protobuf/test_messages_proto3.proto
 
-      # Well-known types: generated from protoc's include dir (decision 0007).
-      - name: Generate well-known types
-        run: |
-          scripts/check_generated.sh google/protobuf/any.proto \
-            google/protobuf/timestamp.proto google/protobuf/duration.proto \
-            google/protobuf/wrappers.proto google/protobuf/empty.proto
+      # The committed copy in wkt/ matches the plugin (decision 0007).
+      - name: Check well-known types
+        run: scripts/wkt.sh
 
       - name: Protobuf submodule commit
         id: pb

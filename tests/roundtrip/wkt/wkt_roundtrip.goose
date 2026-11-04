@@ -3,11 +3,11 @@
 // re-encodes it byte for byte.
 // Run: scripts/roundtrip.sh wkt
 import pb_wire;
-import google.protobuf.any;
-import google.protobuf.duration;
-import google.protobuf.empty;
-import google.protobuf.timestamp;
-import google.protobuf.wrappers;
+import pb_wire.wkt.any;
+import pb_wire.wkt.duration;
+import pb_wire.wkt.empty;
+import pb_wire.wkt.timestamp;
+import pb_wire.wkt.wrappers;
 
 var failures = 0;
 

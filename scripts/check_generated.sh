@@ -8,7 +8,7 @@
 #     google/protobuf/test_messages_proto3.proto
 # What the protos import is generated and checked too. Imports resolve from
 # the root file's directory, so each output file is checked through a small
-# root file at the output root, next to a copy of runtime/pb_wire.goose.
+# root file at the output root, next to a copy of the pb_wire package.
 # Env: PLUGIN (default: zig build, generator/zig-out/bin), PROTOC, GOOSE
 set -uo pipefail
 
@@ -41,7 +41,7 @@ while IFS= read -r i; do closure+=("$i"); done \
 [ ${#closure[@]} -gt 0 ] || { echo "FAIL protoc"; exit 1; }
 "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$tmp" \
   "${includes[@]}" "${closure[@]}" || { echo "FAIL protoc"; exit 1; }
-cp "$root/runtime/pb_wire.goose" "$tmp/pb_wire.goose"
+"$root/scripts/vendor_runtime.sh" "$tmp"
 
 bad=0; n=0
 while IFS= read -r f; do
@@ -60,6 +60,6 @@ while IFS= read -r f; do
   else
     echo "ok   $rel"
   fi
-done < <(find "$tmp" -name '*.goose' -type f ! -name pb_wire.goose ! -name check_root.goose | LC_ALL=C sort)
+done < <(find "$tmp" -name '*.goose' -type f ! -name pb_wire.goose ! -name check_root.goose ! -path "$tmp/pb_wire/*" | LC_ALL=C sort)
 [ $n -gt 0 ] || { echo "FAIL no files generated"; exit 1; }
 exit $bad

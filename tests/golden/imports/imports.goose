@@ -34,11 +34,11 @@ namespace imports;
 
 import pb_wire;
 import foo_v1;
-import google.protobuf.duration;
 import imports_nopkg;
 import imports_reexported;
 import imports_same;
 import my_api;
+import pb_wire.wkt.duration;
 
 // message imports.Holder
 struct Holder {

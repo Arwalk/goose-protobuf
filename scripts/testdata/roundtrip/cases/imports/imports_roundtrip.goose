@@ -1,6 +1,6 @@
 // Passes only if the harness generated the file imports.proto imports.
 import pb_wire;
-import google.protobuf.duration;
+import pb_wire.wkt.duration;
 
 fn main() {
     var d = google_protobuf::Duration { .. };

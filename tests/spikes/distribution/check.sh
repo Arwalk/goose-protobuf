@@ -124,6 +124,58 @@ done
 fetched_submodule sm_plain && pass "a plain submodule is fetched with the package" || fail "a plain submodule is fetched with the package"
 fetched_submodule sm_none && fail "update = none keeps a submodule out" || pass "update = none keeps a submodule out"
 
+# This repository as published: the entry, runtime/ and wkt/, with
+# update = none on its submodule. A consumer's file with a well-known type
+# gets it from the package, by the path and by git. A plain submodule update
+# of a clone skips the submodule; --checkout, which the scripts ask for, does not.
+grep -q 'update = none' "$root/.gitmodules" || fail "this repository marks its submodule update = none"
+pub="$tmp/pub"; mkdir "$pub"
+cp -R "$root/pb_wire.goose" "$root/runtime" "$root/wkt" "$pub/"
+(cd "$pub" && git init -q -b main . 2>/dev/null \
+  && "${git_c[@]}" submodule --quiet add "$tmp/big.git" third_party/big)
+git -C "$pub" config -f .gitmodules submodule.third_party/big.update none
+repo "$pub" v1
+cat > "$tmp/gen/holder.proto" <<'PROTO'
+syntax = "proto3";
+package holder;
+import "google/protobuf/duration.proto";
+message H { google.protobuf.Duration d = 1; }
+PROTO
+protoc --plugin=protoc-gen-goose="$plugin" --goose_out="$tmp/gen" -I "$tmp/gen" \
+  holder.proto google/protobuf/duration.proto
+[ ! -e "$tmp/gen/google" ] && pass "protoc writes nothing for a well-known file" || fail "protoc writes nothing for a well-known file"
+grep -q '^import pb_wire.wkt.duration;$' "$tmp/gen/holder.goose" || fail "generated code imports the package's well-known type"
+wkt_consumer() {  # wkt_consumer <dir> <description> <first line of the root file>
+  mkdir -p "$1"; cp "$tmp/gen/holder.goose" "$1/"
+  cat > "$1/app.goose" <<APP
+$3
+import holder;
+fn main() {
+    var m = holder::H { .. };
+    holder::H_mutable_d(m).seconds = 7;
+    var out: u8[>..] = [];
+    holder::H_encode(m, out);
+    var b = holder::H { .. };
+    if holder::H_decode(out, b) != PB_OK || holder::H_mutable_d(b).seconds != 7 { abort("round trip"); }
+    print("ok");
+}
+APP
+  builds "$1" "$2"
+}
+wkt_consumer "$tmp/pub_path" "a well-known type, from a path to the repository" \
+  "import pb_wire from \"$(realpath --relative-to="$tmp/pub_path" -m "$root")\";"
+wkt_consumer "$tmp/pub_git" "a well-known type, from a git URL of the repository" \
+  "import pb_wire from \"file://$pub.git@v1\";"
+ls -d "$GOOSE_HOME"/pkg/pub-*/v1/third_party/big/payload.txt >/dev/null 2>&1 \
+  && fail "the published package leaves its submodule out" || pass "the published package leaves its submodule out"
+mkdir "$tmp/pub_vend"; (cd "$root" && scripts/vendor_runtime.sh "$tmp/pub_vend")
+wkt_consumer "$tmp/pub_vend" "a well-known type, vendored" "import pb_wire;"
+git clone -q "$pub.git" "$tmp/pub_clone"
+git -C "$tmp/pub_clone" -c protocol.file.allow=always submodule --quiet update --init 2>/dev/null
+[ ! -e "$tmp/pub_clone/third_party/big/payload.txt" ] && pass "a plain submodule update skips it" || fail "a plain submodule update skips it"
+git -C "$tmp/pub_clone" -c protocol.file.allow=always submodule --quiet update --init --checkout
+[ -e "$tmp/pub_clone/third_party/big/payload.txt" ] && pass "--checkout fetches it" || fail "--checkout fetches it"
+
 # Nothing to resolve the name: a clear error.
 mkdir "$tmp/missing"; consumer "$tmp/missing" "// no pb_wire"
 rejects "$tmp/missing" 'cannot find the module pb_wire' "no runtime is a clear error"
