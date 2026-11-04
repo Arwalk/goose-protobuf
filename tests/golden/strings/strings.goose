@@ -12,6 +12,9 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
+//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
+//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
+//   M_clear_f(m)
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -19,7 +22,7 @@
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, strings and bytes, sub-messages, later repeated fields)
+// fields, strings and bytes, sub-messages, repeated scalars)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
 // use M_copy.

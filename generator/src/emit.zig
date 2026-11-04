@@ -110,11 +110,7 @@ pub fn fieldAccessors(kind: FieldKind, presence: bool) []const Accessor {
         else
             &.{ get_acc, set_acc },
         .message => &(.{ get_acc, mutable_acc } ++ presence_accessors),
-        .repeated => &.{
-            .{ .prefix = "", .suffix = "" },
-            .{ .prefix = "", .suffix = "_at" },
-            .{ .prefix = "add_", .suffix = "" },
-        },
+        .repeated => &.{ get_acc, at_acc, add_acc, set_acc, clear_acc },
         .map => &.{ .{ .prefix = "", .suffix = "_get" }, .{ .prefix = "", .suffix = "_put" } },
     };
 }
@@ -124,6 +120,8 @@ const set_acc: Accessor = .{ .prefix = "set_", .suffix = "" };
 const has_acc: Accessor = .{ .prefix = "has_", .suffix = "" };
 const clear_acc: Accessor = .{ .prefix = "clear_", .suffix = "" };
 const mutable_acc: Accessor = .{ .prefix = "mutable_", .suffix = "" };
+const at_acc: Accessor = .{ .prefix = "", .suffix = "_at" };
+const add_acc: Accessor = .{ .prefix = "add_", .suffix = "" };
 
 /// The accessors every field with explicit presence has.
 const presence_accessors = [_]Accessor{ has_acc, clear_acc };
@@ -496,7 +494,8 @@ pub const FileEmitter = struct {
         var bits: u32 = 0;
         for (m.field.items) |*fd| {
             const sub = try self.subMessageOf(fd);
-            const sc = if (sub) |s| try self.refStorage(s) else scalarOf(self.file, fd) orelse continue;
+            const repeated = repeatedScalarOf(self.file, fd);
+            const sc = if (sub) |s| try self.refStorage(s) else repeated orelse scalarOf(self.file, fd) orelse continue;
             const rname = try ident(self.a, fd.name orelse "");
             if ((try record_names.getOrPut(self.a, rname)).found_existing) {
                 self.diag = try std.fmt.allocPrint(
@@ -507,11 +506,11 @@ pub const FileEmitter = struct {
                 return error.NameCollision;
             }
             var bit: ?u32 = null;
-            if (sub == null and hasPresence(self.file, fd)) {
+            if (sub == null and repeated == null and hasPresence(self.file, fd)) {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub });
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated != null });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
@@ -550,7 +549,7 @@ pub const FileEmitter = struct {
 
     fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, has_words: u32) Error!void {
         try self.w.print("struct {s} {{\n", .{goose_name});
-        for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, f.sc.goose });
+        for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, if (f.repeated) "pb_Span" else f.sc.goose });
         for (0..has_words) |i| try self.w.print("    pb_has{d}: u32,   // has-bits of fields with presence\n", .{i});
         try self.w.writeAll("    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes\n}\n");
     }
@@ -581,15 +580,25 @@ pub const FileEmitter = struct {
             \\// unknown fields.
             \\{s} {s}(r: pb_Reader&, m: {s}&) {{
             \\    var unknown_len: i64 = m.pb_unknown.len;
-            \\    while r.pos < r.end {{
-            \\        let start = r.pos;
-            \\        let tag = pb_read_tag(r);
-            \\        if r.err != PB_OK {{ break; }}
             \\
         , .{ self.fn_kw, decode_from, goose_name });
+        for (fields) |f| {
+            if (f.repeated) try self.w.print("    var pb_len{d}: i64 = m.{s}.len;\n", .{ f.number(), f.name });
+        }
+        try self.w.writeAll(
+            \\    while r.pos < r.end {
+            \\        let start = r.pos;
+            \\        let tag = pb_read_tag(r);
+            \\        if r.err != PB_OK { break; }
+            \\
+        );
         for (fields, 0..) |f, i| {
             try self.w.print("        {s}if tag == {d} {{\n", .{ if (i == 0) "" else "} else ", f.tag() });
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.repeated) {
+                try self.emitDecodeRepeated(f);
+                continue;
+            }
             if (f.sub) |sub| {
                 try self.emitDecodeSubMessage(path, f, sub);
                 continue;
@@ -607,8 +616,11 @@ pub const FileEmitter = struct {
                 \\
             );
         }
+        try self.w.writeAll("    }\n");
+        for (fields) |f| {
+            if (f.repeated) try self.w.print("    m.{s} = pb_trim({s}, m.{s}, pb_len{d});\n", .{ f.name, f.sc.pool(), f.name, f.number() });
+        }
         try self.w.print(
-            \\    }}
             \\    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
             \\}}
             \\
@@ -621,6 +633,43 @@ pub const FileEmitter = struct {
             \\}}
             \\
         , .{ decode, goose_name, decode_from });
+    }
+
+    /// The two branches of decode_from for a repeated scalar, the value on
+    /// its own and packed: either form is read, whichever the field declares.
+    /// A packed run is a window of its own, so a value cannot read past its
+    /// end. After a failure the caller stops on r.err, as for a sub-message.
+    fn emitDecodeRepeated(self: *FileEmitter, f: Field) Error!void {
+        try self.w.print(
+            \\            pb_append({s}, m.{s}, pb_len{d}, {s});
+            \\        }} else if tag == {d} {{
+            \\            let pb_n = pb_read_len(r);
+            \\            if r.err != PB_OK {{ break; }}
+            \\            let pb_outer = r.end;
+            \\            r.end = r.pos + pb_n;
+            \\            while r.pos < r.end {{ pb_append({s}, m.{s}, pb_len{d}, {s}); }}
+            \\            if r.err != PB_OK {{ break; }}
+            \\            r.end = pb_outer;
+            \\
+        , .{
+            f.sc.pool(), f.name, f.number(), f.sc.read,
+            f.packedTag(),
+            f.sc.pool(), f.name, f.number(), f.sc.read,
+        });
+    }
+
+    /// The statements adding the payload size of packed field `f` up in a
+    /// new local pb_n.
+    fn emitPackedSize(self: *FileEmitter, f: Field, indent: []const u8) Error!void {
+        switch (f.sc.size) {
+            .fixed => |k| try self.w.print("{s}let pb_n: i64 = {d} * m.{s}.len;\n", .{ indent, k, f.name }),
+            else => {
+                try self.w.print("{s}var pb_n: i64 = 0;\n", .{indent});
+                try self.w.print("{s}for pb_v in pb_run({s}, m.{s}) {{ pb_n += pb_varint_size({f}); }}\n", .{
+                    indent, f.sc.pool(), f.name, Subst{ .t = f.sc.write_value, .x = "pb_v" },
+                });
+            },
+        }
     }
 
     /// The branch of decode_from for a sub-message: an occurrence merges
@@ -651,6 +700,23 @@ pub const FileEmitter = struct {
         , .{ try generatedName(self.a, path, "size_of"), self.fn_kw, try generatedName(self.a, path, "encode"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.repeated) {
+                try self.w.print("    if m.{s}.len > 0 {{\n", .{f.name});
+                if (f.isPacked()) {
+                    try self.w.print("        pb_write_varint(out, {d});\n", .{f.packedTag()});
+                    try self.emitPackedSize(f, "        ");
+                    try self.w.writeAll("        pb_write_varint(out, pb_n as! u64);\n");
+                    try self.w.print("        for pb_v in pb_run({s}, m.{s}) {{ {f}; }}\n", .{
+                        f.sc.pool(), f.name, Subst{ .t = f.sc.write, .x = "pb_v" },
+                    });
+                } else {
+                    try self.w.print("        for pb_v in pb_run({s}, m.{s}) {{\n", .{ f.sc.pool(), f.name });
+                    try self.w.print("            pb_write_varint(out, {d});\n", .{f.tag()});
+                    try self.w.print("            {f};\n        }}\n", .{Subst{ .t = f.sc.write, .x = "pb_v" }});
+                }
+                try self.w.writeAll("    }\n");
+                continue;
+            }
             if (f.sub) |sub| {
                 try self.w.print(
                     \\    let pb_f{d} = {s}.m;
@@ -686,6 +752,18 @@ pub const FileEmitter = struct {
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             const ts = varintSize(f.tag());
+            if (f.repeated) {
+                try self.w.print("    if m.{s}.len > 0 {{\n", .{f.name});
+                if (f.isPacked()) {
+                    try self.emitPackedSize(f, "        ");
+                    try self.w.print("        n += {d} + pb_len_size(pb_n);\n", .{varintSize(f.packedTag())});
+                } else {
+                    try self.emitPackedSize(f, "        ");
+                    try self.w.print("        n += {d} * m.{s}.len + pb_n;\n", .{ ts, f.name });
+                }
+                try self.w.writeAll("    }\n");
+                continue;
+            }
             if (f.sub) |sub| {
                 try self.w.print("    let pb_f{d} = {s}.m;\n", .{ f.number(), x });
                 try self.w.print("    if pb_f{d} {{ n += {d} + pb_len_size({s}(pb_f{d})); }}\n", .{
@@ -714,6 +792,10 @@ pub const FileEmitter = struct {
         , .{ self.fn_kw, try generatedName(self.a, path, "clear"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.repeated) {
+                try self.w.print("    {s} = pb_resize({s}, {s}, 0);\n", .{ x, f.sc.pool(), x });
+                continue;
+            }
             if (f.sub != null) {
                 try self.w.print("    {s}(m);\n", .{try accessorName(self.a, path, f.fd.name orelse "", clear_acc)});
                 continue;
@@ -737,7 +819,9 @@ pub const FileEmitter = struct {
             \\
         , .{ self.fn_kw, try generatedName(self.a, path, "copy"), goose_name, goose_name, try generatedName(self.a, path, "clear") });
         for (fields) |f| {
-            if (f.sub) |sub| {
+            if (f.repeated) {
+                try self.w.print("    dst.{s} = pb_copy_run({s}, src.{s});\n", .{ f.name, f.sc.pool(), f.name });
+            } else if (f.sub) |sub| {
                 try self.w.print(
                     \\    let pb_f{d} = src.{s}.m;
                     \\    if pb_f{d} {{ {s}({s}(dst), pb_f{d}); }}
@@ -763,6 +847,7 @@ pub const FileEmitter = struct {
     /// with presence; a sub-message has its own (emitSubMessageAccessors).
     fn emitAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
         if (f.sub) |sub| return self.emitSubMessageAccessors(goose_name, path, f, sub);
+        if (f.repeated) return self.emitRepeatedAccessors(goose_name, path, f);
         const fname = f.fd.name orelse "";
         const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
         const is_bytes = f.sc.size == .bytes;
@@ -806,6 +891,38 @@ pub const FileEmitter = struct {
             try accessorName(self.a, path, fname, clear_acc), goose_name,
             Subst{ .t = f.sc.clear, .x = x },
             b / 32, ~bitMask(b),
+        });
+    }
+
+    /// The accessors of a repeated scalar.
+    fn emitRepeatedAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
+        const fname = f.fd.name orelse "";
+        const pool = f.sc.pool();
+        try self.w.print(
+            \\
+            \\// The values of {s}, in {s}: valid until it is next changed or m is
+            \\// cleared.
+            \\fn {s}(m: {s}&) -> {s}[:] {{ return pb_run({s}, m.{s}); }}
+            \\
+            \\fn {s}(m: {s}&, i: i64) -> {s} {{ return pb_run({s}, m.{s})[i]; }}
+            \\
+            \\// Adds a value to {s}. This moves its values, so {s} is better for many.
+            \\fn {s}(m: {s}&, v: {s}) {{ m.{s} = pb_add({s}, m.{s}, v); }}
+            \\
+            \\// Sets {s} to a copy of v.
+            \\fn {s}(m: {s}&, v: const {s}[:]) {{ m.{s} = pb_set_run({s}, m.{s}, v); }}
+            \\
+            \\fn {s}(m: {s}&) {{ m.{s} = pb_resize({s}, m.{s}, 0); }}
+            \\
+        , .{
+            fname, pool,
+            try accessorName(self.a, path, fname, get_acc), goose_name, f.sc.goose, pool, f.name,
+            try accessorName(self.a, path, fname, at_acc), goose_name, f.sc.goose, pool, f.name,
+            fname, try accessorName(self.a, path, fname, set_acc),
+            try accessorName(self.a, path, fname, add_acc), goose_name, f.sc.goose, f.name, pool, f.name,
+            fname,
+            try accessorName(self.a, path, fname, set_acc), goose_name, f.sc.goose, f.name, pool, f.name,
+            try accessorName(self.a, path, fname, clear_acc), goose_name, f.name, pool, f.name,
         });
     }
 
@@ -874,6 +991,9 @@ const api_comment =
     \\//   M_f(m) -> S&?                sub-message fields: null if not set;
     \\//   M_mutable_f(m) -> S&         mutable_ first sets an empty one
     \\//   M_has_f(m), M_clear_f(m)
+    \\//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
+    \\//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
+    \\//   M_clear_f(m)
     \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
     \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     \\//                                PB_ERR_* code and a partial m
@@ -881,7 +1001,7 @@ const api_comment =
     \\//   M_clear(m)                   frees what m owns, empties it
     \\//   M_copy(dst, src)             makes dst a deep copy of src
     \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-    \\// fields, strings and bytes, sub-messages, later repeated fields)
+    \\// fields, strings and bytes, sub-messages, repeated scalars)
     \\// live in global pools (pb_bytes, M_pool, M_links): clear a message
     \\// to free them. Assigning a record copies spans, not their contents:
     \\// use M_copy.
@@ -917,6 +1037,20 @@ const Field = struct {
     bit: ?u32 = null,
     /// The message of a sub-message field, whose presence is its link.
     sub: ?MessageInfo = null,
+    /// A repeated scalar: a span of a pool of `sc`'s type. Its tag() is
+    /// that of a value on its own.
+    repeated: bool = false,
+
+    fn packedTag(f: Field) u64 {
+        return (@as(u64, f.number()) << 3) | 2;
+    }
+
+    /// How a repeated scalar is encoded: packed, in proto3, unless it says
+    /// not to.
+    fn isPacked(f: Field) bool {
+        const opts = f.fd.options orelse return true;
+        return opts.@"packed" orelse true;
+    }
 
     /// The condition under which the field, whose value is `x`, is encoded.
     fn isSet(f: Field, x: []const u8) Cond {
@@ -978,6 +1112,15 @@ const Scalar = struct {
 
     fn setType(sc: *const Scalar) []const u8 {
         return if (sc.set_type.len > 0) sc.set_type else sc.goose;
+    }
+
+    /// The pb_wire pool of a repeated field of this type (decision 0001).
+    fn pool(sc: *const Scalar) []const u8 {
+        const m = std.StaticStringMap([]const u8).initComptime(.{
+            .{ "i32", "pb_i32s" }, .{ "i64", "pb_i64s" }, .{ "u32", "pb_u32s" }, .{ "u64", "pb_u64s" },
+            .{ "f32", "pb_f32s" }, .{ "f64", "pb_f64s" }, .{ "bool", "pb_bools" },
+        });
+        return m.get(sc.goose).?;
     }
 };
 
@@ -1049,6 +1192,19 @@ fn isStorable(file: *const descriptor.FileDescriptorProto, fd: *const descriptor
 /// enum, string or bytes field.
 fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
     if (!isStorable(file, fd)) return null;
+    return scalarOfType(fd);
+}
+
+/// The element storage of a repeated numeric, bool or enum field of proto3.
+/// Repeated strings, bytes and messages, and proto2, come with later tasks.
+fn repeatedScalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
+    if (fd.label != .LABEL_REPEATED) return null;
+    if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return null;
+    const sc = scalarOfType(fd) orelse return null;
+    return if (sc.size == .bytes) null else sc;
+}
+
+fn scalarOfType(fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
     return switch (fd.type orelse return null) {
         .TYPE_INT32, .TYPE_ENUM => &sc_int32,
         .TYPE_INT64 => &sc_int64,
@@ -1318,6 +1474,7 @@ test "accessors depend on kind and presence" {
     try std.testing.expectEqualStrings("clear_", p[2].prefix);
     try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.string, true).len);
     try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.message, true).len);
+    try std.testing.expectEqual(@as(usize, 5), fieldAccessors(.repeated, false).len);
 }
 
 test "proto3 optional is stored with a has-bit; real oneofs and proto2 are not" {

@@ -131,9 +131,12 @@ the reserved list, in `generator/src/emit.zig`:
   sub-message or null; `<M>_mutable_<f>`, which first sets an empty one
   if there is none; and `<M>_has_<f>` and `<M>_clear_<f>`. Its link is
   its presence, so it takes no has-bit.
-- The accessors of repeated fields (`<f>`, `<f>_at`, `add_<f>`) are
-  provisional: 0001 does not fix them. The task that emits a field kind
-  updates the table, its goldens and this note.
+- A repeated scalar (gpb-gp4.1) has `<M>_<f>`, a view of its values;
+  `<M>_<f>_at`; `<M>_add_<f>`, which moves the values; `<M>_set_<f>`, a copy
+  of a whole slice; and `<M>_clear_<f>`.
+- Those of repeated strings and messages are provisional: 0001 does not fix
+  them. The task that emits a field kind updates the table, its goldens and
+  this note.
 
 A generated file imports the files whose types its stored fields use, as
 `import a.b_c;`, sorted, and writes their names as `ns::Name` (gpb-8qn.9).

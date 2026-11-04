@@ -12,6 +12,9 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
+//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
+//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
+//   M_clear_f(m)
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -19,7 +22,7 @@
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, strings and bytes, sub-messages, later repeated fields)
+// fields, strings and bytes, sub-messages, repeated scalars)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
 // use M_copy.
@@ -114,6 +117,7 @@ struct Wide {
     s: pb_Span,
     d: f64,
     f: u32,
+    r: pb_Span,
     sub: Known_Ref,
     g: i64,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -129,6 +133,7 @@ reusable[] var Wide_links: Wide_Ref[>..] = [];
 // unknown fields.
 fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    var pb_len6: i64 = m.r.len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -143,6 +148,16 @@ fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
             m.d = pb_read_double(r);
         } else if tag == 45 {
             m.f = pb_read_fixed32(r);
+        } else if tag == 48 {
+            pb_append(pb_i32s, m.r, pb_len6, pb_u64_to_int32(pb_read_varint(r)));
+        } else if tag == 50 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len6, pb_u64_to_int32(pb_read_varint(r))); }
+            if r.err != PB_OK { break; }
+            r.end = pb_outer;
         } else if tag == 58 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
@@ -160,6 +175,7 @@ fn Wide_decode_from(r: pb_Reader&, m: Wide&) {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.r = pb_trim(pb_i32s, m.r, pb_len6);
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
@@ -193,6 +209,13 @@ fn Wide_encode(m: Wide&, out: u8[>..]&) {
         pb_write_varint(out, 45);
         pb_write_fixed32(out, m.f);
     }
+    if m.r.len > 0 {
+        pb_write_varint(out, 50);
+        var pb_n: i64 = 0;
+        for pb_v in pb_run(pb_i32s, m.r) { pb_n += pb_varint_size(pb_int32_to_u64(pb_v)); }
+        pb_write_varint(out, pb_n as! u64);
+        for pb_v in pb_run(pb_i32s, m.r) { pb_write_varint(out, pb_int32_to_u64(pb_v)); }
+    }
     let pb_f7 = m.sub.m;
     if pb_f7 {
         pb_write_varint(out, 58);
@@ -214,6 +237,11 @@ fn Wide_size_of(m: Wide&) -> i64 {
     if m.s.len > 0 { n += 1 + pb_bytes_size(m.s); }
     if pb_f64_to_bits(m.d) != 0 { n += 9; }
     if m.f != 0 { n += 5; }
+    if m.r.len > 0 {
+        var pb_n: i64 = 0;
+        for pb_v in pb_run(pb_i32s, m.r) { pb_n += pb_varint_size(pb_int32_to_u64(pb_v)); }
+        n += 1 + pb_len_size(pb_n);
+    }
     let pb_f7 = m.sub.m;
     if pb_f7 { n += 1 + pb_len_size(Known_size_of(pb_f7)); }
     if m.g != 0 { n += 9; }
@@ -228,6 +256,7 @@ fn Wide_clear(m: Wide&) {
     m.s = pb_bytes_free(m.s);
     m.d = 0.0;
     m.f = 0;
+    m.r = pb_resize(pb_i32s, m.r, 0);
     Wide_clear_sub(m);
     m.g = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
@@ -243,6 +272,7 @@ fn Wide_copy(dst: Wide&, src: Wide&) {
     dst.s = pb_bytes_copy(src.s);
     dst.d = src.d;
     dst.f = src.f;
+    dst.r = pb_copy_run(pb_i32s, src.r);
     let pb_f7 = src.sub.m;
     if pb_f7 { Known_copy(Wide_mutable_sub(dst), pb_f7); }
     dst.g = src.g;
@@ -257,6 +287,20 @@ fn Wide_s(m: Wide&) -> u8[:] { return pb_run(pb_bytes, m.s); }
 fn Wide_set_s(m: Wide&, v: const u8[:]) {
     m.s = pb_bytes_set(m.s, v);
 }
+
+// The values of r, in pb_i32s: valid until it is next changed or m is
+// cleared.
+fn Wide_r(m: Wide&) -> i32[:] { return pb_run(pb_i32s, m.r); }
+
+fn Wide_r_at(m: Wide&, i: i64) -> i32 { return pb_run(pb_i32s, m.r)[i]; }
+
+// Adds a value to r. This moves its values, so Wide_set_r is better for many.
+fn Wide_add_r(m: Wide&, v: i32) { m.r = pb_add(pb_i32s, m.r, v); }
+
+// Sets r to a copy of v.
+fn Wide_set_r(m: Wide&, v: const i32[:]) { m.r = pb_set_run(pb_i32s, m.r, v); }
+
+fn Wide_clear_r(m: Wide&) { m.r = pb_resize(pb_i32s, m.r, 0); }
 
 // The sub-message sub, or null if it is not set. Valid until it or m is
 // cleared.

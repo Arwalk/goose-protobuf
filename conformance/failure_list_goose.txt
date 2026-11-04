@@ -2,20 +2,3 @@
 # This list may only shrink (AGENTS.md): a test that starts failing is a
 # bug, never a new entry here. scripts/run_conformance.sh fails when a
 # test outside the list fails or a test in the list passes.
-
-# Packed repeated fields are not stored yet, so their bytes are kept as
-# unknown fields and a truncated packed value is not seen (Phase 3, gpb-gp4).
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.BOOL # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.DOUBLE # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.ENUM # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.FIXED32 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.FIXED64 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.FLOAT # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.INT32 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.INT64 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.SFIXED32 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.SFIXED64 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.SINT32 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.SINT64 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.UINT32 # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.UINT64 # Should have failed to parse, but didn't.

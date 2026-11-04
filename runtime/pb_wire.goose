@@ -279,14 +279,51 @@ fn pb_bytes_append(s: pb_Span, src: const u8[:]) -> pb_Span {
 // Frees run s of pb_bytes; returns the empty span.
 fn pb_bytes_free(s: pb_Span) -> pb_Span { return pb_resize(pb_bytes, s, 0); }
 
-// A new run of pb_bytes with the contents of run src, which it reads through
-// the pool, as allocating the new run may move the pool.
-fn pb_bytes_copy(src: pb_Span) -> pb_Span {
-    let t = pb_resize(pb_bytes, pb_Span { at: 0, len: 0 }, src.len);
+// A new run of pool with the contents of run src, which it reads through the
+// pool, as allocating the new run may move the pool.
+fn pb_copy_run<T>(pool: T[>..]&, src: pb_Span) -> pb_Span {
+    let t = pb_resize(pool, pb_Span { at: 0, len: 0 }, src.len);
     if src.len == 0 { return t; }
     let from: i64 = src.at;
     let to: i64 = t.at;
-    for i in src.len { pb_bytes[to + i] = pb_bytes[from + i]; }
+    for i in src.len { pool[to + i] = pool[from + i]; }
+    return t;
+}
+
+fn pb_bytes_copy(src: pb_Span) -> pb_Span { return pb_copy_run(pb_bytes, src); }
+
+// Appends v to run s of pool, of which the first `used` elements are in use.
+// The run grows by doubling, so a decode loop calls pb_trim(pool, s, used)
+// when it ends.
+fn pb_append<T>(pool: T[>..]&, s: pb_Span&, used: i64&, v: T) {
+    if used == s.len { s = pb_resize(pool, s, used * 2 + 1); }
+    let at: i64 = s.at;
+    pool[at + used] = v;
+    used++;
+}
+
+// Run s of pool cut to its first `used` elements.
+fn pb_trim<T>(pool: T[>..]&, s: pb_Span, used: i64) -> pb_Span {
+    if used == s.len { return s; }
+    return pb_resize(pool, s, used);
+}
+
+// Run s of pool with v added: moves the run, so building a long field one
+// element at a time is quadratic, which pb_set_run avoids.
+fn pb_add<T>(pool: T[>..]&, s: pb_Span, v: T) -> pb_Span {
+    let old: i64 = s.len;
+    let t = pb_resize(pool, s, old + 1);
+    pb_run(pool, t)[old] = v;
+    return t;
+}
+
+// Run s of pool replaced by a copy of v, which may be in the pool.
+fn pb_set_run<T>(pool: T[>..]&, s: pb_Span, v: const T[:]) -> pb_Span {
+    var tmp: T[>..] = [];
+    tmp.append(v);
+    let t = pb_resize(pool, pb_resize(pool, s, 0), tmp.len);
+    let dst = pb_run(pool, t);
+    for i in tmp.len { dst[i] = tmp[i]; }
     return t;
 }
 

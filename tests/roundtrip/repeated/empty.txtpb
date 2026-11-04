@@ -1,0 +1,3 @@
+# proto-file: repeated.proto
+# proto-message: repeated.Packed
+f_int32: []
