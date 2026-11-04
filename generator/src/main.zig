@@ -50,7 +50,7 @@ fn generate(
         };
         var content: std.Io.Writer.Allocating = .init(a);
         var diag: []const u8 = "";
-        emit.generateFile(a, file, &content.writer, &diag) catch |err| switch (err) {
+        emit.generateFile(a, file, request.proto_file.items, &content.writer, &diag) catch |err| switch (err) {
             error.NameCollision => {
                 response.@"error" = diag;
                 return error.Rejected;

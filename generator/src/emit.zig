@@ -166,6 +166,15 @@ pub fn outputName(a: std.mem.Allocator, proto_name: []const u8) ![]const u8 {
     return out.items;
 }
 
+/// How a generated file imports the file generated from `proto_name`.
+/// Goose resolves it from the root file's directory.
+pub fn importPath(a: std.mem.Allocator, proto_name: []const u8) ![]const u8 {
+    const out = try outputName(a, proto_name);
+    const path = try a.dupe(u8, out[0 .. out.len - ".goose".len]);
+    std.mem.replaceScalar(u8, path, '/', '.');
+    return path;
+}
+
 pub const Error = error{NameCollision} || std.mem.Allocator.Error || std.Io.Writer.Error;
 
 /// Generates one file. On error.NameCollision, `diag` holds the message
@@ -182,6 +191,8 @@ pub const FileEmitter = struct {
     a: std.mem.Allocator,
     w: *std.Io.Writer,
     file: *const descriptor.FileDescriptorProto,
+    /// Every file of the request, where the types of imported files are.
+    files: []const descriptor.FileDescriptorProto,
     /// Goose name -> what claimed it.
     names: std.StringHashMapUnmanaged(Owner) = .empty,
     /// Unescaped message path -> full name. Two messages with one path
@@ -191,6 +202,13 @@ pub const FileEmitter = struct {
     decls: std.StringHashMapUnmanaged([]const u8) = .empty,
     /// Full name of a message in this file -> the message.
     messages: std.StringHashMapUnmanaged(MessageInfo) = .empty,
+    /// Full name of a message of another file whose names are claimed ->
+    /// the message, its names qualified from this file.
+    foreign: std.StringHashMapUnmanaged(MessageInfo) = .empty,
+    /// Other files whose names are claimed, by their proto name.
+    foreign_files: std.StringHashMapUnmanaged(void) = .empty,
+    /// Import paths of the files that the stored fields need.
+    imports: std.StringHashMapUnmanaged(void) = .empty,
     /// How the codec functions of the current message are declared.
     fn_kw: []const u8 = "fn",
     diag: []const u8 = "",
@@ -211,12 +229,33 @@ pub const FileEmitter = struct {
         }
         try self.w.writeAll("import pb_wire;\n");
 
-        for (f.message_type.items) |*m| try self.claimGenerated(m, "", package);
-        for (f.enum_type.items) |*e| try self.claimEnum(e, "", package);
-        for (f.message_type.items) |*m| try self.claimMessage(m, "", package);
+        try self.claimAll();
+        for (f.message_type.items) |*m| try self.collectImports(m);
+        const imports = try self.a.alloc([]const u8, self.imports.count());
+        var it = self.imports.keyIterator();
+        for (imports) |*i| i.* = it.next().?.*;
+        std.mem.sortUnstable([]const u8, imports, {}, stringLess);
+        for (imports) |i| try self.w.print("import {s};\n", .{i});
 
         for (f.enum_type.items) |*e| try self.emitEnum(e, package);
         for (f.message_type.items) |*m| try self.emitMessage(m, "", package);
+    }
+
+    /// Claims every name of the file, in the order the declarations are
+    /// emitted, so that generated names come first.
+    fn claimAll(self: *FileEmitter) Error!void {
+        const f = self.file;
+        const package = f.package orelse "";
+        for (f.message_type.items) |*m| try self.claimGenerated(m, "", package);
+        for (f.enum_type.items) |*e| try self.claimEnum(e, "", package);
+        for (f.message_type.items) |*m| try self.claimMessage(m, "", package);
+    }
+
+    /// Records the files the stored fields of `m` and its nested messages
+    /// need. Importing only those lets a file build without the others.
+    fn collectImports(self: *FileEmitter, m: *const descriptor.DescriptorProto) Error!void {
+        for (m.field.items) |*fd| _ = try self.subMessageOf(fd);
+        for (m.nested_type.items) |*n| try self.collectImports(n);
     }
 
     fn fullName(self: *FileEmitter, scope: []const u8, name: []const u8) ![]const u8 {
@@ -330,10 +369,66 @@ pub const FileEmitter = struct {
     }
 
     /// The message that field `fd` stores as a sub-message, or null if it
-    /// is not stored. Fields of a type in another file are not stored yet
-    /// (gpb-8qn.9).
-    fn subMessageOf(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) ?MessageInfo {
-        return self.messages.get(self.sameFileMessageType(fd) orelse return null);
+    /// is not stored.
+    fn subMessageOf(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) Error!?MessageInfo {
+        if (!isStorable(self.file, fd) or fd.type != .TYPE_MESSAGE) return null;
+        const tn = fd.type_name orelse return null;
+        const t = if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
+        if (self.messages.get(t)) |info| return info;
+        return self.foreignMessage(t);
+    }
+
+    /// Message `t` of another file, whose names it claims the first time
+    /// (as generating that file does), and which it marks for import.
+    fn foreignMessage(self: *FileEmitter, t: []const u8) Error!?MessageInfo {
+        if (self.foreign.get(t)) |info| return info;
+        for (self.files) |*f| {
+            const fname = f.name orelse "";
+            if (std.mem.eql(u8, fname, self.file.name orelse "") or self.foreign_files.contains(fname)) continue;
+            if (!try self.declaresMessage(f.message_type.items, f.package orelse "", t)) continue;
+            try self.foreign_files.put(self.a, fname, {});
+            var other: FileEmitter = .{ .a = self.a, .w = self.w, .file = f, .files = self.files };
+            other.claimAll() catch |err| {
+                self.diag = other.diag;
+                return err;
+            };
+            const ns = try self.qualifier(f.package orelse "");
+            var it = other.messages.iterator();
+            while (it.next()) |e| {
+                var info = e.value_ptr.*;
+                info.ns = ns;
+                info.goose_name = try std.fmt.allocPrint(self.a, "{s}{s}", .{ ns, info.goose_name });
+                info.import_path = try importPath(self.a, fname);
+                try self.foreign.put(self.a, e.key_ptr.*, info);
+            }
+            break;
+        }
+        const info = self.foreign.get(t) orelse return null;
+        try self.imports.put(self.a, info.import_path, {});
+        return info;
+    }
+
+    fn declaresMessage(self: *FileEmitter, msgs: []const descriptor.DescriptorProto, scope: []const u8, t: []const u8) Error!bool {
+        for (msgs) |*m| {
+            const full = try self.fullName(scope, m.name orelse "");
+            if (std.mem.eql(u8, full, t)) return true;
+            if (try self.declaresMessage(m.nested_type.items, full, t)) return true;
+        }
+        return false;
+    }
+
+    /// What names in the namespace of `package` are written with from
+    /// this file.
+    fn qualifier(self: *FileEmitter, package: []const u8) Error![]const u8 {
+        if (std.mem.eql(u8, package, self.file.package orelse "")) return "";
+        if (package.len == 0) return "::";
+        return std.fmt.allocPrint(self.a, "{s}::", .{try namespaceName(self.a, package)});
+    }
+
+    /// The name of generated function or global `op` of `sub`, as this file
+    /// writes it.
+    fn subName(self: *FileEmitter, sub: MessageInfo, op: []const u8) Error![]const u8 {
+        return std.fmt.allocPrint(self.a, "{s}{s}", .{ sub.ns, try generatedName(self.a, sub.path, op) });
     }
 
     /// True if a message of type `full` can hold another of its type: its
@@ -400,7 +495,7 @@ pub const FileEmitter = struct {
         var record_names: std.StringHashMapUnmanaged(void) = .empty;
         var bits: u32 = 0;
         for (m.field.items) |*fd| {
-            const sub = self.subMessageOf(fd);
+            const sub = try self.subMessageOf(fd);
             const sc = if (sub) |s| try self.refStorage(s) else scalarOf(self.file, fd) orelse continue;
             const rname = try ident(self.a, fd.name orelse "");
             if ((try record_names.getOrPut(self.a, rname)).found_existing) {
@@ -441,7 +536,7 @@ pub const FileEmitter = struct {
     fn refStorage(self: *FileEmitter, sub: MessageInfo) Error!*const Scalar {
         const sc = try self.a.create(Scalar);
         sc.* = .{
-            .goose = try generatedName(self.a, sub.path, "Ref"),
+            .goose = try self.subName(sub, "Ref"),
             .wire = 2,
             .clear = "",
             .read = "",
@@ -543,7 +638,7 @@ pub const FileEmitter = struct {
             \\            r.depth--;
             \\            r.end = pb_outer;
             \\
-        , .{ try generatedName(self.a, sub.path, "decode_from"), try accessorName(self.a, path, f.fd.name orelse "", mutable_acc) });
+        , .{ try self.subName(sub, "decode_from"), try accessorName(self.a, path, f.fd.name orelse "", mutable_acc) });
     }
 
     fn emitEncode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
@@ -566,8 +661,8 @@ pub const FileEmitter = struct {
                     \\
                 , .{
                     f.number(), x, f.number(), f.tag(),
-                    try generatedName(self.a, sub.path, "size_of"), f.number(),
-                    try generatedName(self.a, sub.path, "encode"), f.number(),
+                    try self.subName(sub, "size_of"), f.number(),
+                    try self.subName(sub, "encode"), f.number(),
                 });
                 continue;
             }
@@ -593,7 +688,7 @@ pub const FileEmitter = struct {
             if (f.sub) |sub| {
                 try self.w.print("    let pb_f{d} = {s}.m;\n", .{ f.number(), x });
                 try self.w.print("    if pb_f{d} {{ n += {d} + pb_len_size({s}(pb_f{d})); }}\n", .{
-                    f.number(), ts, try generatedName(self.a, sub.path, "size_of"), f.number(),
+                    f.number(), ts, try self.subName(sub, "size_of"), f.number(),
                 });
                 continue;
             }
@@ -684,7 +779,7 @@ pub const FileEmitter = struct {
     /// until the field is cleared.
     fn emitSubMessageAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field, sub: MessageInfo) Error!void {
         const fname = f.fd.name orelse "";
-        const pool = try generatedName(self.a, sub.path, "pool");
+        const pool = try self.subName(sub, "pool");
         try self.w.print(
             \\
             \\// The sub-message {s}, or null if it is not set. Valid until it or m is
@@ -723,7 +818,7 @@ pub const FileEmitter = struct {
             fname,
             try accessorName(self.a, path, fname, clear_acc), goose_name,
             f.name,
-            try generatedName(self.a, sub.path, "clear"),
+            try self.subName(sub, "clear"),
             pool, pool,
             f.name,
         });
@@ -762,8 +857,18 @@ const MessageInfo = struct {
     desc: *const descriptor.DescriptorProto,
     /// The unescaped path generated names are built from.
     path: []const u8,
+    /// Its Goose name, as the file being generated writes it.
     goose_name: []const u8,
+    /// What its names are written with: `ns::`, or nothing in its own
+    /// namespace.
+    ns: []const u8 = "",
+    /// How the file being generated imports it, if it is in another file.
+    import_path: []const u8 = "",
 };
+
+fn stringLess(_: void, a: []const u8, b: []const u8) bool {
+    return std.mem.lessThan(u8, a, b);
+}
 
 /// A field stored in the record.
 const Field = struct {
@@ -988,10 +1093,11 @@ fn hasPresence(file: *const descriptor.FileDescriptorProto, fd: *const descripto
 pub fn generateFile(
     a: std.mem.Allocator,
     file: *const descriptor.FileDescriptorProto,
+    files: []const descriptor.FileDescriptorProto,
     w: *std.Io.Writer,
     diag: *[]const u8,
 ) Error!void {
-    var fe: FileEmitter = .{ .a = a, .w = w, .file = file };
+    var fe: FileEmitter = .{ .a = a, .w = w, .file = file, .files = files };
     fe.emit() catch |err| {
         diag.* = fe.diag;
         return err;
@@ -1041,7 +1147,7 @@ test "nested and top-level names that collide are reported" {
 
     var out: std.Io.Writer.Allocating = .init(a);
     var diag: []const u8 = "";
-    try std.testing.expectError(error.NameCollision, generateFile(a, &file, &out.writer, &diag));
+    try std.testing.expectError(error.NameCollision, generateFile(a, &file, &.{}, &out.writer, &diag));
     try std.testing.expectEqualStrings("c.proto: p.A.B and p.A_B both map to the Goose name A_B", diag);
 }
 
@@ -1065,7 +1171,7 @@ test "builtins and runtime prefixes are reserved" {
 
 fn generateForTest(a: std.mem.Allocator, file: *const descriptor.FileDescriptorProto, diag: *[]const u8) ![]const u8 {
     var out: std.Io.Writer.Allocating = .init(a);
-    try generateFile(a, file, &out.writer, diag);
+    try generateFile(a, file, &.{}, &out.writer, diag);
     return out.written();
 }
 
@@ -1239,4 +1345,40 @@ test "sub-message fields of the same file are stored; cycles make functions recu
     }
     try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Holder_decode_from(") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Later_clear(") != null);
+}
+
+test "fields of an imported type are qualified and import its file" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var m: descriptor.DescriptorProto = .{ .name = "M" };
+    try m.field.append(a, .{ .name = "other", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".q.r.Other.In" });
+    try m.field.append(a, .{ .name = "bare", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".Bare" });
+    try m.field.append(a, .{ .name = "same", .number = 3, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Same" });
+    var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .package = "p", .syntax = "proto3" };
+    try file.message_type.append(a, m);
+
+    var other_msg: descriptor.DescriptorProto = .{ .name = "Other" };
+    try other_msg.nested_type.append(a, .{ .name = "In" });
+    var q: descriptor.FileDescriptorProto = .{ .name = "z/q.v1.proto", .package = "q.r", .syntax = "proto3" };
+    try q.message_type.append(a, other_msg);
+    var bare: descriptor.FileDescriptorProto = .{ .name = "bare.proto", .syntax = "proto3" };
+    try bare.message_type.append(a, .{ .name = "Bare" });
+    var same: descriptor.FileDescriptorProto = .{ .name = "same.proto", .package = "p", .syntax = "proto3" };
+    try same.message_type.append(a, .{ .name = "Same" });
+    var unused: descriptor.FileDescriptorProto = .{ .name = "unused.proto", .syntax = "proto3" };
+    try unused.message_type.append(a, .{ .name = "Unused" });
+
+    var buf: std.Io.Writer.Allocating = .init(a);
+    var diag: []const u8 = "";
+    try generateFile(a, &file, &.{ q, bare, same, unused, file }, &buf.writer, &diag);
+    const out = buf.written();
+    try std.testing.expect(std.mem.indexOf(u8, out, "import pb_wire;\nimport bare;\nimport same;\nimport z.q_v1;\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "import unused") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    other: q_r::Other_In_Ref,\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    bare: ::Bare_Ref,\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    same: Same_Ref,\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "fn M_other(m: M&) -> q_r::Other_In&?") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "q_r::Other_In_decode_from(r, M_mutable_other(m));") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "q_r::Other_In_pool.alloc_ref(q_r::Other_In { .. })") != null);
 }

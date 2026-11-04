@@ -21,7 +21,8 @@ scripts/check_generated.sh [-I dir] protos      # generate + goose check, no gol
 Golden tests: each `tests/protos/<name>.proto` is generated twice (the two
 outputs must be byte-identical), diffed against `tests/golden/<name>/` (no
 directory means no files), and every golden `.goose` file goes through
-`goose check` next to a copy of `runtime/pb_wire.goose`. After an
+`goose check` next to a copy of `runtime/pb_wire.goose` and the generated
+files it imports. After an
 intended generator change, run `scripts/golden.sh --update` and review the
 golden diff in the commit. `scripts/test_golden.sh`,
 `scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`,

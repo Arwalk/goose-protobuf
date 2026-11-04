@@ -1,0 +1,8 @@
+// Golden: imported by imports.proto (gpb-8qn.9).
+syntax = "proto3";
+
+package imports;
+
+message SamePackage {
+  int32 a = 1;
+}

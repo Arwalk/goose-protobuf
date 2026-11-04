@@ -1,0 +1,4 @@
+# proto-file: imports.proto
+# proto-message: imports.Holder
+duration { seconds: 1 nanos: 2 }
+inner { c: 3 }

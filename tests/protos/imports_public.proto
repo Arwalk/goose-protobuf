@@ -1,0 +1,6 @@
+// Golden: imported by imports.proto (gpb-8qn.9).
+syntax = "proto3";
+
+package relay;
+
+import public "imports_reexported.proto";

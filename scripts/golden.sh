@@ -87,7 +87,14 @@ for proto in "${protos[@]}"; do
   fi
 
   if [ -d "$golden" ]; then
+    # Next to what it imports: generated here, so only one golden holds a
+    # file. The golden itself is copied last, over its generated twin.
     chk="$tmp/$name/check"; mkdir -p "$chk"
+    closure=()
+    while IFS= read -r i; do closure+=("$i"); done \
+      < <("$root/scripts/proto_closure.sh" "${includes[@]}" "$proto")
+    "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$chk" \
+      "${includes[@]}" "${closure[@]}"
     cp -R "$golden/." "$chk/"
     cp "$root/runtime/pb_wire.goose" "$chk/pb_wire.goose"
     while IFS= read -r f; do

@@ -4,10 +4,10 @@
 #
 #   1. build the plugin (zig build);
 #   2. generate google/protobuf/test_messages_proto3.proto from the
-#      protobuf submodule (third_party/protobuf/src) with it;
-#   3. stage the generated file, conformance/testee.goose, io.c,
-#      testee.build and runtime/pb_wire.goose in one flat directory,
-#      build/testee-src/ (flat, so every file imports the same pb_wire);
+#      protobuf submodule (third_party/protobuf/src) and what it imports
+#      with it, into build/testee-src/;
+#   3. stage conformance/testee.goose, io.c, testee.build and
+#      runtime/pb_wire.goose at its root, which every import resolves from;
 #   4. goose build it to <out>.
 # Env: PROTOC, GOOSE (default protoc, goose; .tools/bin first),
 #      GOOSE_FLAGS (extra goose build flags, e.g. --debug)
@@ -30,11 +30,12 @@ command -v "$goose" >/dev/null || die "goose not found; see TOOLCHAIN.md"
 (cd "$root/generator" && zig build) || die "zig build failed"
 plugin="$root/generator/zig-out/bin/protoc-gen-goose"
 
-rm -rf "$stage"; mkdir -p "$stage/gen"
-"$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage/gen" \
-  -I "$src" google/protobuf/test_messages_proto3.proto
-mv "$stage/gen/google/protobuf/test_messages_proto3.goose" "$stage/"
-rm -rf "$stage/gen"
+rm -rf "$stage"; mkdir -p "$stage"
+closure=()
+while IFS= read -r i; do closure+=("$i"); done \
+  < <("$root/scripts/proto_closure.sh" -I "$src" google/protobuf/test_messages_proto3.proto)
+"$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage" \
+  -I "$src" "${closure[@]}"
 cp "$root"/conformance/testee.goose "$root"/conformance/io.c \
    "$root"/conformance/testee.build "$root"/runtime/pb_wire.goose "$stage/"
 

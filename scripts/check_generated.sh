@@ -6,8 +6,9 @@
 # Example:
 #   scripts/check_generated.sh -I third_party/protobuf/src \
 #     google/protobuf/test_messages_proto3.proto
-# Each output file is checked from its own directory, next to a copy of
-# runtime/pb_wire.goose (`import pb_wire;`).
+# What the protos import is generated and checked too. Imports resolve from
+# the root file's directory, so each output file is checked through a small
+# root file at the output root, next to a copy of runtime/pb_wire.goose.
 # Env: PLUGIN (default: zig build, generator/zig-out/bin), PROTOC, GOOSE
 set -uo pipefail
 
@@ -34,16 +35,21 @@ if [ -z "${PLUGIN:-}" ]; then
 fi
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
+closure=()
+while IFS= read -r i; do closure+=("$i"); done \
+  < <("$root/scripts/proto_closure.sh" "${includes[@]}" "${protos[@]}")
+[ ${#closure[@]} -gt 0 ] || { echo "FAIL protoc"; exit 1; }
 "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$tmp" \
-  "${includes[@]}" "${protos[@]}" || { echo "FAIL protoc"; exit 1; }
+  "${includes[@]}" "${closure[@]}" || { echo "FAIL protoc"; exit 1; }
+cp "$root/runtime/pb_wire.goose" "$tmp/pb_wire.goose"
 
 bad=0; n=0
 while IFS= read -r f; do
   n=$((n + 1))
   rel="${f#$tmp/}"
-  dir="$(dirname "$f")"
-  cp "$root/runtime/pb_wire.goose" "$dir/pb_wire.goose"
-  if ! (cd "$dir" && "$goose" check "$(basename "$f")") >"$tmp/log" 2>&1; then
+  mod="${rel%.goose}"
+  echo "import ${mod//\//.};" > "$tmp/check_root.goose"
+  if ! (cd "$tmp" && "$goose" check check_root.goose) >"$tmp/log" 2>&1; then
     echo "FAIL $rel: goose check failed"
     grep -v '^parsed ok\|^typechecked ok\|^bce:' "$tmp/log" | sed 's/^/    /'
     bad=1
@@ -54,7 +60,6 @@ while IFS= read -r f; do
   else
     echo "ok   $rel"
   fi
-  rm -f "$dir/pb_wire.goose"
-done < <(find "$tmp" -name '*.goose' -type f ! -name pb_wire.goose | LC_ALL=C sort)
+done < <(find "$tmp" -name '*.goose' -type f ! -name pb_wire.goose ! -name check_root.goose | LC_ALL=C sort)
 [ $n -gt 0 ] || { echo "FAIL no files generated"; exit 1; }
 exit $bad

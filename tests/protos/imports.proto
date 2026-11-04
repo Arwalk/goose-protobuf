@@ -1,0 +1,31 @@
+// Golden and round-trip: sub-message fields of imported types (gpb-8qn.9).
+syntax = "proto3";
+
+package imports;
+
+import "foo.v1.proto";
+import "google/protobuf/duration.proto";
+import "imports_nopkg.proto";
+import "imports_public.proto";
+import "imports_same.proto";
+import "my-api.proto";
+import "recursive.proto";
+
+message Holder {
+  // From files with mangled names.
+  foo.v1.Dotted dotted = 1;
+  my_api.Hyphenated hyphenated = 2;
+  // A well-known type, and the same one in a nested message.
+  google.protobuf.Duration duration = 3;
+  message Nested {
+    google.protobuf.Duration later = 1;
+  }
+  Nested nested = 4;
+  // The same package, in another file.
+  SamePackage same = 5;
+  // No package.
+  NoPackage nopkg = 6;
+  // Through `import public`, and nested in its message.
+  reexported.Reexported.Inner inner = 7;
+  // recursive.proto is imported but no field uses it: no Goose import.
+}

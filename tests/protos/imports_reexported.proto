@@ -1,0 +1,10 @@
+// Golden: imported by imports.proto (gpb-8qn.9).
+syntax = "proto3";
+
+package reexported;
+
+message Reexported {
+  message Inner {
+    int32 c = 1;
+  }
+}

@@ -1,0 +1,9 @@
+# proto-file: imports.proto
+# proto-message: imports.Holder
+dotted { n: 1 }
+hyphenated { s: "x" }
+duration { seconds: 5 nanos: 6 }
+nested { later { seconds: 7 } }
+same { a: 8 }
+nopkg { b: 9 }
+inner { c: 10 }

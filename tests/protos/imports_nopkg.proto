@@ -1,0 +1,7 @@
+// Golden: imported by imports.proto (gpb-8qn.9).
+syntax = "proto3";
+
+// No package: the global namespace.
+message NoPackage {
+  int32 b = 1;
+}

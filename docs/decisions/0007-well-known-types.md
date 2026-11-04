@@ -42,11 +42,10 @@ program. The generator has no special case for them.
 
 ## Consequences
 
-- protoc generates only the files named on its command line. Once fields of
-  imported types are stored (gpb-8qn.9), a `.proto` that imports
-  `google/protobuf/duration.proto` needs that file named too, or the import
-  in the generated code fails at `goose build`. The usage guide (gpb-dx9.4)
-  has to say so.
+- protoc generates only the files named on its command line. A `.proto` with
+  a field of type `google.protobuf.Duration` needs
+  `google/protobuf/duration.proto` named too, or the import in the generated
+  code fails at `goose build`. The usage guide (gpb-dx9.4) has to say so.
 - Values have no helpers such as `Any` pack and unpack or time conversions:
   they are ordinary messages. Those are outside the binary wire format's
   scope and could come as a separate library.

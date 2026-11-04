@@ -57,11 +57,14 @@ for name in "${names[@]}"; do
   mkdir -p "$work"
   cp "$src"/* "$work"/
   cp "$root/runtime/pb_wire.goose" "$work"/
-  imports=()
-  while IFS= read -r i; do imports+=("$i"); done \
-    < <(sed -n 's/^import  *"\(.*\)";.*/\1/p' "$proto")
+  closure=()
+  while IFS= read -r i; do closure+=("$i"); done \
+    < <("$root/scripts/proto_closure.sh" -I "$proto_dir" "$proto" 2>"$work/log")
+  if [ ${#closure[@]} -eq 0 ]; then
+    fail "protoc failed"; sed 's/^/    /' "$work/log"; continue
+  fi
   if ! "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$work" \
-      -I "$proto_dir" "$proto" ${imports[@]+"${imports[@]}"} 2>"$work/log"; then
+      -I "$proto_dir" "${closure[@]}" 2>"$work/log"; then
     fail "protoc failed"; sed 's/^/    /' "$work/log"; continue
   fi
 

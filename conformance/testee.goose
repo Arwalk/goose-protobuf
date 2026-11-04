@@ -26,7 +26,7 @@
 
 import os;
 import pb_wire;
-import test_messages_proto3;
+import google.protobuf.test_messages_proto3;
 
 extern "pbio_read_exact" fn read_exact(out: u8[>..]&, n: i64) -> i32;
 
