@@ -92,7 +92,8 @@ a size threshold with a second code path is not worth it at this figure.
 - `get`, `put` and `remove` are still linear per call, so building n entries with
   `put` is quadratic. Many `M_decode` calls into one message each fold the whole
   run: `int_merge`, 100 entries per call, took 3.6 s at 160,000 (old 6.0 s), and
-  is still quadratic. Both are the caller's code rather than one input: gpb-dx9.9.
+  is still quadratic. Both are the caller's code rather than one input, and
+  [decision 0010](0010-no-map-index.md) leaves them so.
 - A failed decode does not fold, so a partial message may hold repeated keys
   until it is cleared, or a later decode into it succeeds.
 - `two_maps` is linear although its two runs share a pool, which goes against the

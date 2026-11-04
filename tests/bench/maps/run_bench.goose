@@ -20,6 +20,10 @@
 //                with one map entry: two runs of one pool, which keep moving
 //   two_lists    the same, each with one element of a repeated int32
 //   two_unknown  the same, each with one unknown field: two runs of pb_bytes
+//   put_int      builds a map of <entries> int32 keys with _put, then one _get of
+//                each: a caller's code, not one input. decode_seconds is the puts,
+//                and the gets follow as a sixth figure
+//   put_str      the same with short string keys
 //   small_maps   <entries> messages, each with a map of 4 entries: the common
 //                case, which must not get slower
 // Prints: shape entries input_bytes unique_entries decode_seconds
@@ -66,7 +70,7 @@ fn main() {
     for i in prefix_len { prefix.push(120); }
     var buf: u8[>..] = [];
     for i in n {
-        if shape == "small_maps" || shape == "int_merge" || shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "wrap_mixed" || shape == "two_maps" || shape == "two_lists" || shape == "two_unknown" { break; }
+        if shape == "small_maps" || shape == "int_merge" || shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "wrap_mixed" || shape == "two_maps" || shape == "two_lists" || shape == "two_unknown" || shape == "put_int" || shape == "put_str" { break; }
         if shape == "int_random" { put_int_entry(buf, scramble(i), 1); }
         else if shape == "str_random" { put_str_entry(buf, "", scramble(i), 1); }
         else if shape == "str_prefix" || shape == "str_long" { put_str_entry(buf, prefix, scramble(i), 1); }
@@ -137,6 +141,29 @@ fn main() {
         }
         let m1 = clock();
         print(shape, " ", n, " ", chunks.len, " ", bench::B_ints(mm).len, " ", m1 - m0);
+        return;
+    }
+
+    if shape == "put_int" || shape == "put_str" {
+        var pm = bench::B { .. };
+        let p0 = clock();
+        for i in n {
+            if shape == "put_int" { bench::B_ints_put(pm, scramble(i) as! i32, 1); }
+            else { bench::B_strs_put(pm, str(scramble(i)), 1); }
+        }
+        let p1 = clock();
+        var hits: i64 = 0;
+        for i in n {
+            if shape == "put_int" {
+                let v, found = bench::B_ints_get(pm, scramble(i) as! i32);
+                if found { hits += v as i64; }
+            } else {
+                let v, found = bench::B_strs_get(pm, str(scramble(i)));
+                if found { hits += v as i64; }
+            }
+        }
+        let p2 = clock();
+        print(shape, " ", n, " 0 ", hits, " ", p1 - p0, " ", p2 - p1);
         return;
     }
 

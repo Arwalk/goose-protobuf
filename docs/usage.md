@@ -269,8 +269,13 @@ true
   UTF-8 is therefore not checked.
 - Unknown fields stay in the order they were read, so they do not keep their
   place between known fields.
-- Map `_get`, `_put` and `_remove` scan the map, so building a large map with
-  `_put` is quadratic. Decoding one is not.
+- Map `_get`, `_put` and `_remove` scan the map: about 2 µs per int key and 10 µs
+  per short string at 10,000 entries, in proportion to the size. Building a map with
+  `_put` is therefore quadratic, and so is calling `M_decode` in a loop to add a few
+  entries to a large map. Decoding a large map in one call is not, and concatenated
+  encodings decode as a merge, so join the buffers and decode once. Otherwise keep
+  your own index beside the map
+  ([decision 0010](decisions/0010-no-map-index.md)).
 - One run of values is limited to 2^32 elements.
 
 ## Working on this repository
