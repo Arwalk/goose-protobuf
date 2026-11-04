@@ -15,6 +15,9 @@
 //   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
 //   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
 //   M_clear_f(m)
+//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
+//                                add_ of a message returns it
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -22,7 +25,7 @@
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, strings and bytes, sub-messages, repeated scalars)
+// fields, strings and bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
 // use M_copy.
@@ -214,6 +217,7 @@ fn Outer_pool_copy(dst: Outer_pool_&, src: Outer_pool_&) {
 // message reserved.Node
 struct Node {
     name: pb_Span,
+    children: pb_Span,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -225,18 +229,35 @@ reusable[] var Node_links: Node_Ref[>..] = [];
 // Merges the fields in r's window into m; on failure r.err is set.
 // Fields it does not know, or with another wire type, are kept as
 // unknown fields.
-fn Node_decode_from(r: pb_Reader&, m: Node&) {
+recursive fn Node_decode_from(r: pb_Reader&, m: Node&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    var pb_len2: i64 = m.children.len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
             m.name = pb_read_string(r, m.name);
+        } else if tag == 18 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            pb_reserve(Node_links, m.children, pb_len2);
+            let pb_sub .= Node_pool.alloc_ref(Node { .. });
+            pb_run(Node_links, m.children)[pb_len2].m .= pb_sub;
+            pb_len2++;
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Node_decode_from(r, pb_sub);
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.children = pb_trim(Node_links, m.children, pb_len2);
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
@@ -249,34 +270,55 @@ fn Node_decode(buf: const u8[:], m: Node&) -> i32 {
 }
 
 // Appends m's wire encoding, Node_size_of(m) bytes, to out.
-fn Node_encode(m: Node&, out: u8[>..]&) {
+recursive fn Node_encode(m: Node&, out: u8[>..]&) {
     if m.name.len > 0 {
         pb_write_varint(out, 10);
         pb_write_bytes(out, m.name);
+    }
+    for pb_ref in pb_run(Node_links, m.children) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        pb_write_varint(out, 18);
+        pb_write_varint(out, Node_size_of(pb_l) as! u64);
+        Node_encode(pb_l, out);
     }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
-fn Node_size_of(m: Node&) -> i64 {
+recursive fn Node_size_of(m: Node&) -> i64 {
     var n: i64 = 0;
     if m.name.len > 0 { n += 1 + pb_bytes_size(m.name); }
+    for pb_ref in pb_run(Node_links, m.children) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        n += 1 + pb_len_size(Node_size_of(pb_l));
+    }
     n += m.pb_unknown.len;
     return n;
 }
 
 // Frees what m owns and resets it to the empty message.
-fn Node_clear(m: Node&) {
+recursive fn Node_clear(m: Node&) {
     m.name = pb_bytes_free(m.name);
+    Node_clear_children(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // Makes dst a deep copy of src, freeing what dst owned. The two share
 // nothing afterwards. Neither may be a sub-message of the other.
-fn Node_copy(dst: Node&, src: Node&) {
+recursive fn Node_copy(dst: Node&, src: Node&) {
     if dst .== src { return; }
     Node_clear(dst);
     dst.name = pb_bytes_copy(src.name);
+    dst.children = pb_resize(Node_links, dst.children, src.children.len);
+    for pb_i in src.children.len {
+        let pb_l = pb_run(Node_links, src.children)[pb_i].m;
+        guard pb_l else { continue; }
+        let pb_c .= Node_pool.alloc_ref(Node { .. });
+        pb_run(Node_links, dst.children)[pb_i].m .= pb_c;
+        Node_copy(pb_c, pb_l);
+    }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
@@ -287,6 +329,36 @@ fn Node_name(m: Node&) -> u8[:] { return pb_run(pb_bytes, m.name); }
 // Sets name to a copy of v.
 fn Node_set_name(m: Node&, v: const u8[:]) {
     m.name = pb_bytes_set(m.name, v);
+}
+
+// The links of children, in Node_links: its .len is the number of messages.
+fn Node_children(m: Node&) -> Node_Ref[:] { return pb_run(Node_links, m.children); }
+
+// Message i of children. Valid until it or m is cleared.
+fn Node_children_at(m: Node&, i: i64) -> Node& {
+    let pb_l = pb_run(Node_links, m.children)[i].m;
+    assert(pb_l);
+    return pb_l;
+}
+
+// Adds an empty message to children and returns it.
+fn Node_add_children(m: Node&) -> Node& {
+    let pb_i: i64 = m.children.len;
+    m.children = pb_resize(Node_links, m.children, pb_i + 1);
+    let pb_new .= Node_pool.alloc_ref(Node { .. });
+    pb_run(Node_links, m.children)[pb_i].m .= pb_new;
+    return pb_new;
+}
+
+// Frees the messages of children and everything they own.
+fn Node_clear_children(m: Node&) {
+    for pb_ref in pb_run(Node_links, m.children) {
+        let pb_l = pb_ref.m;
+        guard pb_l else { continue; }
+        Node_clear(pb_l);
+        Node_pool.free(Node_pool.index_of(pb_l));
+    }
+    m.children = pb_resize(Node_links, m.children, 0);
 }
 
 // message reserved.Node.set_name

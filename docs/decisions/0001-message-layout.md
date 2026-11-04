@@ -224,8 +224,8 @@ The design above is unchanged. gpb-41j.6 and gpb-8qn.1 put it in place:
   uses them yet, so that a type in another file can link to it.
 - The generated file header documents the user-facing API.
 - String and bytes fields use these pools since gpb-8qn.4, singular
-  sub-messages since gpb-8qn.2 and repeated scalars since gpb-gp4.1, the
-  rest of the repeated fields from later in Phase 3.
+  sub-messages since gpb-8qn.2, repeated scalars since gpb-gp4.1, and
+  repeated strings, bytes and messages since gpb-gp4.2.
 - A sub-message field holds a link into its type's pool, also when that
   type is in an imported file (gpb-8qn.9). A message that can hold another
   of its own type has `recursive fn` codecs (gpb-8qn.3).

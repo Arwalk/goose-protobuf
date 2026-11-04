@@ -1,0 +1,10 @@
+# proto-file: lists.proto
+# proto-message: lists.Lists
+# Order is kept, and empty values and messages count as values.
+names: ["first", "", "h\303\251llo", "", "last"]
+blobs: ["\x00", "", "\xff\xfe"]
+items { id: 1 label: "one" tags: ["x", "", "y"] }
+items { }
+items { id: 3 }
+timeouts { seconds: 1 } timeouts { } timeouts { nanos: 3 }
+after: 7

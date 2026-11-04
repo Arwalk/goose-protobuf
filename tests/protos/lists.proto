@@ -1,0 +1,38 @@
+// Golden and round-trip: repeated strings, bytes and messages (gpb-gp4.2).
+syntax = "proto3";
+
+package lists;
+
+import "google/protobuf/duration.proto";
+
+message Lists {
+  repeated string names = 1;
+  repeated bytes blobs = 2;
+  repeated Item items = 3;
+  // In another file.
+  repeated google.protobuf.Duration timeouts = 4;
+  int32 after = 5;
+  // A map stays an unknown field until gpb-gp4.4.
+  map<string, int32> counts = 6;
+}
+
+message Item {
+  int32 id = 1;
+  string label = 2;
+  repeated string tags = 3;
+}
+
+// Recursive through a repeated field.
+message Tree {
+  string name = 1;
+  repeated Tree children = 2;
+}
+
+// Mutually recursive, one way repeated and one singular.
+message Forest {
+  repeated Grove groves = 1;
+}
+
+message Grove {
+  Forest forest = 1;
+}

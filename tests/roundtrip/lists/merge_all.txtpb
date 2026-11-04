@@ -1,0 +1,4 @@
+# proto-file: lists.proto
+# proto-message: lists.Lists
+# Repeated messages are appended, never merged.
+names: ["a", "b", "c"] items { id: 1 } items { id: 1 label: "again" } after: 2

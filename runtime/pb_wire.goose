@@ -296,10 +296,45 @@ fn pb_bytes_copy(src: pb_Span) -> pb_Span { return pb_copy_run(pb_bytes, src); }
 // The run grows by doubling, so a decode loop calls pb_trim(pool, s, used)
 // when it ends.
 fn pb_append<T>(pool: T[>..]&, s: pb_Span&, used: i64&, v: T) {
-    if used == s.len { s = pb_resize(pool, s, used * 2 + 1); }
+    pb_reserve(pool, s, used);
     let at: i64 = s.at;
     pool[at + used] = v;
     used++;
+}
+
+// Makes room in run s of pool for an element after the first `used`.
+fn pb_reserve<T>(pool: T[>..]&, s: pb_Span&, used: i64) {
+    if used == s.len { s = pb_resize(pool, s, used * 2 + 1); }
+}
+
+// Frees run s of pb_spans and every run of pb_bytes it holds; returns the
+// empty span.
+fn pb_spans_free(s: pb_Span) -> pb_Span {
+    for i in s.len { let e = pb_run(pb_spans, s)[i]; pb_bytes_free(e); }
+    return pb_resize(pb_spans, s, 0);
+}
+
+// A new run of pb_spans with copies of the runs of pb_bytes that src holds.
+fn pb_spans_copy(src: pb_Span) -> pb_Span {
+    let t = pb_copy_run(pb_spans, src);
+    for i in t.len {
+        let c = pb_bytes_copy(pb_run(pb_spans, t)[i]);
+        pb_run(pb_spans, t)[i] = c;
+    }
+    return t;
+}
+
+// Element i of run s of pb_spans replaced by a copy of v, which may be in
+// pb_bytes.
+fn pb_spans_set(s: pb_Span, i: i64, v: const u8[:]) {
+    let old = pb_run(pb_spans, s)[i];
+    let t = pb_bytes_set(old, v);
+    pb_run(pb_spans, s)[i] = t;
+}
+
+// Run s of pb_spans with a copy of v added.
+fn pb_spans_add(s: pb_Span, v: const u8[:]) -> pb_Span {
+    return pb_add(pb_spans, s, pb_bytes_set(pb_Span { at: 0, len: 0 }, v));
 }
 
 // Run s of pool cut to its first `used` elements.

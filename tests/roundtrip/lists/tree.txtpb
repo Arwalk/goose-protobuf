@@ -1,0 +1,3 @@
+# proto-file: lists.proto
+# proto-message: lists.Tree
+name: "root" children { name: "a" children { name: "b" } children { } } children { name: "c" }
