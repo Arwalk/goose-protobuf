@@ -1,0 +1,61 @@
+// Golden and round-trip (tests/roundtrip/extensions/): extension fields have no
+// accessors, and round-trip as unknown fields, whatever declares them.
+syntax = "proto2";
+
+package ext;
+
+import "closed_enums_other.proto";
+
+enum Color {
+  RED = 1;
+}
+
+message Target {
+  optional int32 stored = 1;
+  extensions 100 to 199;
+  extensions 1000 to max;
+}
+
+message Payload {
+  optional int32 a = 1;
+}
+
+extend Target {
+  optional int32 e_int = 100;
+  optional string e_string = 101;
+  optional Payload e_message = 102;
+  optional group EGroup = 103 {
+    optional int32 g = 1;
+  }
+  repeated int32 e_list = 104;
+  repeated int32 e_packed = 105 [packed = true];
+  // Closed, but an extension is not checked: its value stays as it is.
+  optional Color e_enum = 106;
+  optional int64 e_high = 536870911;
+  // Of a type in a file that nothing else here needs.
+  optional other_e.Outer.Nested e_imported = 107;
+}
+
+message Scope {
+  // Declared in a message: no names of this message come of it.
+  extend Target {
+    optional int32 scoped = 110;
+  }
+  optional int32 own = 1;
+}
+
+// A message of another file is extended, and a message here holds it.
+extend other_e.Outer {
+  optional int32 on_import = 100;
+}
+
+message Holder {
+  optional Target target = 1;
+}
+
+// message_set_wire_format changes only what the extensions' wire looks like,
+// and they stay unknown.
+message Set {
+  option message_set_wire_format = true;
+  extensions 4 to max;
+}

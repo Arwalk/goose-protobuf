@@ -8,4 +8,7 @@ message Outer {
   enum Nested {
     NESTED_TWO = 2;
   }
+
+  // Extended by extensions.proto.
+  extensions 100 to 199;
 }

@@ -1,0 +1,12 @@
+# proto-message: ext.Target
+stored: 1
+[ext.e_int]: 2
+[ext.e_string]: "s"
+[ext.e_message] { a: 3 }
+[ext.egroup] { g: 4 }
+[ext.e_list]: 5 [ext.e_list]: 6
+[ext.e_packed]: 7 [ext.e_packed]: 8
+[ext.e_enum]: RED
+[ext.e_imported]: NESTED_TWO
+[ext.Scope.scoped]: 9
+[ext.e_high]: 10
