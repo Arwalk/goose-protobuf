@@ -7,10 +7,9 @@
 //
 // The first request has message_type == "conformance.FailureSet"; reply
 // with an empty FailureSet in protobuf_payload. A binary request for
-// TestAllTypesProto3 with binary output is decoded with the generated
-// bindings and re-encoded into protobuf_payload; a decode error is a
-// parse_error. Everything else (proto2, editions, JSON, text) gets
-// `skipped`.
+// TestAllTypesProto3 or TestAllTypesProto2 with binary output is decoded with
+// the generated bindings and re-encoded into protobuf_payload; a decode error
+// is a parse_error. Everything else (editions, JSON, text) gets `skipped`.
 //
 // The envelope, ConformanceRequest and ConformanceResponse, is generated from
 // conformance/conformance.proto too. The 4-byte length around it is framing, not
@@ -28,6 +27,7 @@ import os;
 import pb_wire;
 import conformance.conformance;
 import google.protobuf.test_messages_proto3;
+import google.protobuf.test_messages_proto2;
 
 extern "pbio_read_exact" fn read_exact(out: u8[>..]&, n: i64) -> i32;
 
@@ -65,6 +65,22 @@ fn roundtrip_proto3(payload: const u8[:], resp: conformance::ConformanceResponse
     conformance::ConformanceResponse_set_protobuf_payload(resp, out);
 }
 
+// TestAllTypesProto2, likewise.
+var t2 = protobuf_test_messages_proto2::TestAllTypesProto2 { .. };
+
+fn roundtrip_proto2(payload: const u8[:], resp: conformance::ConformanceResponse&) {
+    let err = protobuf_test_messages_proto2::TestAllTypesProto2_decode(payload, t2);
+    if err != PB_OK {
+        protobuf_test_messages_proto2::TestAllTypesProto2_clear(t2);
+        conformance::ConformanceResponse_set_parse_error(resp, str("decode error ", err));
+        return;
+    }
+    var out: u8[>..] = [];
+    protobuf_test_messages_proto2::TestAllTypesProto2_encode(t2, out);
+    protobuf_test_messages_proto2::TestAllTypesProto2_clear(t2);
+    conformance::ConformanceResponse_set_protobuf_payload(resp, out);
+}
+
 var request = conformance::ConformanceRequest { .. };
 var response = conformance::ConformanceResponse { .. };
 
@@ -82,8 +98,12 @@ fn respond(buf: const u8[:]) {
         var payload: u8[>..] = [];
         payload.append(conformance::ConformanceRequest_protobuf_payload(request));
         roundtrip_proto3(payload, response);
+    } else if conformance::ConformanceRequest_message_type(request) == "protobuf_test_messages.proto2.TestAllTypesProto2" {
+        var payload: u8[>..] = [];
+        payload.append(conformance::ConformanceRequest_protobuf_payload(request));
+        roundtrip_proto2(payload, response);
     } else {
-        conformance::ConformanceResponse_set_skipped(response, "only TestAllTypesProto3 is generated yet");
+        conformance::ConformanceResponse_set_skipped(response, "only TestAllTypesProto3 and TestAllTypesProto2 are generated yet");
     }
     conformance::ConformanceRequest_clear(request);
     send(response);

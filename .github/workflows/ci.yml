@@ -99,7 +99,8 @@ jobs:
       - name: Generate conformance messages
         run: |
           scripts/check_generated.sh -I third_party/protobuf/src \
-            google/protobuf/test_messages_proto3.proto
+            google/protobuf/test_messages_proto3.proto \
+            google/protobuf/test_messages_proto2.proto
 
       # The committed copy in wkt/ matches the plugin (decision 0007).
       - name: Check well-known types

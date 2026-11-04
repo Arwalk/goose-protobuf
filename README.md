@@ -4,14 +4,17 @@
 [Goose](https://aardappel.github.io/goose/) code for the **protobuf binary
 wire format**. It is tested against the official protobuf conformance suite.
 
-Status: Phase 3 complete. The plugin emits one `.goose` file per `.proto`
+Status: Phase 4 complete. The plugin emits one `.goose` file per `.proto`
 file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
 those (packed or not), oneofs as ADTs and maps, with `optional` presence and
-unknown fields kept. Phase 4 is under way: singular proto2 fields are stored, with
-presence, and a missing required field fails decoding; repeated, oneof and map fields of proto2 are stored too, an unset field reads as its proto2 default, and proto2 enums are closed, so a value they do not declare stays an unknown field; groups are stored like sub-messages, and extensions
-are kept as unknown fields. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers them. Every
-required proto3 binary conformance test passes. The backlog lives in beads
+unknown fields kept. proto2 messages store the same fields, with presence on
+singular ones, and groups, like sub-messages. An unset field reads as its
+default, a missing required field fails decoding, and enums are closed: a value
+an enum does not declare stays an unknown field, as extensions do. The
+well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt`
+covers them. Every
+required proto3 and proto2 binary conformance test passes. The backlog lives in beads
 (`bd ready`).
 
 ## Scope

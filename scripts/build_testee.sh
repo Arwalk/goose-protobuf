@@ -3,9 +3,9 @@
 # Usage: scripts/build_testee.sh [out]   (default build/testee)
 #
 #   1. build the plugin (zig build);
-#   2. generate google/protobuf/test_messages_proto3.proto from the
-#      protobuf submodule (third_party/protobuf/src) and what it imports
-#      with it, and the envelope conformance/conformance.proto, into
+#   2. generate google/protobuf/test_messages_proto{3,2}.proto from the
+#      protobuf submodule (third_party/protobuf/src) and what they import
+#      with them, and the envelope conformance/conformance.proto, into
 #      build/testee-src/;
 #   3. stage conformance/testee.goose, io.c, testee.build and
 #      runtime/pb_wire.goose at its root, which every import resolves from;
@@ -34,7 +34,9 @@ plugin="$root/generator/zig-out/bin/protoc-gen-goose"
 rm -rf "$stage"; mkdir -p "$stage"
 closure=()
 while IFS= read -r i; do closure+=("$i"); done \
-  < <("$root/scripts/proto_closure.sh" -I "$src" google/protobuf/test_messages_proto3.proto)
+  < <("$root/scripts/proto_closure.sh" -I "$src" \
+        google/protobuf/test_messages_proto3.proto \
+        google/protobuf/test_messages_proto2.proto | sort -u)
 "$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage" \
   -I "$src" "${closure[@]}"
 "$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage" \
