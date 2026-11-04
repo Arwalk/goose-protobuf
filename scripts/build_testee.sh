@@ -5,7 +5,8 @@
 #   1. build the plugin (zig build);
 #   2. generate google/protobuf/test_messages_proto3.proto from the
 #      protobuf submodule (third_party/protobuf/src) and what it imports
-#      with it, into build/testee-src/;
+#      with it, and the envelope conformance/conformance.proto, into
+#      build/testee-src/;
 #   3. stage conformance/testee.goose, io.c, testee.build and
 #      runtime/pb_wire.goose at its root, which every import resolves from;
 #   4. goose build it to <out>.
@@ -36,6 +37,8 @@ while IFS= read -r i; do closure+=("$i"); done \
   < <("$root/scripts/proto_closure.sh" -I "$src" google/protobuf/test_messages_proto3.proto)
 "$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage" \
   -I "$src" "${closure[@]}"
+"$protoc" --plugin=protoc-gen-goose="$plugin" --goose_out="$stage" \
+  -I "$root/third_party/protobuf" conformance/conformance.proto
 cp "$root"/conformance/testee.goose "$root"/conformance/io.c \
    "$root"/conformance/testee.build "$stage/"
 "$root/scripts/vendor_runtime.sh" "$stage"

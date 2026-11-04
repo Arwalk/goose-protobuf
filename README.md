@@ -75,8 +75,8 @@ scripts/test_run_conformance.sh                    # checks the exit-code contra
 
 With no testee argument (or a flag first), `run_conformance.sh` builds
 `build/testee` with `scripts/build_testee.sh`, which generates
-`TestAllTypesProto3` with the plugin and builds `conformance/testee.goose`
-against it. It exits nonzero iff a test fails that is not in
+`TestAllTypesProto3` and the `conformance.proto` envelope with the plugin and
+builds `conformance/testee.goose` against them. It exits nonzero iff a test fails that is not in
 `conformance/failure_list_goose.txt`, or a listed test passes.
 
 ## License
