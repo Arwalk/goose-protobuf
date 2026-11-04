@@ -543,14 +543,38 @@ fn pb_unknown_append(r: pb_Reader&, start: i64, tag: u32, s: pb_Span&, used: i64
 // pb_unknown_append does.
 fn pb_unknown_keep(r: pb_Reader&, start: i64, s: pb_Span&, used: i64&) {
     let n = r.pos - start;
-    if used + n > s.len {
-        var cap: i64 = s.len * 2;
-        if cap < used + n { cap = used + n; }
-        s = pb_resize(pb_bytes, s, cap);
-    }
+    pb_unknown_grow(s, used, n);
     let dst = pb_run(pb_bytes, s);
     for i in n { dst[used + i] = r.buf[start + i]; }
     used += n;
+}
+
+// Appends tag and the element of a packed run just read, which began at `at`,
+// to run s: a value on its own, as a closed enum keeps one it does not declare.
+fn pb_unknown_element(r: pb_Reader&, tag: u64, at: i64, s: pb_Span&, used: i64&) {
+    let t = pb_varint_size(tag);
+    let n = r.pos - at;
+    pb_unknown_grow(s, used, t + n);
+    let dst = pb_run(pb_bytes, s);
+    var v = tag;
+    var w = used;
+    while v >= 0x80 {
+        dst[w] = (v | 0x80) as! u8;
+        v >>= 7;
+        w++;
+    }
+    dst[w] = v as! u8;
+    w++;
+    for i in n { dst[w + i] = r.buf[at + i]; }
+    used += t + n;
+}
+
+// Run s of pb_bytes with room for n bytes after the first `used`, by doubling.
+fn pb_unknown_grow(s: pb_Span&, used: i64, n: i64) {
+    if used + n <= s.len { return; }
+    var cap: i64 = s.len * 2;
+    if cap < used + n { cap = used + n; }
+    s = pb_resize(pb_bytes, s, cap);
 }
 
 // Run s of pb_bytes cut to its first `used` bytes.

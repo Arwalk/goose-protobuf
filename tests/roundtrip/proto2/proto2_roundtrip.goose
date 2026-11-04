@@ -114,13 +114,17 @@ fn main() {
     }
     p2::Pres_clear(m);
 
-    // Later: only `stored` and `mode` are stored. The rest, unknown for now, stay on the wire.
+    // Later: all is stored but the group and the extension, which stay on the wire.
     let later = embed_file("later.bin");
     var l = p2::Later { .. };
     if p2::Later_decode(later, l) != PB_OK { fail_at("later", "decode"); }
     if !p2::Later_has_stored(l) || l.stored != 1 { fail_at("later", "stored"); }
     if !p2::Later_has_mode(l) || l.mode != p2::Mode_MODE_B { fail_at("later", "mode"); }
-    if l.pb_unknown.len != later.len - 4 { fail_at("later", str("unknown bytes ", l.pb_unknown.len, " of ", later.len)); }
+    if p2::Later_list_at(l, 0) != 2 || !p2::Later_has_member(l) { fail_at("later", "list, member"); }
+    let lc, lf = p2::Later_counts_get(l, "k");
+    if !lf || lc != 4 { fail_at("later", "counts"); }
+    // Grp { g: 5 } is 4 bytes, and [p2.ext]: 6 is 3.
+    if l.pb_unknown.len != 7 { fail_at("later", str("unknown bytes ", l.pb_unknown.len, " of ", later.len)); }
     var lo: u8[>..] = [];
     p2::Later_encode(l, lo);
     if lo != later { fail_at("later", "re-encoding differs"); }

@@ -1,0 +1,13 @@
+# proto-message: c2.Lists
+ints: 1 ints: -2
+packed_ints: 3 packed_ints: -4
+strs: "a" strs: ""
+byts: "\377"
+subs { a: 1 } subs { }
+colors: GREEN colors: RED
+packed_colors: BLUE packed_colors: GREEN
+doubles: 1.5 doubles: 0
+packed_doubles: 2.5 packed_doubles: -0.5
+zigs: -1 zigs: 2
+bools: true bools: false
+fars: FAR_TWO

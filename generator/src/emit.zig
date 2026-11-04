@@ -365,7 +365,8 @@ pub const FileEmitter = struct {
         for (m.field.items) |*fd| {
             const fname = fd.name orelse "";
             const kind = fieldKind(m, full, fd);
-            for (fieldAccessors(kind, hasPresence(self.file, fd))) |acc| {
+            // A map entry's fields have no presence, whatever the syntax.
+            for (fieldAccessors(kind, hasPresence(self.file, fd) and !isMapEntryDesc(m))) |acc| {
                 try self.claim(try accessorName(self.a, path, fname, acc), .{
                     .what = try std.fmt.allocPrint(self.a, "accessor {s}{s}{s} of {s}", .{ acc.prefix, fname, acc.suffix, full }),
                     .generated = true,
@@ -604,7 +605,7 @@ pub const FileEmitter = struct {
         try self.w.print("\n// message {s}\n", .{full});
 
         // In a map entry, whose fields are encoded even at their defaults.
-        const is_entry = isMapEntryDesc(m) and isProto3(self.file);
+        const is_entry = isMapEntryDesc(m) and isStoredSyntax(self.file);
         // The fields this generator stores; every other field is kept as an
         // unknown field.
         var fields: std.ArrayList(Field) = .empty;
@@ -615,7 +616,7 @@ pub const FileEmitter = struct {
         var oneofs: std.ArrayList(*const Oneof) = .empty;
         for (m.oneof_decl.items, by_index, 0..) |*od, *slot, i| {
             slot.* = null;
-            if (!isProto3(self.file) or !isRealOneof(m, i)) continue;
+            if (!isStoredSyntax(self.file) or !isRealOneof(m, i)) continue;
             const oname = od.name orelse "";
             const o = try self.a.create(Oneof);
             o.* = .{
@@ -637,11 +638,11 @@ pub const FileEmitter = struct {
             try self.claimRecordField(&record_names, rname, full);
             const oneof = if (isRealOneofMember(fd)) by_index[@intCast(fd.oneof_index.?)] else null;
             var bit: ?u32 = null;
-            if (sub == null and !repeated and oneof == null and hasPresence(self.file, fd)) {
+            if (sub == null and !repeated and oneof == null and !is_entry and hasPresence(self.file, fd)) {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry, .closed = try self.closedCheck(fd) });
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry, .closed = if (is_entry) null else try self.closedCheck(if (entry) |e| mapValueOf(e.desc) else fd), .packs = isProto3(self.file) });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
@@ -808,14 +809,27 @@ pub const FileEmitter = struct {
                 continue;
             }
             if (f.oneof) |o| {
-                // Read first: a value that fails to read replaces nothing.
+                // Read first: a value that fails to read replaces nothing, nor
+                // does one that a closed enum does not declare.
                 try self.w.print(
                     \\            let pb_v = {f};
                     \\            if r.err != PB_OK {{ break; }}
+                    \\
+                , .{Subst{ .t = f.sc.read, .x = empty_span }});
+                if (f.closed) |known| {
+                    try self.w.print(
+                        \\            if !({s}) {{
+                        \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                        \\                continue;
+                        \\            }}
+                        \\
+                    , .{known});
+                }
+                try self.w.print(
                     \\            {s}(m);
                     \\            m.{s} = {s}.{s} {{ v: pb_v }};
                     \\
-                , .{ Subst{ .t = f.sc.read, .x = empty_span }, o.clear, o.name, o.type_name, f.name });
+                , .{ o.clear, o.name, o.type_name, f.name });
                 continue;
             }
             if (f.closed) |known| {
@@ -913,6 +927,45 @@ pub const FileEmitter = struct {
             });
             return;
         }
+        if (f.closed) |known| {
+            // An unknown element of a packed run leaves on its own, with the
+            // tag of a value on its own.
+            try self.w.print(
+                \\            let pb_v = {s};
+                \\            if r.err != PB_OK {{ break; }}
+                \\            if {s} {{
+                \\                pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, pb_v);
+                \\            }} else {{
+                \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                \\            }}
+                \\        }} else if tag == {d} {{
+                \\            let pb_n = pb_read_len(r);
+                \\            if r.err != PB_OK {{ break; }}
+                \\            let pb_outer = r.end;
+                \\            r.end = r.pos + pb_n;
+                \\            while r.pos < r.end {{
+                \\                let pb_at = r.pos;
+                \\                let pb_v = {s};
+                \\                if r.err != PB_OK {{ break; }}
+                \\                if {s} {{
+                \\                    pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, pb_v);
+                \\                }} else {{
+                \\                    pb_unknown_element(r, {d}, pb_at, m.pb_unknown, unknown_len);
+                \\                }}
+                \\            }}
+                \\            if r.err != PB_OK {{ break; }}
+                \\            r.end = pb_outer;
+                \\
+            , .{
+                f.sc.read, known,
+                f.sc.pool(), f.name, f.number(), f.number(),
+                f.packedTag(),
+                f.sc.read, known,
+                f.sc.pool(), f.name, f.number(), f.number(),
+                f.tag(),
+            });
+            return;
+        }
         try self.w.print(
             \\            pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, {s});
             \\        }} else if tag == {d} {{
@@ -950,17 +1003,31 @@ pub const FileEmitter = struct {
             \\            if r.err != PB_OK {{ {s}(pb_e); break; }}
             \\            r.depth--;
             \\            r.end = pb_outer;
-            \\            {s}(pb_e);
-            \\            pb_len{d}++;
             \\
         , .{
             pool, f.name, f.number(), f.number(),
             pool, f.name, f.number(),
             try self.subName(entry, "decode_from"),
             try self.subName(entry, "clear"),
-            try self.subName(entry, "place"),
-            f.number(),
         });
+        if (f.closed) |known| {
+            // An entry whose value a closed enum does not declare is not in the
+            // map: its bytes go with the unknown fields.
+            try self.w.print(
+                \\            let pb_v = pb_e.value;
+                \\            if !({s}) {{
+                \\                {s}(pb_e);
+                \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                \\                continue;
+                \\            }}
+                \\
+            , .{ known, try self.subName(entry, "clear") });
+        }
+        try self.w.print(
+            \\            {s}(pb_e);
+            \\            pb_len{d}++;
+            \\
+        , .{ try self.subName(entry, "place"), f.number() });
     }
 
     /// The pool that holds the run of repeated or map field `f`.
@@ -1645,10 +1712,10 @@ pub const FileEmitter = struct {
         const fname = f.fd.name orelse "";
         const pool = try self.runPool(f);
         var key_fd: *const descriptor.FieldDescriptorProto = undefined;
-        var value_fd: *const descriptor.FieldDescriptorProto = undefined;
         for (entry.desc.field.items) |*e| {
-            if (e.number == 1) key_fd = e else value_fd = e;
+            if (e.number == 1) key_fd = e;
         }
+        const value_fd = mapValueOf(entry.desc);
         const key_type = scalarOfType(key_fd).?.setType();
         const find = try self.subName(entry, "find");
         const slot = try self.subName(entry, "slot");
@@ -2194,18 +2261,20 @@ const Field = struct {
     /// A field of a map entry: encoded even at its default, as protobuf does.
     always: bool = false,
     /// An enum field of a closed enum: the condition on pb_v that a value is
-    /// declared. Any other value is kept as an unknown field.
+    /// declared. Any other value is kept as an unknown field. For a map field,
+    /// this is about its values.
     closed: ?[]const u8 = null,
+    /// Whether a repeated scalar is packed if it does not say: only in proto3.
+    packs: bool = true,
 
     fn packedTag(f: Field) u64 {
         return (@as(u64, f.number()) << 3) | 2;
     }
 
-    /// How a repeated scalar is encoded: packed, in proto3, unless it says
-    /// not to.
+    /// How a repeated scalar is encoded: as it says, else as its syntax does.
     fn isPacked(f: Field) bool {
-        const opts = f.fd.options orelse return true;
-        return opts.@"packed" orelse true;
+        const opts = f.fd.options orelse return f.packs;
+        return opts.@"packed" orelse f.packs;
     }
 
     /// The condition under which the field, whose value is `x`, is encoded.
@@ -2239,7 +2308,7 @@ const Oneof = struct {
 /// if it is a field this generator stores.
 fn storedMessageTypeIn(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?[]const u8 {
     if (fd.type != .TYPE_MESSAGE) return null;
-    const stored = if (fd.label == .LABEL_REPEATED) isProto3(file) else isStorable(file, fd);
+    const stored = if (fd.label == .LABEL_REPEATED) isStoredSyntax(file) else isStorable(file, fd);
     if (!stored) return null;
     const tn = fd.type_name orelse return null;
     return if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
@@ -2390,13 +2459,15 @@ fn isProto2(file: *const descriptor.FileDescriptorProto) bool {
     return std.mem.eql(u8, file.syntax orelse "proto2", "proto2");
 }
 
-/// True if this generator stores fields like `fd` as singular fields: those
-/// of proto3, oneof members included, and those of proto2 outside a oneof.
-/// Editions come with a later task.
+/// True if this generator stores the fields of `file`. Editions come with a
+/// later task.
+fn isStoredSyntax(file: *const descriptor.FileDescriptorProto) bool {
+    return isProto3(file) or isProto2(file);
+}
+
+/// True if this generator stores fields like `fd` as singular fields.
 fn isStorable(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) bool {
-    if (fd.label == .LABEL_REPEATED) return false;
-    if (isProto3(file)) return true;
-    return isProto2(file) and fd.oneof_index == null;
+    return fd.label != .LABEL_REPEATED and isStoredSyntax(file);
 }
 
 /// True if `fd` is in a real oneof. A proto3 optional is in a synthetic one,
@@ -2422,12 +2493,20 @@ fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.F
     return scalarOfType(fd);
 }
 
-/// The element storage of a repeated non-message field of proto3. Proto2
-/// comes with a later task.
+/// The element storage of a repeated non-message field. A proto2 string is
+/// not validated.
 fn repeatedScalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
-    if (fd.label != .LABEL_REPEATED) return null;
-    if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return null;
+    if (fd.label != .LABEL_REPEATED or !isStoredSyntax(file)) return null;
+    if (isProto2(file) and fd.type == .TYPE_STRING) return &sc_bytes;
     return scalarOfType(fd);
+}
+
+/// The value field of the map entry `entry`.
+fn mapValueOf(entry: *const descriptor.DescriptorProto) *const descriptor.FieldDescriptorProto {
+    for (entry.field.items) |*e| {
+        if (e.number == 2) return e;
+    }
+    unreachable;
 }
 
 /// The condition on pb_v that it is a value of `e`, as sorted runs of values.
@@ -2736,7 +2815,7 @@ test "accessors depend on kind and presence" {
     try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.oneof_scalar, true).len);
 }
 
-test "proto3 optional is stored with a has-bit; a real oneof as an ADT; proto2 is not" {
+test "proto3 optional is stored with a has-bit; a real oneof as an ADT" {
     var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
@@ -2756,10 +2835,21 @@ test "proto3 optional is stored with a has-bit; a real oneof as an ADT; proto2 i
     try std.testing.expect(std.mem.indexOf(u8, out, "enum M_pick {\n    pb_none,\n    u { v: i32 },\n}") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "    u: i32,") == null);
     try std.testing.expect(std.mem.indexOf(u8, out, "enum M__o") == null);
+}
 
-    // In proto2 only a real oneof's member is left out here.
+test "repeated scalars of proto2 are unpacked unless they say otherwise" {
+    const plain: descriptor.FieldDescriptorProto = .{ .name = "a", .label = .LABEL_REPEATED, .type = .TYPE_INT32 };
+    const packed_f: descriptor.FieldDescriptorProto = .{ .name = "b", .label = .LABEL_REPEATED, .type = .TYPE_INT32, .options = .{ .@"packed" = true } };
+    const unpacked_f: descriptor.FieldDescriptorProto = .{ .name = "c", .label = .LABEL_REPEATED, .type = .TYPE_INT32, .options = .{ .@"packed" = false } };
+    const sc = &sc_int32;
+    try std.testing.expect(!(Field{ .fd = &plain, .sc = sc, .name = "a", .packs = false }).isPacked());
+    try std.testing.expect((Field{ .fd = &packed_f, .sc = sc, .name = "b", .packs = false }).isPacked());
+    try std.testing.expect((Field{ .fd = &plain, .sc = sc, .name = "a", .packs = true }).isPacked());
+    try std.testing.expect(!(Field{ .fd = &unpacked_f, .sc = sc, .name = "c", .packs = true }).isPacked());
     const p2: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
-    try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &m.field.items[0]));
+    const ed: descriptor.FileDescriptorProto = .{ .syntax = "editions" };
+    try std.testing.expect(repeatedScalarOf(&p2, &plain) != null);
+    try std.testing.expect(repeatedScalarOf(&ed, &plain) == null);
 }
 
 test "singular proto2 fields are stored, enums too; editions are not stored" {

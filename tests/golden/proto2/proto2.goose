@@ -801,9 +801,17 @@ fn Req_clear_r_string(m: Req&) {
 }
 
 // message p2.Later
+enum Later_pick {
+    pb_none,
+    member { v: i32 },
+}
+
 struct Later {
     stored: i32,
     mode: i32,
+    list: pb_Span,
+    counts: pb_Span,
+    pick: Later_pick = Later_pick.pb_none,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
@@ -818,6 +826,10 @@ reusable[] var Later_links: Later_Ref[>..] = [];
 // unknown fields.
 fn Later_decode_from(r: pb_Reader&, m: Later&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let pb_had3: i64 = m.list.len;
+    var pb_len3: i64 = pb_had3;
+    let pb_had5: i64 = m.counts.len;
+    var pb_len5: i64 = pb_had5;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -834,10 +846,42 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
             } else {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
             }
+        } else if tag == 24 {
+            pb_append(pb_i32s, m.list, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
+        } else if tag == 26 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            while r.pos < r.end { pb_append(pb_i32s, m.list, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
+            if r.err != PB_OK { break; }
+            r.end = pb_outer;
+        } else if tag == 32 {
+            let pb_v = pb_u64_to_int32(pb_read_varint(r));
+            if r.err != PB_OK { break; }
+            Later_clear_pick(m);
+            m.pick = Later_pick.member { v: pb_v };
+        } else if tag == 42 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            pb_reserve(Later_CountsEntry_entries, m.counts, pb_len5, pb_had5);
+            let pb_e .= pb_run(Later_CountsEntry_entries, m.counts)[pb_len5];
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Later_CountsEntry_decode_from(r, pb_e);
+            if r.err != PB_OK { Later_CountsEntry_clear(pb_e); break; }
+            r.depth--;
+            r.end = pb_outer;
+            Later_CountsEntry_place(pb_e);
+            pb_len5++;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
     }
+    m.list = pb_trim(pb_i32s, m.list, pb_len3);
+    m.counts = pb_trim(Later_CountsEntry_entries, m.counts, pb_len5);
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
@@ -846,6 +890,7 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
 fn Later_decode(buf: const u8[:], m: Later&) -> i32 {
     var r = pb_reader(buf);
     Later_decode_from(r, m);
+    if r.err == PB_OK { Later_fold_maps(m); }
     return r.err;
 }
 
@@ -859,6 +904,25 @@ fn Later_encode(m: Later&, out: u8[>..]&) {
         pb_write_varint(out, 16);
         pb_write_varint(out, pb_int32_to_u64(m.mode));
     }
+    if m.list.len > 0 {
+        for pb_v in pb_run(pb_i32s, m.list) {
+            pb_write_varint(out, 24);
+            pb_write_varint(out, pb_int32_to_u64(pb_v));
+        }
+    }
+    match m.pick {
+        member pb_p => {
+            pb_write_varint(out, 32);
+            pb_write_varint(out, pb_int32_to_u64(pb_p.v));
+        },
+        _ => {},
+    }
+    for pb_i in m.counts.len {
+        let pb_e .= pb_run(Later_CountsEntry_entries, m.counts)[pb_i];
+        pb_write_varint(out, 42);
+        pb_write_varint(out, Later_CountsEntry_size_of(pb_e) as! u64);
+        Later_CountsEntry_encode(pb_e, out);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
@@ -867,6 +931,18 @@ fn Later_size_of(m: Later&) -> i64 {
     var n: i64 = 0;
     if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.stored)); }
     if (m.pb_has0 & 0x00000002) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.mode)); }
+    if m.list.len > 0 {
+        var pb_n: i64 = 0;
+        for pb_v in pb_run(pb_i32s, m.list) { pb_n += pb_varint_size(pb_int32_to_u64(pb_v)); }
+        n += 1 * m.list.len + pb_n;
+    }
+    match m.pick {
+        member pb_p => { n += 1 + pb_varint_size(pb_int32_to_u64(pb_p.v)); },
+        _ => {},
+    }
+    for pb_i in m.counts.len {
+        n += 1 + pb_len_size(Later_CountsEntry_size_of(pb_run(Later_CountsEntry_entries, m.counts)[pb_i]));
+    }
     n += m.pb_unknown.len;
     return n;
 }
@@ -875,6 +951,9 @@ fn Later_size_of(m: Later&) -> i64 {
 fn Later_clear(m: Later&) {
     m.stored = 0;
     m.mode = 0;
+    m.list = pb_resize(pb_i32s, m.list, 0);
+    Later_clear_counts(m);
+    Later_clear_pick(m);
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
@@ -886,8 +965,32 @@ fn Later_copy(dst: Later&, src: Later&) {
     Later_clear(dst);
     dst.stored = src.stored;
     dst.mode = src.mode;
+    dst.list = pb_copy_run(pb_i32s, src.list);
+    dst.counts = pb_resize(Later_CountsEntry_entries, dst.counts, src.counts.len);
+    for pb_i in src.counts.len {
+        Later_CountsEntry_copy(pb_run(Later_CountsEntry_entries, dst.counts)[pb_i], pb_run(Later_CountsEntry_entries, src.counts)[pb_i]);
+    }
+    match src.pick {
+        member pb_p => { dst.pick = Later_pick.member { v: pb_p.v }; },
+        _ => {},
+    }
     dst.pb_has0 = src.pb_has0;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Folds repeated keys in the maps of m and of the messages it holds, which
+// decoding appends without looking them up: the last value wins, in the
+// place of the first occurrence.
+fn Later_fold_maps(m: Later&) {
+    m.counts = Later_CountsEntry_fold(m.counts);
+}
+
+// Frees what oneof pick holds, and sets no member.
+fn Later_clear_pick(m: Later&) {
+    match m.pick {
+        _ => {},
+    }
+    m.pick = Later_pick.pb_none;
 }
 
 // Sets stored and marks it present:
@@ -918,11 +1021,81 @@ fn Later_clear_mode(m: Later&) {
     m.pb_has0 &= 0xfffffffd;
 }
 
+// The values of list, in pb_i32s: valid until it is next changed or m is
+// cleared.
+fn Later_list(m: Later&) -> i32[:] { return pb_run(pb_i32s, m.list); }
+
+fn Later_list_at(m: Later&, i: i64) -> i32 { return pb_run(pb_i32s, m.list)[i]; }
+
+// Adds a value to list. This moves its values, so Later_set_list is better for many.
+fn Later_add_list(m: Later&, v: i32) { m.list = pb_add(pb_i32s, m.list, v); }
+
+// Sets list to a copy of v.
+fn Later_set_list(m: Later&, v: const i32[:]) { m.list = pb_set_run(pb_i32s, m.list, v); }
+
+fn Later_clear_list(m: Later&) { m.list = pb_resize(pb_i32s, m.list, 0); }
+
+// The value of member, the default if it is not the member set.
+fn Later_member(m: Later&) -> i32 {
+    match m.pick {
+        member pb_p => { return pb_p.v; },
+        _ => {},
+    }
+    return 0;
+}
+
+// Makes member the member set, with value v: it is encoded even when 0.
+fn Later_set_member(m: Later&, v: i32) {
+    Later_clear_pick(m);
+    m.pick = Later_pick.member { v: v };
+}
+
+fn Later_has_member(m: Later&) -> bool { return match m.pick { member => true, _ => false }; }
+
+// Clears oneof pick if member is the member set.
+fn Later_clear_member(m: Later&) { if Later_has_member(m) { Later_clear_pick(m); } }
+
+// The entries of counts, in insertion order: its .len is their number, and
+// each has .key and .value, or the entry type's accessors for what is in a
+// pool. Valid until the map next changes or m is cleared.
+fn Later_counts(m: Later&) -> Later_CountsEntry[:] { return pb_run(Later_CountsEntry_entries, m.counts); }
+
+// The value with key k and true, or the default and false.
+fn Later_counts_get(m: Later&, k: const u8[:]) -> i32, bool {
+    let pb_i = Later_CountsEntry_find(m.counts, m.counts.len, k);
+    if pb_i < 0 { return 0, false; }
+    return pb_run(Later_CountsEntry_entries, m.counts)[pb_i].value, true;
+}
+
+// Sets the value with key k to v, adding an entry if there is none.
+fn Later_counts_put(m: Later&, k: const u8[:], v: i32) {
+    Later_CountsEntry_slot(m.counts, k).value = v;
+}
+
+// Removes the entry with key k and frees what it owns. False if there is
+// none. Later entries keep their order.
+fn Later_counts_remove(m: Later&, k: const u8[:]) -> bool {
+    let pb_i = Later_CountsEntry_find(m.counts, m.counts.len, k);
+    if pb_i < 0 { return false; }
+    let pb_r = pb_run(Later_CountsEntry_entries, m.counts);
+    Later_CountsEntry_clear(pb_r[pb_i]);
+    var pb_j = pb_i;
+    while pb_j + 1 < pb_r.len { pb_r[pb_j] = pb_r[pb_j + 1]; pb_j++; }
+    pb_r[pb_j] = Later_CountsEntry { .. };
+    m.counts = pb_resize(Later_CountsEntry_entries, m.counts, pb_j);
+    return true;
+}
+
+// Frees the entries of counts and everything they own.
+fn Later_clear_counts(m: Later&) {
+    for pb_i in m.counts.len { Later_CountsEntry_clear(pb_run(Later_CountsEntry_entries, m.counts)[pb_i]); }
+    m.counts = pb_resize(Later_CountsEntry_entries, m.counts, 0);
+}
+
 // message p2.Later.CountsEntry
 struct Later_CountsEntry {
     key: pb_Span,
     value: i32,
-    pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -942,10 +1115,8 @@ fn Later_CountsEntry_decode_from(r: pb_Reader&, m: Later_CountsEntry&) {
         if r.err != PB_OK { break; }
         if tag == 10 {
             m.key = pb_read_bytes(r, m.key);
-            m.pb_has0 |= 0x00000001;
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
-            m.pb_has0 |= 0x00000002;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -963,22 +1134,18 @@ fn Later_CountsEntry_decode(buf: const u8[:], m: Later_CountsEntry&) -> i32 {
 
 // Appends m's wire encoding, Later_CountsEntry_size_of(m) bytes, to out.
 fn Later_CountsEntry_encode(m: Later_CountsEntry&, out: u8[>..]&) {
-    if (m.pb_has0 & 0x00000001) != 0 {
-        pb_write_varint(out, 10);
-        pb_write_bytes(out, m.key);
-    }
-    if (m.pb_has0 & 0x00000002) != 0 {
-        pb_write_varint(out, 16);
-        pb_write_varint(out, pb_int32_to_u64(m.value));
-    }
+    pb_write_varint(out, 10);
+    pb_write_bytes(out, m.key);
+    pb_write_varint(out, 16);
+    pb_write_varint(out, pb_int32_to_u64(m.value));
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Later_CountsEntry_size_of(m: Later_CountsEntry&) -> i64 {
     var n: i64 = 0;
-    if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_bytes_size(m.key); }
-    if (m.pb_has0 & 0x00000002) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.value)); }
+    n += 1 + pb_bytes_size(m.key);
+    n += 1 + pb_varint_size(pb_int32_to_u64(m.value));
     n += m.pb_unknown.len;
     return n;
 }
@@ -987,7 +1154,6 @@ fn Later_CountsEntry_size_of(m: Later_CountsEntry&) -> i64 {
 fn Later_CountsEntry_clear(m: Later_CountsEntry&) {
     m.key = pb_bytes_free(m.key);
     m.value = 0;
-    m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
@@ -998,7 +1164,6 @@ fn Later_CountsEntry_copy(dst: Later_CountsEntry&, src: Later_CountsEntry&) {
     Later_CountsEntry_clear(dst);
     dst.key = pb_bytes_copy(src.key);
     dst.value = src.value;
-    dst.pb_has0 = src.pb_has0;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
@@ -1006,32 +1171,78 @@ fn Later_CountsEntry_copy(dst: Later_CountsEntry&, src: Later_CountsEntry&) {
 // is cleared.
 fn Later_CountsEntry_key(m: Later_CountsEntry&) -> u8[:] { return pb_run(pb_bytes, m.key); }
 
-// Sets key to a copy of v and marks it present:
-// it is encoded even when empty.
+// Sets key to a copy of v.
 fn Later_CountsEntry_set_key(m: Later_CountsEntry&, v: const u8[:]) {
     m.key = pb_bytes_set(m.key, v);
-    m.pb_has0 |= 0x00000001;
 }
 
-fn Later_CountsEntry_has_key(m: Later_CountsEntry&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
+// Runs of entries: one per map field of this type.
+reusable[] var Later_CountsEntry_entries: Later_CountsEntry[>..] = [];
 
-fn Later_CountsEntry_clear_key(m: Later_CountsEntry&) {
-    m.key = pb_bytes_free(m.key);
-    m.pb_has0 &= 0xfffffffe;
+// The index of the entry with key k among the first `used` of run s, or -1.
+fn Later_CountsEntry_find(s: pb_Span, used: i64, k: const u8[:]) -> i64 {
+    let pb_run_s = pb_run(Later_CountsEntry_entries, s);
+    for pb_i in used {
+        if pb_run(pb_bytes, pb_run_s[pb_i].key) == k { return pb_i; }
+    }
+    return -1;
 }
 
-// Sets value and marks it present:
-// it is encoded even when 0.
-fn Later_CountsEntry_set_value(m: Later_CountsEntry&, v: i32) {
-    m.value = v;
-    m.pb_has0 |= 0x00000002;
+// The entry with key k in run s, added with the default value if there is none.
+fn Later_CountsEntry_slot(s: pb_Span&, k: const u8[:]) -> Later_CountsEntry& {
+    var pb_i = Later_CountsEntry_find(s, s.len, k);
+    if pb_i < 0 {
+        pb_i = s.len;
+        s = pb_resize(Later_CountsEntry_entries, s, pb_i + 1);
+        Later_CountsEntry_set_key(pb_run(Later_CountsEntry_entries, s)[pb_i], k);
+    }
+    return pb_run(Later_CountsEntry_entries, s)[pb_i];
 }
 
-fn Later_CountsEntry_has_value(m: Later_CountsEntry&) -> bool { return (m.pb_has0 & 0x00000002) != 0; }
+// Settles an entry just decoded: a missing message value is an empty one,
+// and unknown fields are dropped.
+fn Later_CountsEntry_place(pb_e: Later_CountsEntry&) {
+    pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
+}
 
-fn Later_CountsEntry_clear_value(m: Later_CountsEntry&) {
-    m.value = 0;
-    m.pb_has0 &= 0xfffffffd;
+// Run s with each repeated key folded: the last value wins, in the place of
+// the first occurrence, and what the others held is freed. O(n log n).
+// fold_maps calls it; decoding leaves repeated keys for it.
+fn Later_CountsEntry_fold(s: pb_Span) -> pb_Span {
+    if s.len < 2 { return s; }
+    let pb_r = pb_run(Later_CountsEntry_entries, s);
+    var pb_keys: pb_StrKey[>..] = [];
+    for pb_i in pb_r.len { pb_keys.push(pb_StrKey { key: pb_r[pb_i].key, at: pb_i as! u32 }); }
+    pb_sort_str_keys(pb_keys);
+    var pb_gone: bool[>..] = [];
+    var pb_i: i64 = 0;
+    while pb_i < pb_keys.len {
+        var pb_j = pb_i + 1;
+        while pb_j < pb_keys.len && pb_same_str_key(pb_keys[pb_i], pb_keys[pb_j]) { pb_j++; }
+        if pb_j - pb_i > 1 {
+            if pb_gone.len == 0 { for pb_k in pb_r.len { pb_gone.push(false); } }
+            let pb_first: i64 = pb_keys[pb_i].at;
+            let pb_last: i64 = pb_keys[pb_j - 1].at;
+            for pb_k in pb_j - pb_i - 1 {
+                let pb_at: i64 = pb_keys[pb_i + pb_k].at;
+                Later_CountsEntry_clear(pb_r[pb_at]);
+                pb_gone[pb_at] = true;
+            }
+            pb_gone[pb_first] = false;
+            pb_gone[pb_last] = true;
+            pb_r[pb_first] = pb_r[pb_last];
+            pb_r[pb_last] = Later_CountsEntry { .. };
+        }
+        pb_i = pb_j;
+    }
+    if pb_gone.len == 0 { return s; }
+    var pb_kept: i64 = 0;
+    for pb_k in pb_r.len {
+        if pb_gone[pb_k] { continue; }
+        if pb_kept != pb_k { pb_r[pb_kept] = pb_r[pb_k]; pb_r[pb_k] = Later_CountsEntry { .. }; }
+        pb_kept++;
+    }
+    return pb_resize(Later_CountsEntry_entries, s, pb_kept);
 }
 
 // message p2.Later.Grp

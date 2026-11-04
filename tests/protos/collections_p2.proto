@@ -1,0 +1,78 @@
+// Golden and round-trip (tests/roundtrip/collections_p2/): repeated, oneof and
+// map fields of proto2. Repeated scalars are unpacked unless they say otherwise,
+// strings are not validated, and enums are closed.
+syntax = "proto2";
+
+package c2;
+
+enum Color {
+  RED = 0;
+  GREEN = 1;
+  BLUE = 5;
+}
+
+// Not usable as a map value, whose enum must start at 0.
+enum Far {
+  FAR_ONE = 1;
+  FAR_TWO = 2;
+}
+
+message Sub {
+  optional int32 a = 1;
+}
+
+message Lists {
+  repeated int32 ints = 1;
+  repeated int32 packed_ints = 2 [packed = true];
+  repeated string strs = 3;
+  repeated bytes byts = 4;
+  repeated Sub subs = 5;
+  repeated Color colors = 6;
+  repeated Color packed_colors = 7 [packed = true];
+  repeated double doubles = 8;
+  repeated double packed_doubles = 9 [packed = true];
+  repeated sint32 zigs = 10;
+  repeated bool bools = 11 [packed = true];
+  repeated Far fars = 12;
+}
+
+message Pick {
+  oneof pick {
+    int32 i = 1;
+    string s = 2;
+    bytes b = 3;
+    Sub m = 4;
+    Color c = 5;
+    Far f = 6;
+  }
+  optional int32 after = 7;
+}
+
+message Maps {
+  map<string, int32> counts = 1;
+  map<int32, string> names = 2;
+  map<string, Sub> subs = 3;
+  map<int32, Color> colors = 4;
+}
+
+message ReqSub {
+  required int32 r = 1;
+}
+
+// A required field through each kind of field that holds a message.
+message Reqs {
+  repeated ReqSub list = 1;
+  map<string, ReqSub> by_name = 2;
+  oneof one {
+    ReqSub member = 3;
+  }
+}
+
+// A oneof with only a group, which is not stored yet.
+message OnlyGroup {
+  oneof one {
+    group Grp = 1 {
+      optional int32 g = 1;
+    }
+  }
+}

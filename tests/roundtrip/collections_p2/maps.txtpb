@@ -1,0 +1,5 @@
+# proto-message: c2.Maps
+counts { key: "k" value: 4 }
+names { key: 7 value: "n" }
+subs { key: "s" value { a: 3 } }
+colors { key: 1 value: BLUE }
