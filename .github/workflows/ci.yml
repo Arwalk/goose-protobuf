@@ -98,6 +98,13 @@ jobs:
           scripts/check_generated.sh -I third_party/protobuf/src \
             google/protobuf/test_messages_proto3.proto
 
+      # Well-known types: generated from protoc's include dir (decision 0007).
+      - name: Generate well-known types
+        run: |
+          scripts/check_generated.sh google/protobuf/any.proto \
+            google/protobuf/timestamp.proto google/protobuf/duration.proto \
+            google/protobuf/wrappers.proto google/protobuf/empty.proto
+
       - name: Protobuf submodule commit
         id: pb
         run: echo "commit=$(git rev-parse HEAD:third_party/protobuf)" >> "$GITHUB_OUTPUT"

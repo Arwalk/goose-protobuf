@@ -1,0 +1,3 @@
+# proto-file: wkt.proto
+# proto-message: google.protobuf.Int64Value
+value: -9223372036854775808

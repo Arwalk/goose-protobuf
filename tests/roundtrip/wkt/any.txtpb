@@ -1,0 +1,3 @@
+# proto-file: wkt.proto
+# proto-message: google.protobuf.Any
+type_url: "type.googleapis.com/foo.Bar" value: "\x00\xff\x01binary"

@@ -1,0 +1,3 @@
+# proto-file: wkt.proto
+# proto-message: google.protobuf.Duration
+seconds: 315576000000 nanos: 999999999

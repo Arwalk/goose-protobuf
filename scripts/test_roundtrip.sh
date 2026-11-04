@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Self-test for scripts/roundtrip.sh on scripts/testdata/roundtrip/, with
-# the real plugin: the `pass` case passes; `abort` (the program aborts),
+# the real plugin: the `pass` and `imports` (uses a file its proto imports)
+# cases pass; `abort` (the program aborts),
 # `noheader` (a txtpb without '# proto-message:'), `noproto` (no proto)
 # and `noprogram` (no *_roundtrip.goose) each fail; the run exits 1.
 # Usage: scripts/test_roundtrip.sh
@@ -16,6 +17,7 @@ want() {  # want <grep-pattern> <description>
   else echo "FAIL $2 (no line matching '$1')"; bad=1; fi
 }
 want '^ok   pass$'                          "a passing case passes"
+want '^ok   imports$'                       "a case importing a generated file passes"
 want '^FAIL abort: abort_roundtrip.goose: exited nonzero' "an aborting program fails"
 want "^FAIL noheader: x.txtpb has no '# proto-message:'"  "a txtpb without a message fails"
 want '^FAIL noproto: no .*/noproto.proto'   "a case without a proto fails"

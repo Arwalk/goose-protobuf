@@ -3,9 +3,10 @@
 # Usage: scripts/roundtrip.sh [name...]   (default: every tests/roundtrip/*/)
 #
 # For each tests/roundtrip/<name>/:
-#   1. generate tests/protos/<name>.proto with the plugin into a temp dir,
-#      next to a copy of runtime/pb_wire.goose and of every file in
-#      tests/roundtrip/<name>/;
+#   1. generate tests/protos/<name>.proto and the files it imports with the
+#      plugin into a temp dir, next to a copy of runtime/pb_wire.goose and
+#      of every file in tests/roundtrip/<name>/ (an imported a/b.proto is
+#      imported by the program as `import a.b;`);
 #   2. encode each <case>.txtpb with `protoc --encode=<message>` into
 #      <case>.bin there; the message is the txtpb's `# proto-message:` line;
 #   3. build every *_roundtrip.goose there with `goose build --debug` and run
@@ -56,8 +57,11 @@ for name in "${names[@]}"; do
   mkdir -p "$work"
   cp "$src"/* "$work"/
   cp "$root/runtime/pb_wire.goose" "$work"/
+  imports=()
+  while IFS= read -r i; do imports+=("$i"); done \
+    < <(sed -n 's/^import  *"\(.*\)";.*/\1/p' "$proto")
   if ! "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$work" \
-      -I "$proto_dir" "$proto" 2>"$work/log"; then
+      -I "$proto_dir" "$proto" ${imports[@]+"${imports[@]}"} 2>"$work/log"; then
     fail "protoc failed"; sed 's/^/    /' "$work/log"; continue
   fi
 

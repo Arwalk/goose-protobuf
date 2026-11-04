@@ -36,7 +36,7 @@ reach above the test's directory: `import pb_wire from "../../runtime";`.
 Round-trip tests: `tests/roundtrip/<name>/` holds `<case>.txtpb` files,
 each with a `# proto-message: pkg.Msg` line, and a
 `<name>_roundtrip.goose` program. The harness generates
-`tests/protos/<name>.proto` next to them, encodes each case with
+`tests/protos/<name>.proto` and the files it imports next to them, encodes each case with
 `protoc --encode` into `<case>.bin`, which the program embeds with
 `embed_file`, then builds and runs the program; it passes iff it exits 0.
 

@@ -1,0 +1,3 @@
+# proto-file: wkt.proto
+# proto-message: google.protobuf.UInt32Value
+value: 4294967295
