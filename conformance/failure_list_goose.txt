@@ -19,10 +19,3 @@ Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.SINT32 # Should hav
 Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.SINT64 # Should have failed to parse, but didn't.
 Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.UINT32 # Should have failed to parse, but didn't.
 Required.Proto3.ProtobufInput.PrematureEofInPackedFieldValue.UINT64 # Should have failed to parse, but didn't.
-
-# TestAllTypesProto3 and NestedMessage form a cycle of message types, whose
-# fields are not stored yet, so a malformed sub-message is kept as an
-# unknown length-delimited field (Phase 2, gpb-8qn.3).
-Required.Proto3.ProtobufInput.PrematureEofInSubmessageValue.MESSAGE # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.UnmatchedEndGroupNestedLen # Should have failed to parse, but didn't.
-Required.Proto3.ProtobufInput.UnmatchedStartGroupNestedLen # Should have failed to parse, but didn't.

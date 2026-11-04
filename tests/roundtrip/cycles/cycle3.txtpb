@@ -1,0 +1,3 @@
+# proto-file: cycles.proto
+# proto-message: cycles.A
+b { c { a { b { c { b { } } } } } }

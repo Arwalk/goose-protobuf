@@ -1,0 +1,3 @@
+# proto-file: cycles.proto
+# proto-message: cycles.Ping
+p: 1 leaf { x: 9 } pong { q: 2 ping { p: 3 pong { ping { } } } }

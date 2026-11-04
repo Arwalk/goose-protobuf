@@ -1,0 +1,48 @@
+// Golden and round-trip: recursive message types (gpb-8qn.3).
+syntax = "proto3";
+
+package cycles;
+
+// Self-recursive.
+message Node {
+  int32 v = 1;
+  Node child = 2;
+  string name = 3;
+}
+
+// Mutually recursive, through a nested type.
+message Ping {
+  message Pong {
+    Ping ping = 1;
+    int32 q = 2;
+  }
+  Pong pong = 1;
+  int32 p = 2;
+  // Not in a cycle: its functions are not recursive.
+  Leaf leaf = 3;
+}
+
+message Leaf {
+  int32 x = 1;
+}
+
+// A cycle of three, entered from any of them.
+message A {
+  B b = 1;
+}
+
+message B {
+  C c = 1;
+}
+
+message C {
+  A a = 1;
+  // Two ways back.
+  B b = 2;
+}
+
+// Holds cycles, but is in none.
+message Holder {
+  Node node = 1;
+  Ping ping = 2;
+}

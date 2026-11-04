@@ -34,7 +34,6 @@ struct Outer {
     after: i32,
     far_leaf: Leaf_Ref,
     sub_n: n_Ref,
-    loop_: Loop_Ref,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -109,17 +108,6 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
             if r.err != PB_OK { break; }
             r.depth--;
             r.end = pb_outer;
-        } else if tag == 50 {
-            let pb_n = pb_read_len(r);
-            if r.err != PB_OK { break; }
-            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
-            let pb_outer = r.end;
-            r.end = r.pos + pb_n;
-            r.depth++;
-            Loop_decode_from(r, Outer_mutable_loop(m));
-            if r.err != PB_OK { break; }
-            r.depth--;
-            r.end = pb_outer;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -165,12 +153,6 @@ fn Outer_encode(m: Outer&, out: u8[>..]&) {
         pb_write_varint(out, n_size_of(pb_f5) as! u64);
         n_encode(pb_f5, out);
     }
-    let pb_f6 = m.loop_.m;
-    if pb_f6 {
-        pb_write_varint(out, 50);
-        pb_write_varint(out, Loop_size_of(pb_f6) as! u64);
-        Loop_encode(pb_f6, out);
-    }
     let pb_f2000 = m.far_leaf.m;
     if pb_f2000 {
         pb_write_varint(out, 16002);
@@ -192,8 +174,6 @@ fn Outer_size_of(m: Outer&) -> i64 {
     if m.after != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.after)); }
     let pb_f5 = m.sub_n.m;
     if pb_f5 { n += 1 + pb_len_size(n_size_of(pb_f5)); }
-    let pb_f6 = m.loop_.m;
-    if pb_f6 { n += 1 + pb_len_size(Loop_size_of(pb_f6)); }
     let pb_f2000 = m.far_leaf.m;
     if pb_f2000 { n += 2 + pb_len_size(Leaf_size_of(pb_f2000)); }
     n += m.pb_unknown.len;
@@ -208,7 +188,6 @@ fn Outer_clear(m: Outer&) {
     m.after = 0;
     Outer_clear_far_leaf(m);
     Outer_clear_sub_n(m);
-    Outer_clear_loop(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
@@ -330,30 +309,6 @@ fn Outer_clear_sub_n(m: Outer&) {
     n_clear(pb_sub);
     n_pool.free(n_pool.index_of(pb_sub));
     m.sub_n.m .= null;
-}
-
-// The sub-message loop, or null if it is not set. Valid until it or m is
-// cleared.
-fn Outer_loop(m: Outer&) -> Loop&? { return m.loop_.m; }
-
-// The sub-message loop, set to an empty one first if it is not set.
-fn Outer_mutable_loop(m: Outer&) -> Loop& {
-    let pb_sub = m.loop_.m;
-    if pb_sub { return pb_sub; }
-    let pb_new .= Loop_pool.alloc_ref(Loop { .. });
-    m.loop_.m .= pb_new;
-    return pb_new;
-}
-
-fn Outer_has_loop(m: Outer&) -> bool { return m.loop_.m != null; }
-
-// Frees the sub-message loop and everything it owns.
-fn Outer_clear_loop(m: Outer&) {
-    let pb_sub = m.loop_.m;
-    guard pb_sub else { return; }
-    Loop_clear(pb_sub);
-    Loop_pool.free(Loop_pool.index_of(pb_sub));
-    m.loop_.m .= null;
 }
 
 // message submessages.Outer.Nested
@@ -709,54 +664,5 @@ fn n_size_of(m: n&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn n_clear(m: n&) {
     m.r = 0;
-    m.pb_unknown = pb_bytes_free(m.pb_unknown);
-}
-
-// message submessages.Loop
-struct Loop {
-    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
-}
-
-// A link to a Loop in Loop_pool, for sub-message fields.
-struct Loop_Ref { m: Loop&<u32 in Loop_pool>? }
-reusable var Loop_pool: Loop[>..] = [];
-reusable[] var Loop_links: Loop_Ref[>..] = [];
-
-// Merges the fields in r's window into m; on failure r.err is set.
-// Fields it does not know, or with another wire type, are kept as
-// unknown fields.
-fn Loop_decode_from(r: pb_Reader&, m: Loop&) {
-    var unknown_len: i64 = m.pb_unknown.len;
-    while r.pos < r.end {
-        let start = r.pos;
-        let tag = pb_read_tag(r);
-        if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
-    }
-    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
-}
-
-// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
-// partial message, which the caller clears.
-fn Loop_decode(buf: const u8[:], m: Loop&) -> i32 {
-    var r = pb_reader(buf);
-    Loop_decode_from(r, m);
-    return r.err;
-}
-
-// Appends m's wire encoding, Loop_size_of(m) bytes, to out.
-fn Loop_encode(m: Loop&, out: u8[>..]&) {
-    out.append(pb_run(pb_bytes, m.pb_unknown));
-}
-
-// The size of m's wire encoding, in bytes.
-fn Loop_size_of(m: Loop&) -> i64 {
-    var n: i64 = 0;
-    n += m.pb_unknown.len;
-    return n;
-}
-
-// Frees what m owns and resets it to the empty message.
-fn Loop_clear(m: Loop&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }

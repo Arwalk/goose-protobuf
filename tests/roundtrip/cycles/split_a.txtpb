@@ -1,0 +1,4 @@
+# proto-file: cycles.proto
+# proto-message: cycles.Node
+# Part one of a message split at two levels of a recursive field.
+v: 1 child { v: 2 child { v: 3 name: "x" } }

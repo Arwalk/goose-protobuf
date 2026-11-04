@@ -18,8 +18,6 @@ message Outer {
   Leaf far_leaf = 2000;
   // Message and type names the generated locals must not capture.
   n sub_n = 5;
-  // Holds a cycle of message types, but is not in it: stored.
-  Loop loop = 6;
 }
 
 message Inner {
@@ -36,9 +34,4 @@ message Leaf {
 
 message n {
   int32 r = 1;
-}
-
-message Loop {
-  // In a cycle of message types: not stored yet (gpb-8qn.3).
-  Loop next = 1;
 }

@@ -1,0 +1,4 @@
+# proto-file: cycles.proto
+# proto-message: cycles.Node
+# What decoding split_a then split_b must produce.
+v: 1 child { v: 2 name: "b" child { v: 3 name: "y" child { v: 4 } } }

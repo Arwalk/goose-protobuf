@@ -1,0 +1,3 @@
+# proto-file: cycles.proto
+# proto-message: cycles.Node
+v: 1 name: "a" child { v: 2 child { name: "c" child { } } }

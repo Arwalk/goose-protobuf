@@ -174,6 +174,8 @@ pub const FileEmitter = struct {
     decls: std.StringHashMapUnmanaged([]const u8) = .empty,
     /// Full name of a message in this file -> the message.
     messages: std.StringHashMapUnmanaged(MessageInfo) = .empty,
+    /// How the codec functions of the current message are declared.
+    fn_kw: []const u8 = "fn",
     diag: []const u8 = "",
 
     pub fn emit(self: *FileEmitter) Error!void {
@@ -310,15 +312,23 @@ pub const FileEmitter = struct {
         for (m.nested_type.items) |*n| try self.claimMessage(n, path, full);
     }
 
-    /// The message that field `fd` of message `owner` stores as a
-    /// sub-message, or null if it is not stored. Fields of a type in
-    /// another file are not stored yet, nor are those in a cycle of
-    /// message types, which needs recursive functions (gpb-8qn.3).
-    fn subMessageOf(self: *FileEmitter, owner: []const u8, fd: *const descriptor.FieldDescriptorProto) Error!?MessageInfo {
-        const t = self.sameFileMessageType(fd) orelse return null;
-        var seen: std.StringHashMapUnmanaged(void) = .empty;
-        if (try self.reaches(t, owner, &seen)) return null;
-        return self.messages.get(t);
+    /// The message that field `fd` stores as a sub-message, or null if it
+    /// is not stored. Fields of a type in another file are not stored yet
+    /// (gpb-8qn.9).
+    fn subMessageOf(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) ?MessageInfo {
+        return self.messages.get(self.sameFileMessageType(fd) orelse return null);
+    }
+
+    /// True if a message of type `full` can hold another of its type: its
+    /// codec functions are in a cycle, so they are `recursive fn`.
+    fn isRecursive(self: *FileEmitter, full: []const u8) Error!bool {
+        const info = self.messages.get(full) orelse return false;
+        for (info.desc.field.items) |*fd| {
+            const t = self.sameFileMessageType(fd) orelse continue;
+            var seen: std.StringHashMapUnmanaged(void) = .empty;
+            if (try self.reaches(t, full, &seen)) return true;
+        }
+        return false;
     }
 
     /// The full name of the message in this file that `fd` holds, if it
@@ -373,7 +383,7 @@ pub const FileEmitter = struct {
         var record_names: std.StringHashMapUnmanaged(void) = .empty;
         var bits: u32 = 0;
         for (m.field.items) |*fd| {
-            const sub = try self.subMessageOf(full, fd);
+            const sub = self.subMessageOf(fd);
             const sc = if (sub) |s| try self.refStorage(s) else scalarOf(self.file, fd) orelse continue;
             const rname = try ident(self.a, fd.name orelse "");
             if ((try record_names.getOrPut(self.a, rname)).found_existing) {
@@ -394,6 +404,7 @@ pub const FileEmitter = struct {
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
         std.mem.sortUnstable(Field, by_number, {}, Field.lessThan);
+        self.fn_kw = if (try self.isRecursive(full)) "recursive fn" else "fn";
 
         try self.emitRecord(goose_name, fields.items, has_words);
         try self.emitPools(goose_name, path);
@@ -455,14 +466,14 @@ pub const FileEmitter = struct {
             \\// Merges the fields in r's window into m; on failure r.err is set.
             \\// Fields it does not know, or with another wire type, are kept as
             \\// unknown fields.
-            \\fn {s}(r: pb_Reader&, m: {s}&) {{
+            \\{s} {s}(r: pb_Reader&, m: {s}&) {{
             \\    var unknown_len: i64 = m.pb_unknown.len;
             \\    while r.pos < r.end {{
             \\        let start = r.pos;
             \\        let tag = pb_read_tag(r);
             \\        if r.err != PB_OK {{ break; }}
             \\
-        , .{ decode_from, goose_name });
+        , .{ self.fn_kw, decode_from, goose_name });
         for (fields, 0..) |f, i| {
             try self.w.print("        {s}if tag == {d} {{\n", .{ if (i == 0) "" else "} else ", f.tag() });
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
@@ -522,9 +533,9 @@ pub const FileEmitter = struct {
         try self.w.print(
             \\
             \\// Appends m's wire encoding, {s}(m) bytes, to out.
-            \\fn {s}(m: {s}&, out: u8[>..]&) {{
+            \\{s} {s}(m: {s}&, out: u8[>..]&) {{
             \\
-        , .{ try generatedName(self.a, path, "size_of"), try generatedName(self.a, path, "encode"), goose_name });
+        , .{ try generatedName(self.a, path, "size_of"), self.fn_kw, try generatedName(self.a, path, "encode"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             if (f.sub) |sub| {
@@ -555,10 +566,10 @@ pub const FileEmitter = struct {
         try self.w.print(
             \\
             \\// The size of m's wire encoding, in bytes.
-            \\fn {s}(m: {s}&) -> i64 {{
+            \\{s} {s}(m: {s}&) -> i64 {{
             \\    var n: i64 = 0;
             \\
-        , .{ try generatedName(self.a, path, "size_of"), goose_name });
+        , .{ self.fn_kw, try generatedName(self.a, path, "size_of"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             const ts = varintSize(f.tag());
@@ -585,9 +596,9 @@ pub const FileEmitter = struct {
         try self.w.print(
             \\
             \\// Frees what m owns and resets it to the empty message.
-            \\fn {s}(m: {s}&) {{
+            \\{s} {s}(m: {s}&) {{
             \\
-        , .{ try generatedName(self.a, path, "clear"), goose_name });
+        , .{ self.fn_kw, try generatedName(self.a, path, "clear"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             if (f.sub != null) {
@@ -1168,27 +1179,37 @@ test "proto3 strings are validated, bytes are not" {
     try std.testing.expectEqualStrings("i32", sc_int32.setType());
 }
 
-test "sub-message fields are stored unless their type is in a cycle or another file" {
+test "sub-message fields of the same file are stored; cycles make functions recursive" {
     var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     var m: descriptor.DescriptorProto = .{ .name = "M" };
     try m.field.append(a, .{ .name = "later", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Later" });
-    try m.field.append(a, .{ .name = "self_", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.M" });
-    try m.field.append(a, .{ .name = "co", .number = 3, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Co" });
-    try m.field.append(a, .{ .name = "other", .number = 4, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".q.Other" });
+    try m.field.append(a, .{ .name = "co", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Co" });
+    try m.field.append(a, .{ .name = "other", .number = 3, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".q.Other" });
     var co: descriptor.DescriptorProto = .{ .name = "Co" };
     try co.field.append(a, .{ .name = "back", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.M" });
+    var self_rec: descriptor.DescriptorProto = .{ .name = "Self" };
+    try self_rec.field.append(a, .{ .name = "next", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Self" });
+    var holder: descriptor.DescriptorProto = .{ .name = "Holder" };
+    try holder.field.append(a, .{ .name = "self_", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_MESSAGE, .type_name = ".p.Self" });
     var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .package = "p", .syntax = "proto3" };
     try file.message_type.append(a, m);
     try file.message_type.append(a, co);
+    try file.message_type.append(a, self_rec);
+    try file.message_type.append(a, holder);
     try file.message_type.append(a, .{ .name = "Later" });
     var diag: []const u8 = "";
     const out = try generateForTest(a, &file, &diag);
     try std.testing.expect(std.mem.indexOf(u8, out, "    later: Later_Ref,\n") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "fn M_mutable_later(m: M&) -> Later& {") != null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "    self_: ") == null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "    co: ") == null);
     try std.testing.expect(std.mem.indexOf(u8, out, "    other: ") == null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "    back: ") == null);
+    for ([_][]const u8{ "M", "Co", "Self" }) |name| {
+        try std.testing.expect(std.mem.indexOf(u8, out, try std.fmt.allocPrint(a, "recursive fn {s}_decode_from(", .{name})) != null);
+        try std.testing.expect(std.mem.indexOf(u8, out, try std.fmt.allocPrint(a, "recursive fn {s}_encode(", .{name})) != null);
+        try std.testing.expect(std.mem.indexOf(u8, out, try std.fmt.allocPrint(a, "recursive fn {s}_size_of(", .{name})) != null);
+        try std.testing.expect(std.mem.indexOf(u8, out, try std.fmt.allocPrint(a, "recursive fn {s}_clear(", .{name})) != null);
+    }
+    try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Holder_decode_from(") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Later_clear(") != null);
 }

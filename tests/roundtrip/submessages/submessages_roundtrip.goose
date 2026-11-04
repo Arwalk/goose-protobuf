@@ -161,8 +161,6 @@ fn check_unknown() {
     if submessages::Outer_has_inner(v) || v.pb_unknown.len != 2 { fail_at("wire type", "not unknown"); }
     check_encodes("wire type", v, as_varint);
     submessages::Outer_clear(v);
-
-    check_roundtrip("cycle", embed_file("cycle.bin"));
 }
 
 // Clearing returns every slot: rebuilding reuses them.

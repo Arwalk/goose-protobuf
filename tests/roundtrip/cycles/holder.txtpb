@@ -1,0 +1,3 @@
+# proto-file: cycles.proto
+# proto-message: cycles.Holder
+node { v: 1 child { v: 2 } } ping { pong { ping { p: 3 } } }
