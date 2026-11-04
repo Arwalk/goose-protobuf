@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace cycles;
 
@@ -114,6 +116,18 @@ recursive fn Node_clear(m: Node&) {
     Node_clear_child(m);
     m.name = pb_bytes_free(m.name);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn Node_copy(dst: Node&, src: Node&) {
+    if dst .== src { return; }
+    Node_clear(dst);
+    dst.v = src.v;
+    let pb_f2 = src.child.m;
+    if pb_f2 { Node_copy(Node_mutable_child(dst), pb_f2); }
+    dst.name = pb_bytes_copy(src.name);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message child, or null if it is not set. Valid until it or m is
@@ -251,6 +265,19 @@ recursive fn Ping_clear(m: Ping&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn Ping_copy(dst: Ping&, src: Ping&) {
+    if dst .== src { return; }
+    Ping_clear(dst);
+    let pb_f1 = src.pong.m;
+    if pb_f1 { Ping_Pong_copy(Ping_mutable_pong(dst), pb_f1); }
+    dst.p = src.p;
+    let pb_f3 = src.leaf.m;
+    if pb_f3 { Leaf_copy(Ping_mutable_leaf(dst), pb_f3); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // The sub-message pong, or null if it is not set. Valid until it or m is
 // cleared.
 fn Ping_pong(m: Ping&) -> Ping_Pong&? { return m.pong.m; }
@@ -380,6 +407,17 @@ recursive fn Ping_Pong_clear(m: Ping_Pong&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn Ping_Pong_copy(dst: Ping_Pong&, src: Ping_Pong&) {
+    if dst .== src { return; }
+    Ping_Pong_clear(dst);
+    let pb_f1 = src.ping.m;
+    if pb_f1 { Ping_copy(Ping_Pong_mutable_ping(dst), pb_f1); }
+    dst.q = src.q;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // The sub-message ping, or null if it is not set. Valid until it or m is
 // cleared.
 fn Ping_Pong_ping(m: Ping_Pong&) -> Ping&? { return m.ping.m; }
@@ -464,6 +502,15 @@ fn Leaf_clear(m: Leaf&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Leaf_copy(dst: Leaf&, src: Leaf&) {
+    if dst .== src { return; }
+    Leaf_clear(dst);
+    dst.x = src.x;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // message cycles.A
 struct A {
     b: B_Ref,
@@ -534,6 +581,16 @@ recursive fn A_size_of(m: A&) -> i64 {
 recursive fn A_clear(m: A&) {
     A_clear_b(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn A_copy(dst: A&, src: A&) {
+    if dst .== src { return; }
+    A_clear(dst);
+    let pb_f1 = src.b.m;
+    if pb_f1 { B_copy(A_mutable_b(dst), pb_f1); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message b, or null if it is not set. Valid until it or m is
@@ -630,6 +687,16 @@ recursive fn B_size_of(m: B&) -> i64 {
 recursive fn B_clear(m: B&) {
     B_clear_c(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn B_copy(dst: B&, src: B&) {
+    if dst .== src { return; }
+    B_clear(dst);
+    let pb_f1 = src.c.m;
+    if pb_f1 { C_copy(B_mutable_c(dst), pb_f1); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message c, or null if it is not set. Valid until it or m is
@@ -747,6 +814,18 @@ recursive fn C_clear(m: C&) {
     C_clear_a(m);
     C_clear_b(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+recursive fn C_copy(dst: C&, src: C&) {
+    if dst .== src { return; }
+    C_clear(dst);
+    let pb_f1 = src.a.m;
+    if pb_f1 { A_copy(C_mutable_a(dst), pb_f1); }
+    let pb_f2 = src.b.m;
+    if pb_f2 { B_copy(C_mutable_b(dst), pb_f2); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message a, or null if it is not set. Valid until it or m is
@@ -888,6 +967,18 @@ fn Holder_clear(m: Holder&) {
     Holder_clear_node(m);
     Holder_clear_ping(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Holder_copy(dst: Holder&, src: Holder&) {
+    if dst .== src { return; }
+    Holder_clear(dst);
+    let pb_f1 = src.node.m;
+    if pb_f1 { Node_copy(Holder_mutable_node(dst), pb_f1); }
+    let pb_f2 = src.ping.m;
+    if pb_f2 { Ping_copy(Holder_mutable_ping(dst), pb_f2); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message node, or null if it is not set. Valid until it or m is

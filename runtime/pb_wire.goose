@@ -279,6 +279,17 @@ fn pb_bytes_append(s: pb_Span, src: const u8[:]) -> pb_Span {
 // Frees run s of pb_bytes; returns the empty span.
 fn pb_bytes_free(s: pb_Span) -> pb_Span { return pb_resize(pb_bytes, s, 0); }
 
+// A new run of pb_bytes with the contents of run src, which it reads through
+// the pool, as allocating the new run may move the pool.
+fn pb_bytes_copy(src: pb_Span) -> pb_Span {
+    let t = pb_resize(pb_bytes, pb_Span { at: 0, len: 0 }, src.len);
+    if src.len == 0 { return t; }
+    let from: i64 = src.at;
+    let to: i64 = t.at;
+    for i in src.len { pb_bytes[to + i] = pb_bytes[from + i]; }
+    return t;
+}
+
 // Run s of pb_bytes replaced by a copy of v. v may be in pb_bytes (even
 // in s): it is copied out before s is freed.
 fn pb_bytes_set(s: pb_Span, v: const u8[:]) -> pb_Span {

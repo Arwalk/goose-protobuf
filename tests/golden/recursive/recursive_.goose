@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace kw;
 
@@ -84,4 +86,13 @@ fn Keyword_size_of(m: Keyword&) -> i64 {
 fn Keyword_clear(m: Keyword&) {
     m.b = false;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Keyword_copy(dst: Keyword&, src: Keyword&) {
+    if dst .== src { return; }
+    Keyword_clear(dst);
+    dst.b = src.b;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }

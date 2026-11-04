@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace imports;
 
@@ -228,6 +230,28 @@ fn Holder_clear(m: Holder&) {
     Holder_clear_nopkg(m);
     Holder_clear_inner(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Holder_copy(dst: Holder&, src: Holder&) {
+    if dst .== src { return; }
+    Holder_clear(dst);
+    let pb_f1 = src.dotted.m;
+    if pb_f1 { foo_v1::Dotted_copy(Holder_mutable_dotted(dst), pb_f1); }
+    let pb_f2 = src.hyphenated.m;
+    if pb_f2 { my_api::Hyphenated_copy(Holder_mutable_hyphenated(dst), pb_f2); }
+    let pb_f3 = src.duration.m;
+    if pb_f3 { google_protobuf::Duration_copy(Holder_mutable_duration(dst), pb_f3); }
+    let pb_f4 = src.nested.m;
+    if pb_f4 { Holder_Nested_copy(Holder_mutable_nested(dst), pb_f4); }
+    let pb_f5 = src.same.m;
+    if pb_f5 { SamePackage_copy(Holder_mutable_same(dst), pb_f5); }
+    let pb_f6 = src.nopkg.m;
+    if pb_f6 { ::NoPackage_copy(Holder_mutable_nopkg(dst), pb_f6); }
+    let pb_f7 = src.inner.m;
+    if pb_f7 { reexported::Reexported_Inner_copy(Holder_mutable_inner(dst), pb_f7); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message dotted, or null if it is not set. Valid until it or m is
@@ -468,6 +492,16 @@ fn Holder_Nested_size_of(m: Holder_Nested&) -> i64 {
 fn Holder_Nested_clear(m: Holder_Nested&) {
     Holder_Nested_clear_later(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Holder_Nested_copy(dst: Holder_Nested&, src: Holder_Nested&) {
+    if dst .== src { return; }
+    Holder_Nested_clear(dst);
+    let pb_f1 = src.later.m;
+    if pb_f1 { google_protobuf::Duration_copy(Holder_Nested_mutable_later(dst), pb_f1); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message later, or null if it is not set. Valid until it or m is

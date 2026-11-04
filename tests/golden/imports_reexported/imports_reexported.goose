@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace reexported;
 
@@ -73,6 +75,14 @@ fn Reexported_size_of(m: Reexported&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn Reexported_clear(m: Reexported&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Reexported_copy(dst: Reexported&, src: Reexported&) {
+    if dst .== src { return; }
+    Reexported_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // message reexported.Reexported.Inner
@@ -133,4 +143,13 @@ fn Reexported_Inner_size_of(m: Reexported_Inner&) -> i64 {
 fn Reexported_Inner_clear(m: Reexported_Inner&) {
     m.c = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Reexported_Inner_copy(dst: Reexported_Inner&, src: Reexported_Inner&) {
+    if dst .== src { return; }
+    Reexported_Inner_clear(dst);
+    dst.c = src.c;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }

@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace submessages;
 
@@ -189,6 +191,25 @@ fn Outer_clear(m: Outer&) {
     Outer_clear_far_leaf(m);
     Outer_clear_sub_n(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Outer_copy(dst: Outer&, src: Outer&) {
+    if dst .== src { return; }
+    Outer_clear(dst);
+    let pb_f1 = src.inner.m;
+    if pb_f1 { Inner_copy(Outer_mutable_inner(dst), pb_f1); }
+    let pb_f2 = src.nested.m;
+    if pb_f2 { Outer_Nested_copy(Outer_mutable_nested(dst), pb_f2); }
+    let pb_f3 = src.opt_leaf.m;
+    if pb_f3 { Leaf_copy(Outer_mutable_opt_leaf(dst), pb_f3); }
+    dst.after = src.after;
+    let pb_f2000 = src.far_leaf.m;
+    if pb_f2000 { Leaf_copy(Outer_mutable_far_leaf(dst), pb_f2000); }
+    let pb_f5 = src.sub_n.m;
+    if pb_f5 { n_copy(Outer_mutable_sub_n(dst), pb_f5); }
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The sub-message inner, or null if it is not set. Valid until it or m is
@@ -380,6 +401,16 @@ fn Outer_Nested_clear(m: Outer_Nested&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Outer_Nested_copy(dst: Outer_Nested&, src: Outer_Nested&) {
+    if dst .== src { return; }
+    Outer_Nested_clear(dst);
+    dst.n = src.n;
+    dst.label = pb_bytes_copy(src.label);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // The contents of label, in pb_bytes: valid until it is next set or m
 // is cleared.
 fn Outer_Nested_label(m: Outer_Nested&) -> u8[:] { return pb_run(pb_bytes, m.label); }
@@ -489,6 +520,20 @@ fn Inner_clear(m: Inner&) {
     Inner_clear_leaf(m);
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Inner_copy(dst: Inner&, src: Inner&) {
+    if dst .== src { return; }
+    Inner_clear(dst);
+    dst.a = src.a;
+    dst.s = pb_bytes_copy(src.s);
+    dst.o = src.o;
+    let pb_f4 = src.leaf.m;
+    if pb_f4 { Leaf_copy(Inner_mutable_leaf(dst), pb_f4); }
+    dst.pb_has0 = src.pb_has0;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The contents of s, in pb_bytes: valid until it is next set or m
@@ -607,6 +652,16 @@ fn Leaf_clear(m: Leaf&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Leaf_copy(dst: Leaf&, src: Leaf&) {
+    if dst .== src { return; }
+    Leaf_clear(dst);
+    dst.x = src.x;
+    dst.y = src.y;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // message submessages.n
 struct n {
     r: i32,
@@ -665,4 +720,13 @@ fn n_size_of(m: n&) -> i64 {
 fn n_clear(m: n&) {
     m.r = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn n_copy(dst: n&, src: n&) {
+    if dst .== src { return; }
+    n_clear(dst);
+    dst.r = src.r;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }

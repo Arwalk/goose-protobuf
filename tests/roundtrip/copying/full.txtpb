@@ -1,0 +1,5 @@
+# proto-file: copying.proto
+# proto-message: copying.Msg
+n: 1 d: 2.5 o: 0 s: "str" b: "\x00\xff" os: "" leaf { name: "l" }
+next { n: 2 s: "two" next { n: 3 b: "three" next { } } }
+timeout { seconds: 9 }

@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace scalars;
 
@@ -247,6 +249,33 @@ fn Scalars_clear(m: Scalars&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Scalars_copy(dst: Scalars&, src: Scalars&) {
+    if dst .== src { return; }
+    Scalars_clear(dst);
+    dst.f_int32 = src.f_int32;
+    dst.f_int64 = src.f_int64;
+    dst.f_uint32 = src.f_uint32;
+    dst.f_uint64 = src.f_uint64;
+    dst.f_sint32 = src.f_sint32;
+    dst.f_sint64 = src.f_sint64;
+    dst.f_fixed32 = src.f_fixed32;
+    dst.f_fixed64 = src.f_fixed64;
+    dst.f_sfixed32 = src.f_sfixed32;
+    dst.f_sfixed64 = src.f_sfixed64;
+    dst.f_float = src.f_float;
+    dst.f_double = src.f_double;
+    dst.f_bool = src.f_bool;
+    dst.f_color = src.f_color;
+    dst.f_big = src.f_big;
+    dst.f_mid = src.f_mid;
+    dst.f_string = pb_bytes_copy(src.f_string);
+    dst.f_optional = src.f_optional;
+    dst.pb_has0 = src.pb_has0;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // The contents of f_string, in pb_bytes: valid until it is next set or m
 // is cleared.
 fn Scalars_f_string(m: Scalars&) -> u8[:] { return pb_run(pb_bytes, m.f_string); }
@@ -328,4 +357,13 @@ fn Scalars_Inner_size_of(m: Scalars_Inner&) -> i64 {
 fn Scalars_Inner_clear(m: Scalars_Inner&) {
     m.type_ = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Scalars_Inner_copy(dst: Scalars_Inner&, src: Scalars_Inner&) {
+    if dst .== src { return; }
+    Scalars_Inner_clear(dst);
+    dst.type_ = src.type_;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }

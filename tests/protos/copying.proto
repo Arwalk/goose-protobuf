@@ -1,0 +1,30 @@
+// Golden and round-trip: M_copy (gpb-8qn.7). Repeated and map fields: gpb-gp4.9.
+syntax = "proto3";
+
+package copying;
+
+import "google/protobuf/duration.proto";
+
+message Msg {
+  int32 n = 1;
+  double d = 2;
+  optional int32 o = 3;
+  string s = 4;
+  bytes b = 5;
+  optional string os = 6;
+  Leaf leaf = 7;
+  // Recursive.
+  Msg next = 8;
+  // In another file.
+  google.protobuf.Duration timeout = 9;
+}
+
+message Leaf {
+  string name = 1;
+}
+
+// A message with presence and nothing else to copy but has-bits.
+message Flags {
+  optional bool a = 1;
+  optional bool b = 2;
+}

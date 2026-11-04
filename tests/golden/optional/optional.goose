@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace optional;
 
@@ -422,6 +424,50 @@ fn Opt_clear(m: Opt&) {
     m.pb_has0 = 0;
     m.pb_has1 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Opt_copy(dst: Opt&, src: Opt&) {
+    if dst .== src { return; }
+    Opt_clear(dst);
+    dst.o_int32 = src.o_int32;
+    dst.o_sint64 = src.o_sint64;
+    dst.o_double = src.o_double;
+    dst.o_float = src.o_float;
+    dst.o_bool = src.o_bool;
+    dst.o_mode = src.o_mode;
+    dst.o_fixed64 = src.o_fixed64;
+    dst.plain = src.plain;
+    dst.o9 = src.o9;
+    dst.o10 = src.o10;
+    dst.o11 = src.o11;
+    dst.o12 = src.o12;
+    dst.o13 = src.o13;
+    dst.o14 = src.o14;
+    dst.o15 = src.o15;
+    dst.o16 = src.o16;
+    dst.o17 = src.o17;
+    dst.o18 = src.o18;
+    dst.o19 = src.o19;
+    dst.o20 = src.o20;
+    dst.o21 = src.o21;
+    dst.o22 = src.o22;
+    dst.o23 = src.o23;
+    dst.o24 = src.o24;
+    dst.o25 = src.o25;
+    dst.o26 = src.o26;
+    dst.o27 = src.o27;
+    dst.o28 = src.o28;
+    dst.o29 = src.o29;
+    dst.o30 = src.o30;
+    dst.o31 = src.o31;
+    dst.o32 = src.o32;
+    dst.o33 = src.o33;
+    dst.o34 = src.o34;
+    dst.pb_has0 = src.pb_has0;
+    dst.pb_has1 = src.pb_has1;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // Sets o_int32 and marks it present:

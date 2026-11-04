@@ -16,6 +16,25 @@ fn bytes_eq(a: const u8[:], b: const u8[:]) -> bool {
 }
 
 fn main() {
+    // A copy shares nothing with its source, and survives the pool moving.
+    var src = pb_bytes_append(pb_Span { at: 0, len: 0 }, "copy me");
+    let empty_copy = pb_bytes_copy(pb_Span { at: 0, len: 0 });
+    if empty_copy.len != 0 { fail_at("copy empty", "allocated"); }
+    var cp = pb_bytes_copy(src);
+    if !bytes_eq(pb_run(pb_bytes, cp), "copy me") { fail_at("copy", pb_run(pb_bytes, cp)); }
+    if cp.at == src.at { fail_at("copy", "shares the run"); }
+    src = pb_bytes_free(src);
+    if !bytes_eq(pb_run(pb_bytes, cp), "copy me") { fail_at("copy", "freeing the source changed it"); }
+    // Copying when the pool must grow: fill it, then copy a large run.
+    var large: u8[>..] = [];
+    for i in 100000 { large.push(i as! u8); }
+    var big = pb_bytes_append(pb_Span { at: 0, len: 0 }, large);
+    let big2 = pb_bytes_copy(big);
+    if !bytes_eq(pb_run(pb_bytes, big2), large) { fail_at("copy large", "contents differ"); }
+    big = pb_bytes_free(big);
+    pb_bytes_free(big2);
+    cp = pb_bytes_free(cp);
+
     var a = pb_Span { at: 0, len: 0 };
     var b = pb_Span { at: 0, len: 0 };
     if pb_run(pb_bytes, a).len != 0 { fail_at("empty", "an empty span has elements"); }

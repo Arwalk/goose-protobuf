@@ -17,10 +17,12 @@
 //                                PB_ERR_* code and a partial m
 //                                (PB_ERR_UTF8: a bad proto3 string)
 //   M_clear(m)                   frees what m owns, empties it
+//   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
 // fields, strings and bytes, sub-messages, later repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
-// to free them. Copying a record copies spans, not their contents.
+// to free them. Assigning a record copies spans, not their contents:
+// use M_copy.
 
 namespace reserved;
 
@@ -81,6 +83,14 @@ fn Outer_clear(m: Outer&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Outer_copy(dst: Outer&, src: Outer&) {
+    if dst .== src { return; }
+    Outer_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // enum reserved.Outer.Ref
 let Outer_Ref_Ref_ZERO: i32 = 0;
 
@@ -133,6 +143,14 @@ fn Outer_decode_clear(m: Outer_decode_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Outer_decode_copy(dst: Outer_decode_&, src: Outer_decode_&) {
+    if dst .== src { return; }
+    Outer_decode_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // message reserved.Outer.pool
 struct Outer_pool_ {
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -180,6 +198,14 @@ fn Outer_pool_size_of(m: Outer_pool_&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn Outer_pool_clear(m: Outer_pool_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Outer_pool_copy(dst: Outer_pool_&, src: Outer_pool_&) {
+    if dst .== src { return; }
+    Outer_pool_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // message reserved.Node
@@ -242,6 +268,15 @@ fn Node_clear(m: Node&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Node_copy(dst: Node&, src: Node&) {
+    if dst .== src { return; }
+    Node_clear(dst);
+    dst.name = pb_bytes_copy(src.name);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // The contents of name, in pb_bytes: valid until it is next set or m
 // is cleared.
 fn Node_name(m: Node&) -> u8[:] { return pb_run(pb_bytes, m.name); }
@@ -300,6 +335,14 @@ fn Node_set_name_clear(m: Node_set_name_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Node_set_name_copy(dst: Node_set_name_&, src: Node_set_name_&) {
+    if dst .== src { return; }
+    Node_set_name_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // message reserved.Node.children_at
 struct Node_children_at_ {
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -347,6 +390,14 @@ fn Node_children_at_size_of(m: Node_children_at_&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn Node_children_at_clear(m: Node_children_at_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Node_children_at_copy(dst: Node_children_at_&, src: Node_children_at_&) {
+    if dst .== src { return; }
+    Node_children_at_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // message reserved.str
@@ -398,6 +449,14 @@ fn str_clear(m: str_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn str_copy(dst: str_&, src: str_&) {
+    if dst .== src { return; }
+    str_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // message reserved.pb_x
 struct pb_x_ {
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -445,6 +504,14 @@ fn pb_x_size_of_(m: pb_x_&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn pb_x_clear_(m: pb_x_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn pb_x_copy_(dst: pb_x_&, src: pb_x_&) {
+    if dst .== src { return; }
+    pb_x_clear_(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // message reserved.thread
@@ -496,6 +563,14 @@ fn thread_clear(m: thread&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn thread_copy(dst: thread&, src: thread&) {
+    if dst .== src { return; }
+    thread_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
 // message reserved.thread.spawn
 struct thread_spawn_ {
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -543,6 +618,14 @@ fn thread_spawn_size_of(m: thread_spawn_&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn thread_spawn_clear(m: thread_spawn_&) {
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn thread_spawn_copy(dst: thread_spawn_&, src: thread_spawn_&) {
+    if dst .== src { return; }
+    thread_spawn_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // message reserved.E
@@ -603,6 +686,15 @@ fn E_size_of(m: E&) -> i64 {
 fn E_clear(m: E&) {
     m.x = pb_bytes_free(m.x);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn E_copy(dst: E&, src: E&) {
+    if dst .== src { return; }
+    E_clear(dst);
+    dst.x = pb_bytes_copy(src.x);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
 // The contents of x, in pb_bytes: valid until it is next set or m

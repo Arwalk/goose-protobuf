@@ -1,0 +1,3 @@
+# proto-file: copying.proto
+# proto-message: copying.Flags
+a: false

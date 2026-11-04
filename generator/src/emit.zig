@@ -524,6 +524,7 @@ pub const FileEmitter = struct {
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
         try self.emitClear(goose_name, path, fields.items, has_words);
+        try self.emitCopy(goose_name, path, fields.items, has_words);
         for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
 
         for (m.enum_type.items) |*e| try self.emitEnum(e, full);
@@ -723,6 +724,40 @@ pub const FileEmitter = struct {
         try self.w.writeAll("    m.pb_unknown = pb_bytes_free(m.pb_unknown);\n}\n");
     }
 
+    /// Decision 0001: copying a record shares what its spans and links
+    /// reach, so M_copy duplicates that too.
+    fn emitCopy(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
+        try self.w.print(
+            \\
+            \\// Makes dst a deep copy of src, freeing what dst owned. The two share
+            \\// nothing afterwards. Neither may be a sub-message of the other.
+            \\{s} {s}(dst: {s}&, src: {s}&) {{
+            \\    if dst .== src {{ return; }}
+            \\    {s}(dst);
+            \\
+        , .{ self.fn_kw, try generatedName(self.a, path, "copy"), goose_name, goose_name, try generatedName(self.a, path, "clear") });
+        for (fields) |f| {
+            if (f.sub) |sub| {
+                try self.w.print(
+                    \\    let pb_f{d} = src.{s}.m;
+                    \\    if pb_f{d} {{ {s}({s}(dst), pb_f{d}); }}
+                    \\
+                , .{
+                    f.number(), f.name, f.number(),
+                    try self.subName(sub, "copy"),
+                    try accessorName(self.a, path, f.fd.name orelse "", mutable_acc),
+                    f.number(),
+                });
+            } else if (f.sc.size == .bytes) {
+                try self.w.print("    dst.{s} = pb_bytes_copy(src.{s});\n", .{ f.name, f.name });
+            } else {
+                try self.w.print("    dst.{s} = src.{s};\n", .{ f.name, f.name });
+            }
+        }
+        for (0..has_words) |i| try self.w.print("    dst.pb_has{d} = src.pb_has{d};\n", .{ i, i });
+        try self.w.writeAll("    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);\n}\n");
+    }
+
     /// The accessors of a stored field, per fieldAccessors: the getter
     /// and set_ of strings and bytes, and set_, has_ and clear_ of fields
     /// with presence; a sub-message has its own (emitSubMessageAccessors).
@@ -844,10 +879,12 @@ const api_comment =
     \\//                                PB_ERR_* code and a partial m
     \\//                                (PB_ERR_UTF8: a bad proto3 string)
     \\//   M_clear(m)                   frees what m owns, empties it
+    \\//   M_copy(dst, src)             makes dst a deep copy of src
     \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
     \\// fields, strings and bytes, sub-messages, later repeated fields)
     \\// live in global pools (pb_bytes, M_pool, M_links): clear a message
-    \\// to free them. Copying a record copies spans, not their contents.
+    \\// to free them. Assigning a record copies spans, not their contents:
+    \\// use M_copy.
     \\
     \\
 ;
@@ -1345,6 +1382,8 @@ test "sub-message fields of the same file are stored; cycles make functions recu
     }
     try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Holder_decode_from(") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Later_clear(") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "recursive fn Self_copy(dst: Self&, src: Self&) {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Later_copy(dst: Later&, src: Later&) {") != null);
 }
 
 test "fields of an imported type are qualified and import its file" {

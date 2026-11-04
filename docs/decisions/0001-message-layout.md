@@ -157,8 +157,11 @@ namespace, how packages map to names) belongs to the emitter task
   reuses the slot: a logic bug, never memory corruption (reference §14).
 - Records hold spans, links and has-bits, so they copy cheaply. A copy
   shares the pool contents and is **not** a deep copy: clearing one copy
-  invalidates the other. The generator should emit `M_copy(dst, src)` for
-  a deep copy.
+  invalidates the other. The generator emits `M_copy(dst, src)` for a deep
+  copy (gpb-8qn.7), which replaces what `dst` held. Neither message may be
+  a sub-message of the other: this is documented rather than checked, as
+  walking up to check is impossible (links only point down) and the
+  misuse is a logic bug, never memory corruption.
 - Encode calls `size_of` per nested message, which is O(n · depth). If
   that shows up in profiles, protobuf C++'s fix applies: a cached size in
   the record, set by `size_of`.
