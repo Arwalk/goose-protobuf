@@ -62,6 +62,9 @@ jobs:
       - name: Cross-implementation round trips
         run: scripts/interop.sh
 
+      - name: Bindings for descriptor and plugin protos
+        run: scripts/selfhost_bindings.sh
+
       - name: Usage guide
         run: python3 scripts/check_docs.py
 

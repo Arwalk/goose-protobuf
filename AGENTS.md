@@ -19,6 +19,7 @@ scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_t
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
 scripts/fuzz.sh [seconds]                       # libFuzzer on generated decoders (needs clang)
+scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
 scripts/check_docs.py                           # run docs/usage.md: its snippets, commands and output
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
