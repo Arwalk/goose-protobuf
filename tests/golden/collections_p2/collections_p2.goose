@@ -2741,6 +2741,7 @@ fn Reqs_ByNameEntry_fold(s: pb_Span) -> pb_Span {
 // message c2.OnlyGroup
 enum OnlyGroup_one {
     pb_none,
+    grp { v: OnlyGroup_Grp_Ref },
 }
 
 struct OnlyGroup {
@@ -2762,7 +2763,23 @@ fn OnlyGroup_decode_from(r: pb_Reader&, m: OnlyGroup&) {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        if tag == 11 {
+            let pb_body = r.pos;
+            let pb_stop = pb_skip_group(r, tag);
+            if r.err != PB_OK { break; }
+            let pb_after = r.pos;
+            let pb_outer = r.end;
+            r.pos = pb_body;
+            r.end = pb_stop;
+            r.depth++;
+            OnlyGroup_Grp_decode_from(r, OnlyGroup_mutable_grp(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+            r.pos = pb_after;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -2777,12 +2794,30 @@ fn OnlyGroup_decode(buf: const u8[:], m: OnlyGroup&) -> i32 {
 
 // Appends m's wire encoding, OnlyGroup_size_of(m) bytes, to out.
 fn OnlyGroup_encode(m: OnlyGroup&, out: u8[>..]&) {
+    match m.one {
+        grp pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l {
+                pb_write_varint(out, 11);
+                OnlyGroup_Grp_encode(pb_l, out);
+                pb_write_varint(out, 12);
+            }
+        },
+        _ => {},
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn OnlyGroup_size_of(m: OnlyGroup&) -> i64 {
     var n: i64 = 0;
+    match m.one {
+        grp pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { n += 2 + OnlyGroup_Grp_size_of(pb_l); }
+        },
+        _ => {},
+    }
     n += m.pb_unknown.len;
     return n;
 }
@@ -2799,6 +2834,10 @@ fn OnlyGroup_copy(dst: OnlyGroup&, src: OnlyGroup&) {
     if dst .== src { return; }
     OnlyGroup_clear(dst);
     match src.one {
+        grp pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { OnlyGroup_Grp_copy(OnlyGroup_mutable_grp(dst), pb_l); }
+        },
         _ => {},
     }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
@@ -2807,10 +2846,47 @@ fn OnlyGroup_copy(dst: OnlyGroup&, src: OnlyGroup&) {
 // Frees what oneof one holds, and sets no member.
 fn OnlyGroup_clear_one(m: OnlyGroup&) {
     match m.one {
+        grp pb_p => {
+            let pb_sub = pb_p.v.m;
+            if pb_sub {
+                OnlyGroup_Grp_clear(pb_sub);
+                OnlyGroup_Grp_pool.free(OnlyGroup_Grp_pool.index_of(pb_sub));
+            }
+        },
         _ => {},
     }
     m.one = OnlyGroup_one.pb_none;
 }
+
+// The sub-message grp, or null if it is not the member set. Valid until
+// oneof one changes or m is cleared.
+fn OnlyGroup_grp(m: OnlyGroup&) -> OnlyGroup_Grp&? {
+    match m.one {
+        grp pb_p => { return pb_p.v.m; },
+        _ => {},
+    }
+    return null;
+}
+
+// The sub-message grp, first made the member set, and empty, if it is not.
+fn OnlyGroup_mutable_grp(m: OnlyGroup&) -> OnlyGroup_Grp& {
+    match m.one {
+        grp pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { return pb_l; }
+        },
+        _ => {},
+    }
+    OnlyGroup_clear_one(m);
+    let pb_new .= OnlyGroup_Grp_pool.alloc_ref(OnlyGroup_Grp { .. });
+    m.one = OnlyGroup_one.grp { v: OnlyGroup_Grp_Ref { m: pb_new } };
+    return pb_new;
+}
+
+fn OnlyGroup_has_grp(m: OnlyGroup&) -> bool { return match m.one { grp => true, _ => false }; }
+
+// Clears oneof one if grp is the member set.
+fn OnlyGroup_clear_grp(m: OnlyGroup&) { if OnlyGroup_has_grp(m) { OnlyGroup_clear_one(m); } }
 
 // message c2.OnlyGroup.Grp
 struct OnlyGroup_Grp {

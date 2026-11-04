@@ -640,7 +640,7 @@ pub const FileEmitter = struct {
             const sub = try self.subMessageOf(fd);
             const entry = self.mapEntryOf(fd);
             const element = repeatedScalarOf(self.file, fd);
-            const sc = if (entry != null) &sc_map else if (sub) |s| try self.refStorage(s) else element orelse scalarOf(self.file, fd) orelse continue;
+            const sc = if (entry != null) &sc_map else if (sub) |s| try self.refStorage(s, fd) else element orelse scalarOf(self.file, fd) orelse continue;
             const repeated = fd.label == .LABEL_REPEATED and entry == null;
             const rname = try ident(self.a, fd.name orelse "");
             try self.claimRecordField(&record_names, rname, full);
@@ -764,11 +764,11 @@ pub const FileEmitter = struct {
     /// The storage of a sub-message field: a link, whose presence is the
     /// field's. Only its type and wire type apply: the emitters handle
     /// the rest of a field with `sub` set themselves.
-    fn refStorage(self: *FileEmitter, sub: MessageInfo) Error!*const Scalar {
+    fn refStorage(self: *FileEmitter, sub: MessageInfo, fd: *const descriptor.FieldDescriptorProto) Error!*const Scalar {
         const sc = try self.a.create(Scalar);
         sc.* = .{
             .goose = try self.subName(sub, "Ref"),
-            .wire = 2,
+            .wire = if (fd.type == .TYPE_GROUP) 3 else 2,
             .clear = "",
             .read = "",
             .write = "",
@@ -944,28 +944,23 @@ pub const FileEmitter = struct {
     fn emitDecodeRepeated(self: *FileEmitter, f: Field) Error!void {
         if (f.sub) |sub| {
             const pool = try self.subName(sub, "pool");
+            try self.w.writeAll(f.subOpen());
             try self.w.print(
-                \\            let pb_n = pb_read_len(r);
-                \\            if r.err != PB_OK {{ break; }}
-                \\            if r.depth >= PB_MAX_DEPTH {{ pb_fail(r, PB_ERR_DEPTH); break; }}
                 \\            pb_reserve({s}, m.{s}, pb_len{d}, pb_had{d});
                 \\            let pb_sub .= {s}.alloc_ref({s} {{ .. }});
                 \\            pb_run({s}, m.{s})[pb_len{d}].m .= pb_sub;
                 \\            pb_len{d}++;
-                \\            let pb_outer = r.end;
-                \\            r.end = r.pos + pb_n;
-                \\            r.depth++;
-                \\            {s}(r, pb_sub);
+                \\{s}            {s}(r, pb_sub);
                 \\            if r.err != PB_OK {{ break; }}
-                \\            r.depth--;
-                \\            r.end = pb_outer;
-                \\
+                \\{s}
             , .{
                 try self.runPool(f), f.name, f.number(), f.number(),
                 pool, sub.goose_name,
                 try self.runPool(f), f.name, f.number(),
                 f.number(),
+                f.subWindow(),
                 try self.subName(sub, "decode_from"),
+                f.subClose(),
             });
             return;
         }
@@ -1103,19 +1098,12 @@ pub const FileEmitter = struct {
     /// into the message already there (decision 0004). After a failure
     /// r.end is not restored: the caller stops on r.err too.
     fn emitDecodeSubMessage(self: *FileEmitter, path: []const u8, f: Field, sub: MessageInfo) Error!void {
+        try self.w.writeAll(f.subOpen());
         try self.w.print(
-            \\            let pb_n = pb_read_len(r);
+            \\{s}            {s}(r, {s}(m));
             \\            if r.err != PB_OK {{ break; }}
-            \\            if r.depth >= PB_MAX_DEPTH {{ pb_fail(r, PB_ERR_DEPTH); break; }}
-            \\            let pb_outer = r.end;
-            \\            r.end = r.pos + pb_n;
-            \\            r.depth++;
-            \\            {s}(r, {s}(m));
-            \\            if r.err != PB_OK {{ break; }}
-            \\            r.depth--;
-            \\            r.end = pb_outer;
-            \\
-        , .{ try self.subName(sub, "decode_from"), try accessorName(self.a, path, f.fd.name orelse "", mutable_acc) });
+            \\{s}
+        , .{ f.subWindow(), try self.subName(sub, "decode_from"), try accessorName(self.a, path, f.fd.name orelse "", mutable_acc), f.subClose() });
     }
 
     fn emitEncode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
@@ -1150,15 +1138,13 @@ pub const FileEmitter = struct {
                         \\        {s} pb_p => {{
                         \\            let pb_l = pb_p.v.m;
                         \\            if pb_l {{
-                        \\                pb_write_varint(out, {d});
-                        \\                pb_write_varint(out, {s}(pb_l) as! u64);
-                        \\                {s}(pb_l, out);
+                        \\{f}
                         \\            }}
                         \\        }},
                         \\        _ => {{}},
                         \\    }}
                         \\
-                    , .{ o.name, f.name, f.tag(), try self.subName(sub, "size_of"), try self.subName(sub, "encode") });
+                    , .{ o.name, f.name, SubWrite{ .f = f, .indent = "                ", .l = "pb_l", .size_of = try self.subName(sub, "size_of"), .encode = try self.subName(sub, "encode") } });
                 } else {
                     try self.w.print(
                         \\    match m.{s} {{
@@ -1179,15 +1165,12 @@ pub const FileEmitter = struct {
                     \\    for pb_ref in pb_run({s}, m.{s}) {{
                     \\        let pb_l = pb_ref.m;
                     \\        guard pb_l else {{ continue; }}
-                    \\        pb_write_varint(out, {d});
-                    \\        pb_write_varint(out, {s}(pb_l) as! u64);
-                    \\        {s}(pb_l, out);
+                    \\{f}
                     \\    }}
                     \\
                 , .{
-                    try self.runPool(f), f.name, f.tag(),
-                    try self.subName(sub, "size_of"),
-                    try self.subName(sub, "encode"),
+                    try self.runPool(f), f.name,
+                    SubWrite{ .f = f, .indent = "        ", .l = "pb_l", .size_of = try self.subName(sub, "size_of"), .encode = try self.subName(sub, "encode") },
                 });
                 continue;
             }
@@ -1222,15 +1205,12 @@ pub const FileEmitter = struct {
                 try self.w.print(
                     \\    let pb_f{d} = {s}.m;
                     \\    if pb_f{d} {{
-                    \\        pb_write_varint(out, {d});
-                    \\        pb_write_varint(out, {s}(pb_f{d}) as! u64);
-                    \\        {s}(pb_f{d}, out);
+                    \\{f}
                     \\    }}
                     \\
                 , .{
-                    f.number(), x, f.number(), f.tag(),
-                    try self.subName(sub, "size_of"), f.number(),
-                    try self.subName(sub, "encode"), f.number(),
+                    f.number(), x, f.number(),
+                    SubWrite{ .f = f, .indent = "        ", .l = try std.fmt.allocPrint(self.a, "pb_f{d}", .{f.number()}), .size_of = try self.subName(sub, "size_of"), .encode = try self.subName(sub, "encode") },
                 });
                 continue;
             }
@@ -1273,10 +1253,10 @@ pub const FileEmitter = struct {
                     .message => try self.w.print(
                         \\        {s} pb_p => {{
                         \\            let pb_l = pb_p.v.m;
-                        \\            if pb_l {{ n += {d} + pb_len_size({s}(pb_l)); }}
+                        \\            if pb_l {{ n += {f}; }}
                         \\        }},
                         \\
-                    , .{ f.name, ts, try self.subName(f.sub.?, "size_of") }),
+                    , .{ f.name, SubSize{ .f = f, .size_of = try self.subName(f.sub.?, "size_of"), .l = "pb_l" } }),
                     .varint => try self.w.print("        {s} pb_p => {{ n += {d} + pb_varint_size({f}); }},\n", .{ f.name, ts, Subst{ .t = f.sc.write_value, .x = "pb_p.v" } }),
                     .fixed => |k| try self.w.print("        {s} => {{ n += {d}; }},\n", .{ f.name, ts + k }),
                     .bytes => try self.w.print("        {s} pb_p => {{ n += {d} + pb_bytes_size(pb_p.v); }},\n", .{ f.name, ts }),
@@ -1289,10 +1269,10 @@ pub const FileEmitter = struct {
                     \\    for pb_ref in pb_run({s}, m.{s}) {{
                     \\        let pb_l = pb_ref.m;
                     \\        guard pb_l else {{ continue; }}
-                    \\        n += {d} + pb_len_size({s}(pb_l));
+                    \\        n += {f};
                     \\    }}
                     \\
-                , .{ try self.runPool(f), f.name, ts, try self.subName(f.sub.?, "size_of") });
+                , .{ try self.runPool(f), f.name, SubSize{ .f = f, .size_of = try self.subName(f.sub.?, "size_of"), .l = "pb_l" } });
                 continue;
             }
             if (f.repeated and f.sc.size == .bytes) {
@@ -1313,8 +1293,9 @@ pub const FileEmitter = struct {
             }
             if (f.sub) |sub| {
                 try self.w.print("    let pb_f{d} = {s}.m;\n", .{ f.number(), x });
-                try self.w.print("    if pb_f{d} {{ n += {d} + pb_len_size({s}(pb_f{d})); }}\n", .{
-                    f.number(), ts, try self.subName(sub, "size_of"), f.number(),
+                try self.w.print("    if pb_f{d} {{ n += {f}; }}\n", .{
+                    f.number(),
+                    SubSize{ .f = f, .size_of = try self.subName(sub, "size_of"), .l = try std.fmt.allocPrint(self.a, "pb_f{d}", .{f.number()}) },
                 });
                 continue;
             }
@@ -2365,6 +2346,60 @@ const Field = struct {
         return (@as(u64, f.number()) << 3) | 2;
     }
 
+    fn isGroup(f: Field) bool {
+        return f.fd.type == .TYPE_GROUP;
+    }
+
+    /// In decode_from, where a sub-message begins: its length, or for a group
+    /// the scan to its end tag, which checks that it matches and leaves r after.
+    fn subOpen(f: Field) []const u8 {
+        if (f.isGroup()) return
+            \\            let pb_body = r.pos;
+            \\            let pb_stop = pb_skip_group(r, tag);
+            \\            if r.err != PB_OK { break; }
+            \\            let pb_after = r.pos;
+            \\
+        ;
+        return
+            \\            let pb_n = pb_read_len(r);
+            \\            if r.err != PB_OK { break; }
+            \\            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            \\
+        ;
+    }
+
+    /// Narrows r to the sub-message's window.
+    fn subWindow(f: Field) []const u8 {
+        if (f.isGroup()) return
+            \\            let pb_outer = r.end;
+            \\            r.pos = pb_body;
+            \\            r.end = pb_stop;
+            \\            r.depth++;
+            \\
+        ;
+        return
+            \\            let pb_outer = r.end;
+            \\            r.end = r.pos + pb_n;
+            \\            r.depth++;
+            \\
+        ;
+    }
+
+    /// Restores r after the sub-message's window.
+    fn subClose(f: Field) []const u8 {
+        if (f.isGroup()) return
+            \\            r.depth--;
+            \\            r.end = pb_outer;
+            \\            r.pos = pb_after;
+            \\
+        ;
+        return
+            \\            r.depth--;
+            \\            r.end = pb_outer;
+            \\
+        ;
+    }
+
     /// How a repeated scalar is encoded: as it says, else as its syntax does.
     fn isPacked(f: Field) bool {
         const opts = f.fd.options orelse return f.packs;
@@ -2389,6 +2424,43 @@ const Field = struct {
     }
 };
 
+/// Formats the statements writing sub-message `l` of field `f`: length-delimited,
+/// or between the tags of a group.
+const SubWrite = struct {
+    f: Field,
+    indent: []const u8,
+    l: []const u8,
+    size_of: []const u8,
+    encode: []const u8,
+
+    pub fn format(s: SubWrite, w: *std.Io.Writer) std.Io.Writer.Error!void {
+        try w.print("{s}pb_write_varint(out, {d});\n", .{ s.indent, s.f.tag() });
+        if (s.f.isGroup()) {
+            try w.print("{s}{s}({s}, out);\n", .{ s.indent, s.encode, s.l });
+            try w.print("{s}pb_write_varint(out, {d});", .{ s.indent, s.f.tag() + 1 });
+        } else {
+            try w.print("{s}pb_write_varint(out, {s}({s}) as! u64);\n", .{ s.indent, s.size_of, s.l });
+            try w.print("{s}{s}({s}, out);", .{ s.indent, s.encode, s.l });
+        }
+    }
+};
+
+/// Formats the size of sub-message `l` of field `f`, with its tags.
+const SubSize = struct {
+    f: Field,
+    size_of: []const u8,
+    l: []const u8,
+
+    pub fn format(s: SubSize, w: *std.Io.Writer) std.Io.Writer.Error!void {
+        const ts = varintSize(s.f.tag());
+        if (s.f.isGroup()) {
+            try w.print("{d} + {s}({s})", .{ 2 * ts, s.size_of, s.l });
+        } else {
+            try w.print("{d} + pb_len_size({s}({s}))", .{ ts, s.size_of, s.l });
+        }
+    }
+};
+
 /// A real oneof: a fixed-mode ADT in the record, with a variant per member.
 const Oneof = struct {
     /// The record field name, escaped.
@@ -2401,7 +2473,7 @@ const Oneof = struct {
 /// The full name of the message type of `fd` of `file`, singular or repeated,
 /// if it is a field this generator stores.
 fn storedMessageTypeIn(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?[]const u8 {
-    if (fd.type != .TYPE_MESSAGE) return null;
+    if (fd.type != .TYPE_MESSAGE and fd.type != .TYPE_GROUP) return null;
     const stored = if (fd.label == .LABEL_REPEATED) isStoredSyntax(file) else isStorable(file, fd);
     if (!stored) return null;
     const tn = fd.type_name orelse return null;

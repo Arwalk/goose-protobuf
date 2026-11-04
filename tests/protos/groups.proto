@@ -1,0 +1,52 @@
+// Golden and round-trip (tests/roundtrip/groups/): groups are stored like
+// sub-messages, delimited by start and end tags instead of a length.
+syntax = "proto2";
+
+package grp;
+
+message G {
+  optional group One = 1 {
+    optional int32 a = 1;
+    optional group Inner = 2 {
+      optional int32 b = 1;
+      optional string s = 2;
+    }
+  }
+  repeated group Many = 2 {
+    optional int32 c = 1;
+  }
+  oneof pick {
+    group Pg = 3 {
+      optional int32 d = 1;
+    }
+    int32 other = 4;
+  }
+  // A group's type is a message like any other, here length-delimited.
+  optional G.One as_message = 5;
+  // A tag of two bytes.
+  optional group Far = 1000 {
+    optional int32 e = 1;
+  }
+  optional int32 after = 6;
+}
+
+// Recursive through a group.
+message Rec {
+  optional group Node = 1 {
+    optional Rec rec = 1;
+    optional int32 v = 2;
+  }
+}
+
+// Required through a group, and a required group.
+message ReqG {
+  required group R = 1 {
+    required int32 x = 1;
+  }
+}
+
+message Holder {
+  optional group H = 1 {
+    optional ReqG req = 1;
+  }
+}

@@ -1,0 +1,7 @@
+# proto-message: grp.G
+One { a: 1 Inner { b: 2 s: "x" } }
+Many { c: 3 } Many { } Many { c: 4 }
+Pg { d: 5 }
+as_message { a: 6 Inner { b: 7 } }
+after: 8
+Far { e: 9 }

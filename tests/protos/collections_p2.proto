@@ -68,7 +68,7 @@ message Reqs {
   }
 }
 
-// A oneof with only a group, which is not stored yet.
+// A oneof with only a group.
 message OnlyGroup {
   oneof one {
     group Grp = 1 {

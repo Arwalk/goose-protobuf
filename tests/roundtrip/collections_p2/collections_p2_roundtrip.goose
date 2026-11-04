@@ -262,10 +262,9 @@ fn check_required() {
 }
 
 fn check_only_group() {
-    // Its oneof has no member stored, so the group stays unknown.
     var m = c2::OnlyGroup { .. };
     let g: u8[4] = [0x0b, 0x08, 1, 0x0c];
-    if c2::OnlyGroup_decode(g, m) != PB_OK || m.pb_unknown.len != 4 { fail_at("group", "not unknown"); }
+    if c2::OnlyGroup_decode(g, m) != PB_OK || m.pb_unknown.len != 0 || !c2::OnlyGroup_has_grp(m) { fail_at("group", "not stored"); }
     var out: u8[>..] = [];
     c2::OnlyGroup_encode(m, out);
     if out != g { fail_at("group", "re-encoding"); }

@@ -143,20 +143,11 @@ fn check_kinds() {
     holder::Uses_clear(two);
 }
 
-// A required group is stored later: decoding does not fail on what it cannot see.
-fn check_not_stored() {
-    var m = req::NotStored { .. };
-    let none: u8[0] = [];
-    if req::NotStored_decode(none, m) != PB_OK { fail_at("not stored", "false failure"); }
-    req::NotStored_clear(m);
-}
-
 fn main() {
     check_inner();
     check_req();
     check_merge();
     check_kinds();
-    check_not_stored();
     if failures > 0 { abort(str(failures, " failures")); }
     print("ok");
 }

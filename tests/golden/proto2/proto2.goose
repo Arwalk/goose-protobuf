@@ -814,6 +814,7 @@ struct Later {
     mode: i32,
     list: pb_Span,
     counts: pb_Span,
+    grp: Later_Grp_Ref,
     pick: Later_pick = Later_pick.pb_none,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -879,6 +880,20 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
             r.end = pb_outer;
             Later_CountsEntry_place(pb_e);
             pb_len5++;
+        } else if tag == 51 {
+            let pb_body = r.pos;
+            let pb_stop = pb_skip_group(r, tag);
+            if r.err != PB_OK { break; }
+            let pb_after = r.pos;
+            let pb_outer = r.end;
+            r.pos = pb_body;
+            r.end = pb_stop;
+            r.depth++;
+            Later_Grp_decode_from(r, Later_mutable_grp(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+            r.pos = pb_after;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -926,6 +941,12 @@ fn Later_encode(m: Later&, out: u8[>..]&) {
         pb_write_varint(out, Later_CountsEntry_size_of(pb_e) as! u64);
         Later_CountsEntry_encode(pb_e, out);
     }
+    let pb_f6 = m.grp.m;
+    if pb_f6 {
+        pb_write_varint(out, 51);
+        Later_Grp_encode(pb_f6, out);
+        pb_write_varint(out, 52);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
@@ -946,6 +967,8 @@ fn Later_size_of(m: Later&) -> i64 {
     for pb_i in m.counts.len {
         n += 1 + pb_len_size(Later_CountsEntry_size_of(pb_run(Later_CountsEntry_entries, m.counts)[pb_i]));
     }
+    let pb_f6 = m.grp.m;
+    if pb_f6 { n += 2 + Later_Grp_size_of(pb_f6); }
     n += m.pb_unknown.len;
     return n;
 }
@@ -956,6 +979,7 @@ fn Later_clear(m: Later&) {
     m.mode = 0;
     m.list = pb_resize(pb_i32s, m.list, 0);
     Later_clear_counts(m);
+    Later_clear_grp(m);
     Later_clear_pick(m);
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
@@ -973,6 +997,8 @@ fn Later_copy(dst: Later&, src: Later&) {
     for pb_i in src.counts.len {
         Later_CountsEntry_copy(pb_run(Later_CountsEntry_entries, dst.counts)[pb_i], pb_run(Later_CountsEntry_entries, src.counts)[pb_i]);
     }
+    let pb_f6 = src.grp.m;
+    if pb_f6 { Later_Grp_copy(Later_mutable_grp(dst), pb_f6); }
     match src.pick {
         member pb_p => { dst.pick = Later_pick.member { v: pb_p.v }; },
         _ => {},
@@ -1093,6 +1119,30 @@ fn Later_counts_remove(m: Later&, k: const u8[:]) -> bool {
 fn Later_clear_counts(m: Later&) {
     for pb_i in m.counts.len { Later_CountsEntry_clear(pb_run(Later_CountsEntry_entries, m.counts)[pb_i]); }
     m.counts = pb_resize(Later_CountsEntry_entries, m.counts, 0);
+}
+
+// The sub-message grp, or null if it is not set. Valid until it or m is
+// cleared.
+fn Later_grp(m: Later&) -> Later_Grp&? { return m.grp.m; }
+
+// The sub-message grp, set to an empty one first if it is not set.
+fn Later_mutable_grp(m: Later&) -> Later_Grp& {
+    let pb_sub = m.grp.m;
+    if pb_sub { return pb_sub; }
+    let pb_new .= Later_Grp_pool.alloc_ref(Later_Grp { .. });
+    m.grp.m .= pb_new;
+    return pb_new;
+}
+
+fn Later_has_grp(m: Later&) -> bool { return m.grp.m != null; }
+
+// Frees the sub-message grp and everything it owns.
+fn Later_clear_grp(m: Later&) {
+    let pb_sub = m.grp.m;
+    guard pb_sub else { return; }
+    Later_Grp_clear(pb_sub);
+    Later_Grp_pool.free(Later_Grp_pool.index_of(pb_sub));
+    m.grp.m .= null;
 }
 
 // message p2.Later.CountsEntry

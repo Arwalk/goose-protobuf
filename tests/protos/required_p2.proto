@@ -26,11 +26,3 @@ message Free {
   optional int32 a = 1;
   optional Free next = 2;
 }
-
-// A required field of a kind not stored yet is not checked: it would be a
-// false failure, as it is kept as an unknown field.
-message NotStored {
-  required group Grp = 1 {
-    optional int32 g = 1;
-  }
-}

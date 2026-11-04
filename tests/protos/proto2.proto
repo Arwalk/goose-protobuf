@@ -1,8 +1,8 @@
 // Golden and round-trip (tests/roundtrip/proto2/): singular proto2 fields have
 // explicit presence. A set field is encoded even at its default, an unset one
-// never is. Strings are not validated. What later tasks store stays an unknown
-// field: groups and extensions. Enums have tests/roundtrip/closed_enums/, and
-// repeated, oneof and map fields tests/roundtrip/collections_p2/.
+// never is. Strings are not validated. Extensions stay unknown fields. Enums
+// have tests/roundtrip/closed_enums/, repeated, oneof and map fields
+// tests/roundtrip/collections_p2/, and groups tests/roundtrip/groups/.
 syntax = "proto2";
 
 package p2;

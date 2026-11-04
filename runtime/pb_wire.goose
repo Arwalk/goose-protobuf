@@ -501,23 +501,34 @@ recursive fn pb_skip_field(r: pb_Reader&, tag: u32) {
         if r.end - r.pos < 4 { pb_fail(r, PB_ERR_TRUNCATED); return; }
         r.pos += 4;
     } else if wire == PB_WT_SGROUP {
-        if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); return; }
-        r.depth++;
-        loop {
-            if r.pos >= r.end { pb_fail(r, PB_ERR_TRUNCATED); return; }
-            let inner = pb_read_tag(r);
-            if r.err != PB_OK { return; }
-            if pb_tag_wire(inner) == PB_WT_EGROUP {
-                if pb_tag_field(inner) != pb_tag_field(tag) { pb_fail(r, PB_ERR_MALFORMED); return; }
-                break;
-            }
-            pb_skip_field(r, inner);
-            if r.err != PB_OK { return; }
-        }
-        r.depth--;
+        pb_skip_group(r, tag);
     } else {
         pb_fail(r, PB_ERR_MALFORMED);
     }
+}
+
+// Skips the group whose start tag was just read, up to and past its end tag.
+// Returns where the end tag begins, the end of the group's contents. A
+// decoder uses that as a window, as a length gives for a sub-message. Each
+// level of nesting scans its contents once more, and PB_MAX_DEPTH bounds the
+// levels, so the cost stays linear in the input.
+recursive fn pb_skip_group(r: pb_Reader&, tag: u32) -> i64 {
+    if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); return 0; }
+    r.depth++;
+    loop {
+        if r.pos >= r.end { pb_fail(r, PB_ERR_TRUNCATED); return 0; }
+        let at = r.pos;
+        let inner = pb_read_tag(r);
+        if r.err != PB_OK { return 0; }
+        if pb_tag_wire(inner) == PB_WT_EGROUP {
+            if pb_tag_field(inner) != pb_tag_field(tag) { pb_fail(r, PB_ERR_MALFORMED); return 0; }
+            r.depth--;
+            return at;
+        }
+        pb_skip_field(r, inner);
+        if r.err != PB_OK { return 0; }
+    }
+    return 0;
 }
 
 // Skips the field whose tag was just read and appends its raw bytes, from
