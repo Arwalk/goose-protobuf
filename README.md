@@ -44,7 +44,7 @@ pb_wire.goose   entry of the pb_wire package (this repository)
 runtime/        pb_wire.goose: shared wire-format primitives
 wkt/            well-known types, generated and committed (scripts/wkt.sh)
 conformance/    Goose testee + failure list (may only shrink)
-tests/          golden/, protos/, roundtrip/ (also the scripts/interop.sh corpus), fuzz/, bench/
+tests/          golden/, protos/, roundtrip/ (also the scripts/interop.sh corpus), fuzz/ (scripts/fuzz.sh), bench/
 third_party/    protobuf (submodule, pinned; conformance runner source)
 scripts/        build_runner.sh, build_testee.sh, run_conformance.sh, test harnesses
 docs/decisions/ spike conclusions and design decisions

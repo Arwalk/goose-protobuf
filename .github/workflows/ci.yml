@@ -152,3 +152,43 @@ jobs:
         run: |
           python3 conformance/check_testee.py build/testee
           scripts/test_run_conformance.sh
+
+  # libFuzzer needs a clang with compiler-rt, so Linux only.
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check out the protobuf submodule
+        run: git submodule update --init --checkout third_party/protobuf
+
+      - name: Cache pinned protoc and Goose
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install_toolchain.sh') }}
+
+      - name: Install pinned protoc and Goose
+        run: |
+          scripts/install_toolchain.sh
+          echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - uses: mlugg/setup-zig@v2
+        with:
+          version: 0.17.1
+
+      - name: Install clang
+        run: sudo apt-get update && sudo apt-get install -y clang libclang-rt-dev
+
+      - name: Fuzz harness self-test
+        run: scripts/test_fuzz.sh
+
+      - name: Fuzz smoke run
+        run: scripts/fuzz.sh 60
+
+      - name: Keep what crashed
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crash
+          path: build/fuzz/crash-*
