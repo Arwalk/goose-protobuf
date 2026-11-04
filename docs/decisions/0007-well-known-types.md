@@ -74,8 +74,8 @@ ever needs what a sibling file cannot do, the generator can leave that one out.
 
 - A generator change usually means `scripts/wkt.sh --update` as well as
   `scripts/golden.sh --update`, with both diffs reviewed.
-- `Struct`'s map and `Value`'s oneof are stored since gpb-gp4.4 and gpb-gp4.3.
-  Their round-trip test is gpb-gp4.6.
+- `Struct`'s map and `Value`'s oneof are stored since gpb-gp4.4 and gpb-gp4.3,
+  and `tests/roundtrip/wkt` round-trips them (gpb-gp4.6).
 - A protoc pin change can change `wkt/`, like any golden.
 - A program no longer chooses its copy of these types. One that wants other
   bindings for them cannot have them under the same files.

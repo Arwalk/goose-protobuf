@@ -1,0 +1,2 @@
+# proto-message: google.protobuf.Struct
+fields { key: "num" value { number_value: 1.5 } } fields { key: "list" value { list_value { values { string_value: "x" } values { bool_value: true } values { null_value: NULL_VALUE } values { struct_value { fields { key: "in" value { struct_value { fields { key: "deep" value { number_value: 2.5 } } } } } } } values { list_value { values { number_value: 0 } } } } } }

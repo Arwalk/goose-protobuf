@@ -1,0 +1,2 @@
+# proto-message: google.protobuf.ListValue
+values { number_value: 1 } values { } values { string_value: "s" } values { struct_value { } }

@@ -1,0 +1,2 @@
+# proto-message: google.protobuf.FieldMask
+paths: "a.b" paths: "" paths: "c"

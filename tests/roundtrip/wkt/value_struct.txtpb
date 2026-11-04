@@ -1,0 +1,2 @@
+# proto-message: google.protobuf.Value
+struct_value { fields { key: "k" value { bool_value: false } } }

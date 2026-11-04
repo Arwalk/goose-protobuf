@@ -1,4 +1,4 @@
-// Round-trip: the scalar well-known types (gpb-8qn.5). No messages of its
+// Round-trip: the well-known types (gpb-8qn.5, gpb-gp4.6). No messages of its
 // own: scripts/roundtrip.sh generates what a proto imports, so the types
 // come from protoc's own include directory.
 syntax = "proto3";
@@ -8,5 +8,7 @@ package wkt;
 import "google/protobuf/any.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/empty.proto";
+import "google/protobuf/field_mask.proto";
+import "google/protobuf/struct.proto";
 import "google/protobuf/timestamp.proto";
 import "google/protobuf/wrappers.proto";
