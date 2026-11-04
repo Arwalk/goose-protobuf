@@ -74,6 +74,7 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.r.len;
     var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
@@ -95,7 +96,7 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.r = pb_trim(pb_i32s, m.r, pb_len3);
@@ -222,6 +223,7 @@ reusable[] var Maps_links: Maps_Ref[>..] = [];
 // unknown fields.
 recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.ss.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.sb.len;
@@ -569,7 +571,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
         } else if tag == 168 {
             m.after = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.ss = pb_trim(Maps_SsEntry_entries, m.ss, pb_len1);
@@ -1706,6 +1708,7 @@ reusable[] var Maps_SsEntry_links: Maps_SsEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SsEntry_decode_from(r: pb_Reader&, m: Maps_SsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1715,7 +1718,7 @@ fn Maps_SsEntry_decode_from(r: pb_Reader&, m: Maps_SsEntry&) {
         } else if tag == 18 {
             m.value = pb_read_string(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1868,6 +1871,7 @@ reusable[] var Maps_SbEntry_links: Maps_SbEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SbEntry_decode_from(r: pb_Reader&, m: Maps_SbEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1877,7 +1881,7 @@ fn Maps_SbEntry_decode_from(r: pb_Reader&, m: Maps_SbEntry&) {
         } else if tag == 18 {
             m.value = pb_read_bytes(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2030,6 +2034,7 @@ reusable[] var Maps_SiEntry_links: Maps_SiEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SiEntry_decode_from(r: pb_Reader&, m: Maps_SiEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2039,7 +2044,7 @@ fn Maps_SiEntry_decode_from(r: pb_Reader&, m: Maps_SiEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2183,6 +2188,7 @@ reusable[] var Maps_IsEntry_links: Maps_IsEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_IsEntry_decode_from(r: pb_Reader&, m: Maps_IsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2192,7 +2198,7 @@ fn Maps_IsEntry_decode_from(r: pb_Reader&, m: Maps_IsEntry&) {
         } else if tag == 18 {
             m.value = pb_read_string(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2336,6 +2342,7 @@ reusable[] var Maps_LlEntry_links: Maps_LlEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_LlEntry_decode_from(r: pb_Reader&, m: Maps_LlEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2345,7 +2352,7 @@ fn Maps_LlEntry_decode_from(r: pb_Reader&, m: Maps_LlEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int64(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2480,6 +2487,7 @@ reusable[] var Maps_UuEntry_links: Maps_UuEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_UuEntry_decode_from(r: pb_Reader&, m: Maps_UuEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2489,7 +2497,7 @@ fn Maps_UuEntry_decode_from(r: pb_Reader&, m: Maps_UuEntry&) {
         } else if tag == 16 {
             m.value = pb_read_varint(r) as! u32;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2624,6 +2632,7 @@ reusable[] var Maps_VvEntry_links: Maps_VvEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_VvEntry_decode_from(r: pb_Reader&, m: Maps_VvEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2633,7 +2642,7 @@ fn Maps_VvEntry_decode_from(r: pb_Reader&, m: Maps_VvEntry&) {
         } else if tag == 16 {
             m.value = pb_read_varint(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2768,6 +2777,7 @@ reusable[] var Maps_ZzEntry_links: Maps_ZzEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_ZzEntry_decode_from(r: pb_Reader&, m: Maps_ZzEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2777,7 +2787,7 @@ fn Maps_ZzEntry_decode_from(r: pb_Reader&, m: Maps_ZzEntry&) {
         } else if tag == 16 {
             m.value = pb_unzigzag32(pb_read_varint(r) as! u32);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2912,6 +2922,7 @@ reusable[] var Maps_YyEntry_links: Maps_YyEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_YyEntry_decode_from(r: pb_Reader&, m: Maps_YyEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2921,7 +2932,7 @@ fn Maps_YyEntry_decode_from(r: pb_Reader&, m: Maps_YyEntry&) {
         } else if tag == 16 {
             m.value = pb_unzigzag64(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3056,6 +3067,7 @@ reusable[] var Maps_FfEntry_links: Maps_FfEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_FfEntry_decode_from(r: pb_Reader&, m: Maps_FfEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3065,7 +3077,7 @@ fn Maps_FfEntry_decode_from(r: pb_Reader&, m: Maps_FfEntry&) {
         } else if tag == 21 {
             m.value = pb_read_fixed32(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3200,6 +3212,7 @@ reusable[] var Maps_GgEntry_links: Maps_GgEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_GgEntry_decode_from(r: pb_Reader&, m: Maps_GgEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3209,7 +3222,7 @@ fn Maps_GgEntry_decode_from(r: pb_Reader&, m: Maps_GgEntry&) {
         } else if tag == 17 {
             m.value = pb_read_fixed64(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3344,6 +3357,7 @@ reusable[] var Maps_HhEntry_links: Maps_HhEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_HhEntry_decode_from(r: pb_Reader&, m: Maps_HhEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3353,7 +3367,7 @@ fn Maps_HhEntry_decode_from(r: pb_Reader&, m: Maps_HhEntry&) {
         } else if tag == 21 {
             m.value = pb_read_fixed32(r) as! i32;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3488,6 +3502,7 @@ reusable[] var Maps_JjEntry_links: Maps_JjEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_JjEntry_decode_from(r: pb_Reader&, m: Maps_JjEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3497,7 +3512,7 @@ fn Maps_JjEntry_decode_from(r: pb_Reader&, m: Maps_JjEntry&) {
         } else if tag == 17 {
             m.value = pb_read_fixed64(r) as! i64;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3632,6 +3647,7 @@ reusable[] var Maps_BbEntry_links: Maps_BbEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_BbEntry_decode_from(r: pb_Reader&, m: Maps_BbEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3641,7 +3657,7 @@ fn Maps_BbEntry_decode_from(r: pb_Reader&, m: Maps_BbEntry&) {
         } else if tag == 16 {
             m.value = pb_read_varint(r) != 0;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3776,6 +3792,7 @@ reusable[] var Maps_SfEntry_links: Maps_SfEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SfEntry_decode_from(r: pb_Reader&, m: Maps_SfEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3785,7 +3802,7 @@ fn Maps_SfEntry_decode_from(r: pb_Reader&, m: Maps_SfEntry&) {
         } else if tag == 21 {
             m.value = pb_read_float(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -3929,6 +3946,7 @@ reusable[] var Maps_SdEntry_links: Maps_SdEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SdEntry_decode_from(r: pb_Reader&, m: Maps_SdEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -3938,7 +3956,7 @@ fn Maps_SdEntry_decode_from(r: pb_Reader&, m: Maps_SdEntry&) {
         } else if tag == 17 {
             m.value = pb_read_double(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -4082,6 +4100,7 @@ reusable[] var Maps_SeEntry_links: Maps_SeEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SeEntry_decode_from(r: pb_Reader&, m: Maps_SeEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -4091,7 +4110,7 @@ fn Maps_SeEntry_decode_from(r: pb_Reader&, m: Maps_SeEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -4235,6 +4254,7 @@ reusable[] var Maps_SmEntry_links: Maps_SmEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SmEntry_decode_from(r: pb_Reader&, m: Maps_SmEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -4253,7 +4273,7 @@ fn Maps_SmEntry_decode_from(r: pb_Reader&, m: Maps_SmEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -4429,6 +4449,7 @@ reusable[] var Maps_DurEntry_links: Maps_DurEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_DurEntry_decode_from(r: pb_Reader&, m: Maps_DurEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -4447,7 +4468,7 @@ fn Maps_DurEntry_decode_from(r: pb_Reader&, m: Maps_DurEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -4614,6 +4635,7 @@ reusable[] var Maps_SelfEntry_links: Maps_SelfEntry_Ref[>..] = [];
 // unknown fields.
 recursive fn Maps_SelfEntry_decode_from(r: pb_Reader&, m: Maps_SelfEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -4632,7 +4654,7 @@ recursive fn Maps_SelfEntry_decode_from(r: pb_Reader&, m: Maps_SelfEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -4824,6 +4846,7 @@ reusable[] var Holder_links: Holder_Ref[>..] = [];
 // unknown fields.
 fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had2: i64 = m.many.len;
     var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
@@ -4879,7 +4902,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.many = pb_trim(Maps_links, m.many, pb_len2);
@@ -5151,6 +5174,7 @@ reusable[] var NoMaps_links: NoMaps_Ref[>..] = [];
 // unknown fields.
 recursive fn NoMaps_decode_from(r: pb_Reader&, m: NoMaps&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had2: i64 = m.more.len;
     var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
@@ -5184,7 +5208,7 @@ recursive fn NoMaps_decode_from(r: pb_Reader&, m: NoMaps&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.more = pb_trim(NoMaps_links, m.more, pb_len2);

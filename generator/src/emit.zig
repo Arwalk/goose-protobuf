@@ -834,6 +834,7 @@ pub const FileEmitter = struct {
             \\// unknown fields.
             \\{s} {s}(r: pb_Reader&, m: {s}&) {{
             \\    var unknown_len: i64 = m.pb_unknown.len;
+            \\    let unknown_had: i64 = unknown_len;
             \\
         , .{ self.fn_kw, decode_from, goose_name });
         for (fields) |f| {
@@ -872,7 +873,7 @@ pub const FileEmitter = struct {
                 if (f.closed) |known| {
                     try self.w.print(
                         \\            if !({s}) {{
-                        \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                        \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                         \\                continue;
                         \\            }}
                         \\
@@ -894,7 +895,7 @@ pub const FileEmitter = struct {
                     \\                {s} = pb_v;
                     \\                m.pb_has{d} |= 0x{x:0>8};
                     \\            }} else {{
-                    \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                    \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                     \\            }}
                     \\
                 , .{ Subst{ .t = f.sc.read, .x = x }, known, x, f.bit.? / 32, bitMask(f.bit.?) });
@@ -904,11 +905,11 @@ pub const FileEmitter = struct {
             if (f.bit) |b| try self.w.print("            m.pb_has{d} |= 0x{x:0>8};\n", .{ b / 32, bitMask(b) });
         }
         if (fields.len == 0) {
-            try self.w.writeAll("        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);\n");
+            try self.w.writeAll("        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);\n");
         } else {
             try self.w.writeAll(
                 \\        } else {
-                \\            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+                \\            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
                 \\        }
                 \\
             );
@@ -984,7 +985,7 @@ pub const FileEmitter = struct {
                 \\            if {s} {{
                 \\                pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, pb_v);
                 \\            }} else {{
-                \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 \\            }}
                 \\        }} else if tag == {d} {{
                 \\            let pb_n = pb_read_len(r);
@@ -998,7 +999,7 @@ pub const FileEmitter = struct {
                 \\                if {s} {{
                 \\                    pb_append({s}, m.{s}, pb_len{d}, pb_had{d}, pb_v);
                 \\                }} else {{
-                \\                    pb_unknown_element(r, {d}, pb_at, m.pb_unknown, unknown_len);
+                \\                    pb_unknown_element(r, {d}, pb_at, m.pb_unknown, unknown_len, unknown_had);
                 \\                }}
                 \\            }}
                 \\            if r.err != PB_OK {{ break; }}
@@ -1065,7 +1066,7 @@ pub const FileEmitter = struct {
                 \\            let pb_v = pb_e.value;
                 \\            if !({s}) {{
                 \\                {s}(pb_e);
-                \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 \\                continue;
                 \\            }}
                 \\

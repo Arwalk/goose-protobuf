@@ -14,9 +14,12 @@
 //                of a distinct key, which merge: a single crafted input
 //   wrap_list    the same, each with one element of a repeated int32
 //   wrap_unknown the same, each with one unknown field
+//   wrap_mixed   the same, each with one unknown field and a bytes field, which
+//                sets a run of the same pool between them
 //   two_maps     <entries> occurrences alternating between two sub-messages, each
 //                with one map entry: two runs of one pool, which keep moving
 //   two_lists    the same, each with one element of a repeated int32
+//   two_unknown  the same, each with one unknown field: two runs of pb_bytes
 //   small_maps   <entries> messages, each with a map of 4 entries: the common
 //                case, which must not get slower
 // Prints: shape entries input_bytes unique_entries decode_seconds
@@ -63,7 +66,7 @@ fn main() {
     for i in prefix_len { prefix.push(120); }
     var buf: u8[>..] = [];
     for i in n {
-        if shape == "small_maps" || shape == "int_merge" || shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "two_maps" || shape == "two_lists" { break; }
+        if shape == "small_maps" || shape == "int_merge" || shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "wrap_mixed" || shape == "two_maps" || shape == "two_lists" || shape == "two_unknown" { break; }
         if shape == "int_random" { put_int_entry(buf, scramble(i), 1); }
         else if shape == "str_random" { put_str_entry(buf, "", scramble(i), 1); }
         else if shape == "str_prefix" || shape == "str_long" { put_str_entry(buf, prefix, scramble(i), 1); }
@@ -72,11 +75,12 @@ fn main() {
         else { abort("unknown shape"); }
     }
 
-    if shape == "two_maps" || shape == "two_lists" {
+    if shape == "two_maps" || shape == "two_lists" || shape == "two_unknown" {
         var tb: u8[>..] = [];
         for i in n {
             var inner: u8[>..] = [];
             if shape == "two_maps" { put_int_entry(inner, scramble(i), 1); }
+            else if shape == "two_unknown" { pb_write_varint(inner, 0x78); pb_write_varint(inner, 1); }
             else { pb_write_varint(inner, 0x18); pb_write_varint(inner, 1); }
             pb_write_varint(tb, if i % 2 == 0 { 10 } else { 18 });
             pb_write_varint(tb, inner.len as! u64);
@@ -91,12 +95,16 @@ fn main() {
         return;
     }
 
-    if shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" {
+    if shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "wrap_mixed" {
         var wb: u8[>..] = [];
         for i in n {
             var inner: u8[>..] = [];
             if shape == "wrap_map" { put_int_entry(inner, scramble(i), 1); }
             else if shape == "wrap_list" { pb_write_varint(inner, 0x18); pb_write_varint(inner, 1); }
+            else if shape == "wrap_mixed" {
+                pb_write_varint(inner, 0x78); pb_write_varint(inner, 1);
+                pb_write_varint(inner, 0x22); pb_write_varint(inner, 3); inner.append("abc");
+            }
             else { pb_write_varint(inner, 0x78); pb_write_varint(inner, 1); }
             pb_write_varint(wb, 10);
             pb_write_varint(wb, inner.len as! u64);

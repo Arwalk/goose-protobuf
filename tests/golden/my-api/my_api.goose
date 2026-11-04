@@ -66,6 +66,7 @@ reusable[] var Hyphenated_links: Hyphenated_Ref[>..] = [];
 // unknown fields.
 fn Hyphenated_decode_from(r: pb_Reader&, m: Hyphenated&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -73,7 +74,7 @@ fn Hyphenated_decode_from(r: pb_Reader&, m: Hyphenated&) {
         if tag == 10 {
             m.s = pb_read_string(r, m.s);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

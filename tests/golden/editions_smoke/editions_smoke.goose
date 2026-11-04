@@ -67,6 +67,7 @@ reusable[] var Smoke_links: Smoke_Ref[>..] = [];
 // unknown fields.
 fn Smoke_decode_from(r: pb_Reader&, m: Smoke&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -75,7 +76,7 @@ fn Smoke_decode_from(r: pb_Reader&, m: Smoke&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

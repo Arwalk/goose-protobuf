@@ -69,11 +69,12 @@ reusable[] var type_links: type_Ref[>..] = [];
 // unknown fields.
 fn type_decode_from(r: pb_Reader&, m: type_&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -126,11 +127,12 @@ reusable[] var struct_links: struct_Ref[>..] = [];
 // unknown fields.
 fn struct_decode_from(r: pb_Reader&, m: struct_&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -183,11 +185,12 @@ reusable[] var struct_self_links: struct_self_Ref[>..] = [];
 // unknown fields.
 fn struct_self_decode_from(r: pb_Reader&, m: struct_self&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }

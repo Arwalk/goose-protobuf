@@ -80,6 +80,7 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -88,7 +89,7 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -172,6 +173,7 @@ reusable[] var Presence_links: Presence_Ref[>..] = [];
 // unknown fields.
 fn Presence_decode_from(r: pb_Reader&, m: Presence&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -194,12 +196,12 @@ fn Presence_decode_from(r: pb_Reader&, m: Presence&) {
                 m.first = pb_v;
                 m.pb_has0 |= 0x00000008;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 50 {
             m.str_implicit = pb_read_string(r, m.str_implicit);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -373,6 +375,7 @@ reusable[] var Req_links: Req_Ref[>..] = [];
 // unknown fields.
 fn Req_decode_from(r: pb_Reader&, m: Req&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -381,7 +384,7 @@ fn Req_decode_from(r: pb_Reader&, m: Req&) {
             m.needed = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -466,6 +469,7 @@ reusable[] var ReqSub_links: ReqSub_Ref[>..] = [];
 // unknown fields.
 fn ReqSub_decode_from(r: pb_Reader&, m: ReqSub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -482,7 +486,7 @@ fn ReqSub_decode_from(r: pb_Reader&, m: ReqSub&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -594,6 +598,7 @@ reusable[] var Enums_links: Enums_Ref[>..] = [];
 // unknown fields.
 fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.closed_packed.len;
     var pb_len3: i64 = pb_had3;
     let pb_had4: i64 = m.closed_expanded.len;
@@ -616,7 +621,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
                 m.closed = pb_v;
                 m.pb_has0 |= 0x00000002;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 24 {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
@@ -624,7 +629,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             if pb_v == 1 || pb_v == 5 {
                 pb_append(pb_i32s, m.closed_packed, pb_len3, pb_had3, pb_v);
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
@@ -638,7 +643,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
                 if pb_v == 1 || pb_v == 5 {
                     pb_append(pb_i32s, m.closed_packed, pb_len3, pb_had3, pb_v);
                 } else {
-                    pb_unknown_element(r, 24, pb_at, m.pb_unknown, unknown_len);
+                    pb_unknown_element(r, 24, pb_at, m.pb_unknown, unknown_len, unknown_had);
                 }
             }
             if r.err != PB_OK { break; }
@@ -649,7 +654,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             if pb_v == 1 || pb_v == 5 {
                 pb_append(pb_i32s, m.closed_expanded, pb_len4, pb_had4, pb_v);
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 34 {
             let pb_n = pb_read_len(r);
@@ -663,7 +668,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
                 if pb_v == 1 || pb_v == 5 {
                     pb_append(pb_i32s, m.closed_expanded, pb_len4, pb_had4, pb_v);
                 } else {
-                    pb_unknown_element(r, 32, pb_at, m.pb_unknown, unknown_len);
+                    pb_unknown_element(r, 32, pb_at, m.pb_unknown, unknown_len, unknown_had);
                 }
             }
             if r.err != PB_OK { break; }
@@ -684,7 +689,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             let pb_v = pb_e.value;
             if !((pb_v >= 0 && pb_v <= 1)) {
                 Enums_ClosedMapEntry_clear(pb_e);
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 continue;
             }
             Enums_ClosedMapEntry_place(pb_e);
@@ -708,7 +713,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
             if r.err != PB_OK { break; }
             if !(pb_v == 1 || pb_v == 5) {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 continue;
             }
             Enums_clear_pick(m);
@@ -719,7 +724,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             Enums_clear_pick(m);
             m.pick = Enums_pick.other { v: pb_v };
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.closed_packed = pb_trim(pb_i32s, m.closed_packed, pb_len3);
@@ -1065,6 +1070,7 @@ reusable[] var Enums_ClosedMapEntry_links: Enums_ClosedMapEntry_Ref[>..] = [];
 // unknown fields.
 fn Enums_ClosedMapEntry_decode_from(r: pb_Reader&, m: Enums_ClosedMapEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1074,7 +1080,7 @@ fn Enums_ClosedMapEntry_decode_from(r: pb_Reader&, m: Enums_ClosedMapEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1209,6 +1215,7 @@ reusable[] var Enums_OpenMapEntry_links: Enums_OpenMapEntry_Ref[>..] = [];
 // unknown fields.
 fn Enums_OpenMapEntry_decode_from(r: pb_Reader&, m: Enums_OpenMapEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1218,7 +1225,7 @@ fn Enums_OpenMapEntry_decode_from(r: pb_Reader&, m: Enums_OpenMapEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1353,6 +1360,7 @@ reusable[] var Repeats_links: Repeats_Ref[>..] = [];
 // unknown fields.
 fn Repeats_decode_from(r: pb_Reader&, m: Repeats&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.packed_f.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.expanded.len;
@@ -1382,7 +1390,7 @@ fn Repeats_decode_from(r: pb_Reader&, m: Repeats&) {
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.packed_f = pb_trim(pb_i32s, m.packed_f, pb_len1);
@@ -1507,6 +1515,7 @@ reusable[] var Utf8_links: Utf8_Ref[>..] = [];
 // unknown fields.
 fn Utf8_decode_from(r: pb_Reader&, m: Utf8&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.list_verified.len;
     var pb_len3: i64 = pb_had3;
     let pb_had4: i64 = m.list_unchecked.len;
@@ -1570,7 +1579,7 @@ fn Utf8_decode_from(r: pb_Reader&, m: Utf8&) {
             Utf8_clear_pick(m);
             m.pick = Utf8_pick.member_unchecked { v: pb_v };
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.list_verified = pb_trim(pb_spans, m.list_verified, pb_len3);
@@ -1921,6 +1930,7 @@ reusable[] var Utf8_MapVerifiedEntry_links: Utf8_MapVerifiedEntry_Ref[>..] = [];
 // unknown fields.
 fn Utf8_MapVerifiedEntry_decode_from(r: pb_Reader&, m: Utf8_MapVerifiedEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1930,7 +1940,7 @@ fn Utf8_MapVerifiedEntry_decode_from(r: pb_Reader&, m: Utf8_MapVerifiedEntry&) {
         } else if tag == 18 {
             m.value = pb_read_string(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2083,6 +2093,7 @@ reusable[] var Utf8_MapUncheckedEntry_links: Utf8_MapUncheckedEntry_Ref[>..] = [
 // unknown fields.
 fn Utf8_MapUncheckedEntry_decode_from(r: pb_Reader&, m: Utf8_MapUncheckedEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2092,7 +2103,7 @@ fn Utf8_MapUncheckedEntry_decode_from(r: pb_Reader&, m: Utf8_MapUncheckedEntry&)
         } else if tag == 18 {
             m.value = pb_read_bytes(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2254,6 +2265,7 @@ reusable[] var Delimited_links: Delimited_Ref[>..] = [];
 // unknown fields.
 fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.list_delimited.len;
     var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
@@ -2343,7 +2355,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.list_delimited = pb_trim(Sub_links, m.list_delimited, pb_len3);
@@ -2695,6 +2707,7 @@ reusable[] var Imported_links: Imported_Ref[>..] = [];
 // unknown fields.
 fn Imported_decode_from(r: pb_Reader&, m: Imported&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2717,10 +2730,10 @@ fn Imported_decode_from(r: pb_Reader&, m: Imported&) {
                 m.closed = pb_v;
                 m.pb_has0 |= 0x00000001;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

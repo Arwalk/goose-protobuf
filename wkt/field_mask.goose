@@ -66,6 +66,7 @@ reusable[] var FieldMask_links: FieldMask_Ref[>..] = [];
 // unknown fields.
 fn FieldMask_decode_from(r: pb_Reader&, m: FieldMask&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.paths.len;
     var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
@@ -75,7 +76,7 @@ fn FieldMask_decode_from(r: pb_Reader&, m: FieldMask&) {
         if tag == 10 {
             pb_append(pb_spans, m.paths, pb_len1, pb_had1, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.paths = pb_trim(pb_spans, m.paths, pb_len1);

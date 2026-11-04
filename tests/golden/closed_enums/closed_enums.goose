@@ -80,6 +80,7 @@ reusable[] var M_links: M_Ref[>..] = [];
 // unknown fields.
 fn M_decode_from(r: pb_Reader&, m: M&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -91,7 +92,7 @@ fn M_decode_from(r: pb_Reader&, m: M&) {
                 m.mode = pb_v;
                 m.pb_has0 |= 0x00000001;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 16 {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
@@ -100,7 +101,7 @@ fn M_decode_from(r: pb_Reader&, m: M&) {
                 m.inner = pb_v;
                 m.pb_has0 |= 0x00000002;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 24 {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
@@ -109,13 +110,13 @@ fn M_decode_from(r: pb_Reader&, m: M&) {
                 m.nested = pb_v;
                 m.pb_has0 |= 0x00000004;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 32 {
             m.open = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000008;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -260,6 +261,7 @@ reusable[] var Req_links: Req_Ref[>..] = [];
 // unknown fields.
 fn Req_decode_from(r: pb_Reader&, m: Req&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -271,10 +273,10 @@ fn Req_decode_from(r: pb_Reader&, m: Req&) {
                 m.mode = pb_v;
                 m.pb_has0 |= 0x00000001;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -359,6 +361,7 @@ reusable[] var Holder_links: Holder_Ref[>..] = [];
 // unknown fields.
 fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -375,7 +378,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

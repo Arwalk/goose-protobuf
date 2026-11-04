@@ -71,6 +71,7 @@ reusable[] var Outer_links: Outer_Ref[>..] = [];
 // unknown fields.
 fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -133,7 +134,7 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -371,6 +372,7 @@ reusable[] var Outer_Nested_links: Outer_Nested_Ref[>..] = [];
 // unknown fields.
 fn Outer_Nested_decode_from(r: pb_Reader&, m: Outer_Nested&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -380,7 +382,7 @@ fn Outer_Nested_decode_from(r: pb_Reader&, m: Outer_Nested&) {
         } else if tag == 18 {
             m.label = pb_read_string(r, m.label);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -462,6 +464,7 @@ reusable[] var Inner_links: Inner_Ref[>..] = [];
 // unknown fields.
 fn Inner_decode_from(r: pb_Reader&, m: Inner&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -485,7 +488,7 @@ fn Inner_decode_from(r: pb_Reader&, m: Inner&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -622,6 +625,7 @@ reusable[] var Leaf_links: Leaf_Ref[>..] = [];
 // unknown fields.
 fn Leaf_decode_from(r: pb_Reader&, m: Leaf&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -631,7 +635,7 @@ fn Leaf_decode_from(r: pb_Reader&, m: Leaf&) {
         } else if tag == 16 {
             m.y = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -700,6 +704,7 @@ reusable[] var n_links: n_Ref[>..] = [];
 // unknown fields.
 fn n_decode_from(r: pb_Reader&, m: n&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -707,7 +712,7 @@ fn n_decode_from(r: pb_Reader&, m: n&) {
         if tag == 8 {
             m.r = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

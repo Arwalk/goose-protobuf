@@ -72,6 +72,7 @@ reusable[] var Lists_links: Lists_Ref[>..] = [];
 // unknown fields.
 fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.names.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.blobs.len;
@@ -138,7 +139,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             Lists_CountsEntry_place(pb_e);
             pb_len6++;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.names = pb_trim(pb_spans, m.names, pb_len1);
@@ -411,6 +412,7 @@ reusable[] var Lists_CountsEntry_links: Lists_CountsEntry_Ref[>..] = [];
 // unknown fields.
 fn Lists_CountsEntry_decode_from(r: pb_Reader&, m: Lists_CountsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -420,7 +422,7 @@ fn Lists_CountsEntry_decode_from(r: pb_Reader&, m: Lists_CountsEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -565,6 +567,7 @@ reusable[] var Item_links: Item_Ref[>..] = [];
 // unknown fields.
 fn Item_decode_from(r: pb_Reader&, m: Item&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.tags.len;
     var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
@@ -578,7 +581,7 @@ fn Item_decode_from(r: pb_Reader&, m: Item&) {
         } else if tag == 26 {
             pb_append(pb_spans, m.tags, pb_len3, pb_had3, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.tags = pb_trim(pb_spans, m.tags, pb_len3);
@@ -680,6 +683,7 @@ reusable[] var Tree_links: Tree_Ref[>..] = [];
 // unknown fields.
 recursive fn Tree_decode_from(r: pb_Reader&, m: Tree&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had2: i64 = m.children.len;
     var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
@@ -704,7 +708,7 @@ recursive fn Tree_decode_from(r: pb_Reader&, m: Tree&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.children = pb_trim(Tree_links, m.children, pb_len2);
@@ -827,6 +831,7 @@ reusable[] var Forest_links: Forest_Ref[>..] = [];
 // unknown fields.
 recursive fn Forest_decode_from(r: pb_Reader&, m: Forest&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.groves.len;
     var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
@@ -849,7 +854,7 @@ recursive fn Forest_decode_from(r: pb_Reader&, m: Forest&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.groves = pb_trim(Grove_links, m.groves, pb_len1);
@@ -956,6 +961,7 @@ reusable[] var Grove_links: Grove_Ref[>..] = [];
 // unknown fields.
 recursive fn Grove_decode_from(r: pb_Reader&, m: Grove&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -972,7 +978,7 @@ recursive fn Grove_decode_from(r: pb_Reader&, m: Grove&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

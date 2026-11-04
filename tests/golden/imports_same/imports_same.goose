@@ -66,6 +66,7 @@ reusable[] var SamePackage_links: SamePackage_Ref[>..] = [];
 // unknown fields.
 fn SamePackage_decode_from(r: pb_Reader&, m: SamePackage&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -73,7 +74,7 @@ fn SamePackage_decode_from(r: pb_Reader&, m: SamePackage&) {
         if tag == 8 {
             m.a = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

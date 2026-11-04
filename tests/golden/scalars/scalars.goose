@@ -89,6 +89,7 @@ reusable[] var Scalars_links: Scalars_Ref[>..] = [];
 // unknown fields.
 fn Scalars_decode_from(r: pb_Reader&, m: Scalars&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -131,7 +132,7 @@ fn Scalars_decode_from(r: pb_Reader&, m: Scalars&) {
             m.f_optional = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -337,6 +338,7 @@ reusable[] var Scalars_Inner_links: Scalars_Inner_Ref[>..] = [];
 // unknown fields.
 fn Scalars_Inner_decode_from(r: pb_Reader&, m: Scalars_Inner&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -344,7 +346,7 @@ fn Scalars_Inner_decode_from(r: pb_Reader&, m: Scalars_Inner&) {
         if tag == 8 {
             m.type_ = pb_unzigzag64(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

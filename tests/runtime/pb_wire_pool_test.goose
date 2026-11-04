@@ -73,7 +73,7 @@ fn main() {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, u, used);
+        pb_unknown_append(r, start, tag, u, used, 0);
     }
     if r.err != PB_OK { fail_at("unknown", str("err ", r.err)); }
     u = pb_bytes_trim(u, used);
@@ -87,7 +87,7 @@ fn main() {
         let start = t.pos;
         let tag = pb_read_tag(t);
         if t.err != PB_OK { break; }
-        pb_unknown_append(t, start, tag, tu, tused);
+        pb_unknown_append(t, start, tag, tu, tused, 0);
     }
     tu = pb_bytes_trim(tu, tused);
     if t.err != PB_ERR_TRUNCATED || !bytes_eq(pb_run(pb_bytes, tu), wire[0..3]) {

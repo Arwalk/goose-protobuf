@@ -65,11 +65,12 @@ reusable[] var Reexported_links: Reexported_Ref[>..] = [];
 // unknown fields.
 fn Reexported_decode_from(r: pb_Reader&, m: Reexported&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -123,6 +124,7 @@ reusable[] var Reexported_Inner_links: Reexported_Inner_Ref[>..] = [];
 // unknown fields.
 fn Reexported_Inner_decode_from(r: pb_Reader&, m: Reexported_Inner&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -130,7 +132,7 @@ fn Reexported_Inner_decode_from(r: pb_Reader&, m: Reexported_Inner&) {
         if tag == 8 {
             m.c = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

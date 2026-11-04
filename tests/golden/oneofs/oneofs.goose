@@ -73,6 +73,7 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.r.len;
     var pb_len3: i64 = pb_had3;
     while r.pos < r.end {
@@ -94,7 +95,7 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.r = pb_trim(pb_i32s, m.r, pb_len3);
@@ -233,6 +234,7 @@ reusable[] var Choice_links: Choice_Ref[>..] = [];
 // unknown fields.
 recursive fn Choice_decode_from(r: pb_Reader&, m: Choice&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -364,7 +366,7 @@ recursive fn Choice_decode_from(r: pb_Reader&, m: Choice&) {
         } else if tag == 248 {
             m.after = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

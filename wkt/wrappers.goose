@@ -66,6 +66,7 @@ reusable[] var DoubleValue_links: DoubleValue_Ref[>..] = [];
 // unknown fields.
 fn DoubleValue_decode_from(r: pb_Reader&, m: DoubleValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -73,7 +74,7 @@ fn DoubleValue_decode_from(r: pb_Reader&, m: DoubleValue&) {
         if tag == 9 {
             m.value = pb_read_double(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -135,6 +136,7 @@ reusable[] var FloatValue_links: FloatValue_Ref[>..] = [];
 // unknown fields.
 fn FloatValue_decode_from(r: pb_Reader&, m: FloatValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -142,7 +144,7 @@ fn FloatValue_decode_from(r: pb_Reader&, m: FloatValue&) {
         if tag == 13 {
             m.value = pb_read_float(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -204,6 +206,7 @@ reusable[] var Int64Value_links: Int64Value_Ref[>..] = [];
 // unknown fields.
 fn Int64Value_decode_from(r: pb_Reader&, m: Int64Value&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -211,7 +214,7 @@ fn Int64Value_decode_from(r: pb_Reader&, m: Int64Value&) {
         if tag == 8 {
             m.value = pb_u64_to_int64(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -273,6 +276,7 @@ reusable[] var UInt64Value_links: UInt64Value_Ref[>..] = [];
 // unknown fields.
 fn UInt64Value_decode_from(r: pb_Reader&, m: UInt64Value&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -280,7 +284,7 @@ fn UInt64Value_decode_from(r: pb_Reader&, m: UInt64Value&) {
         if tag == 8 {
             m.value = pb_read_varint(r);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -342,6 +346,7 @@ reusable[] var Int32Value_links: Int32Value_Ref[>..] = [];
 // unknown fields.
 fn Int32Value_decode_from(r: pb_Reader&, m: Int32Value&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -349,7 +354,7 @@ fn Int32Value_decode_from(r: pb_Reader&, m: Int32Value&) {
         if tag == 8 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -411,6 +416,7 @@ reusable[] var UInt32Value_links: UInt32Value_Ref[>..] = [];
 // unknown fields.
 fn UInt32Value_decode_from(r: pb_Reader&, m: UInt32Value&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -418,7 +424,7 @@ fn UInt32Value_decode_from(r: pb_Reader&, m: UInt32Value&) {
         if tag == 8 {
             m.value = pb_read_varint(r) as! u32;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -480,6 +486,7 @@ reusable[] var BoolValue_links: BoolValue_Ref[>..] = [];
 // unknown fields.
 fn BoolValue_decode_from(r: pb_Reader&, m: BoolValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -487,7 +494,7 @@ fn BoolValue_decode_from(r: pb_Reader&, m: BoolValue&) {
         if tag == 8 {
             m.value = pb_read_varint(r) != 0;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -549,6 +556,7 @@ reusable[] var StringValue_links: StringValue_Ref[>..] = [];
 // unknown fields.
 fn StringValue_decode_from(r: pb_Reader&, m: StringValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -556,7 +564,7 @@ fn StringValue_decode_from(r: pb_Reader&, m: StringValue&) {
         if tag == 10 {
             m.value = pb_read_string(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -627,6 +635,7 @@ reusable[] var BytesValue_links: BytesValue_Ref[>..] = [];
 // unknown fields.
 fn BytesValue_decode_from(r: pb_Reader&, m: BytesValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -634,7 +643,7 @@ fn BytesValue_decode_from(r: pb_Reader&, m: BytesValue&) {
         if tag == 10 {
             m.value = pb_read_bytes(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

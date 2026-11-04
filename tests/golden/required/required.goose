@@ -76,6 +76,7 @@ reusable[] var Uses_links: Uses_Ref[>..] = [];
 // unknown fields.
 fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had2: i64 = m.many.len;
     var pb_len2: i64 = pb_had2;
     let pb_had3: i64 = m.by_name.len;
@@ -142,7 +143,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             Uses_clear_pick(m);
             m.pick = Uses_pick.other { v: pb_v };
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.many = pb_trim(req::Inner_links, m.many, pb_len2);
@@ -472,6 +473,7 @@ reusable[] var Uses_ByNameEntry_links: Uses_ByNameEntry_Ref[>..] = [];
 // unknown fields.
 fn Uses_ByNameEntry_decode_from(r: pb_Reader&, m: Uses_ByNameEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -490,7 +492,7 @@ fn Uses_ByNameEntry_decode_from(r: pb_Reader&, m: Uses_ByNameEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -674,6 +676,7 @@ reusable[] var Plain_links: Plain_Ref[>..] = [];
 // unknown fields.
 recursive fn Plain_decode_from(r: pb_Reader&, m: Plain&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had2: i64 = m.more.len;
     var pb_len2: i64 = pb_had2;
     while r.pos < r.end {
@@ -707,7 +710,7 @@ recursive fn Plain_decode_from(r: pb_Reader&, m: Plain&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.more = pb_trim(Plain_links, m.more, pb_len2);

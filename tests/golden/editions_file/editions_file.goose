@@ -74,6 +74,7 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -81,7 +82,7 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
         if tag == 8 {
             m.a = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -145,6 +146,7 @@ reusable[] var Overrides_links: Overrides_Ref[>..] = [];
 // unknown fields.
 fn Overrides_decode_from(r: pb_Reader&, m: Overrides&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.inherited.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.packed_f.len;
@@ -185,7 +187,7 @@ fn Overrides_decode_from(r: pb_Reader&, m: Overrides&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.inherited = pb_trim(pb_i32s, m.inherited, pb_len1);
@@ -334,6 +336,7 @@ reusable[] var Overrides_Nested_links: Overrides_Nested_Ref[>..] = [];
 // unknown fields.
 fn Overrides_Nested_decode_from(r: pb_Reader&, m: Overrides_Nested&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.inherited.len;
     var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
@@ -355,7 +358,7 @@ fn Overrides_Nested_decode_from(r: pb_Reader&, m: Overrides_Nested&) {
         } else if tag == 26 {
             m.checked = pb_read_string(r, m.checked);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.inherited = pb_trim(pb_i32s, m.inherited, pb_len1);
@@ -481,6 +484,7 @@ reusable[] var All_links: All_Ref[>..] = [];
 // unknown fields.
 fn All_decode_from(r: pb_Reader&, m: All&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had3: i64 = m.expanded.len;
     var pb_len3: i64 = pb_had3;
     let pb_had6: i64 = m.subs.len;
@@ -500,7 +504,7 @@ fn All_decode_from(r: pb_Reader&, m: All&) {
                 m.closed = pb_v;
                 m.pb_has0 |= 0x00000001;
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 24 {
             pb_append(pb_i32s, m.expanded, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
@@ -573,7 +577,7 @@ fn All_decode_from(r: pb_Reader&, m: All&) {
             m.open = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000004;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.expanded = pb_trim(pb_i32s, m.expanded, pb_len3);
@@ -921,6 +925,7 @@ reusable[] var All_SubsEntry_links: All_SubsEntry_Ref[>..] = [];
 // unknown fields.
 fn All_SubsEntry_decode_from(r: pb_Reader&, m: All_SubsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -939,7 +944,7 @@ fn All_SubsEntry_decode_from(r: pb_Reader&, m: All_SubsEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

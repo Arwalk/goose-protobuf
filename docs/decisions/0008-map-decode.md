@@ -63,6 +63,17 @@ was cut off at 120 s.
 | `wrap_list`, one repeated element per occurrence | 1,000,000 | 4.0 MB | 35.6 | 0.020 |
 | `two_lists`, the same, alternating two sub-messages | 1,000,000 | 4.0 MB | 17.7 | 0.025 |
 
+gpb-dx9.8 did the same for unknown fields, which grew by doubling the whole run in
+`pb_unknown_grow`, from commit `e18c46f`:
+
+| Shape | Occurrences | Input | Old | New |
+|---|---|---|---:|---:|
+| `wrap_unknown`, one unknown field per sub-message occurrence | 160,000 | 0.64 MB | 0.44 | 0.005 |
+| | 1,000,000 | 4 MB | 18 | 0.033 |
+| | 4,000,000 | 16 MB | >120 | 0.130 |
+| `wrap_mixed`, the same with a bytes field between them | 4,000,000 | 36 MB | not run | 0.265 |
+| `two_unknown`, alternating two sub-messages | 4,000,000 | 16 MB | not run | 0.152 |
+
 New from 10,000 to 1,000,000 entries, 100 times the input: `int_random` takes 111
 times as long, `str_random` 191 and `str_prefix` 201.
 
@@ -82,8 +93,6 @@ a size threshold with a second code path is not worth it at this figure.
   `put` is quadratic. Many `M_decode` calls into one message each fold the whole
   run: `int_merge`, 100 entries per call, took 3.6 s at 160,000 (old 6.0 s), and
   is still quadratic. Both are the caller's code rather than one input: gpb-dx9.9.
-- Unknown fields repeated in a sub-message are still quadratic: `wrap_unknown`
-  took 18 s for 1,000,000 (4 MB) on the old and new code alike: gpb-dx9.8.
 - A failed decode does not fold, so a partial message may hold repeated keys
   until it is cleared, or a later decode into it succeeds.
 - `two_maps` is linear although its two runs share a pool, which goes against the

@@ -76,6 +76,7 @@ reusable[] var Msg_links: Msg_Ref[>..] = [];
 // unknown fields.
 recursive fn Msg_decode_from(r: pb_Reader&, m: Msg&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -128,7 +129,7 @@ recursive fn Msg_decode_from(r: pb_Reader&, m: Msg&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -382,6 +383,7 @@ reusable[] var Leaf_links: Leaf_Ref[>..] = [];
 // unknown fields.
 fn Leaf_decode_from(r: pb_Reader&, m: Leaf&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -389,7 +391,7 @@ fn Leaf_decode_from(r: pb_Reader&, m: Leaf&) {
         if tag == 10 {
             m.name = pb_read_string(r, m.name);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -462,6 +464,7 @@ reusable[] var Flags_links: Flags_Ref[>..] = [];
 // unknown fields.
 fn Flags_decode_from(r: pb_Reader&, m: Flags&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -473,7 +476,7 @@ fn Flags_decode_from(r: pb_Reader&, m: Flags&) {
             m.b = pb_read_varint(r) != 0;
             m.pb_has0 |= 0x00000002;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

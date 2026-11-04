@@ -76,6 +76,7 @@ reusable[] var Sub_links: Sub_Ref[>..] = [];
 // unknown fields.
 fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -84,7 +85,7 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -173,6 +174,7 @@ reusable[] var Lists_links: Lists_Ref[>..] = [];
 // unknown fields.
 fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.ints.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.packed_ints.len;
@@ -246,7 +248,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             if (pb_v >= 0 && pb_v <= 1) || pb_v == 5 {
                 pb_append(pb_i32s, m.colors, pb_len6, pb_had6, pb_v);
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 50 {
             let pb_n = pb_read_len(r);
@@ -260,7 +262,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
                 if (pb_v >= 0 && pb_v <= 1) || pb_v == 5 {
                     pb_append(pb_i32s, m.colors, pb_len6, pb_had6, pb_v);
                 } else {
-                    pb_unknown_element(r, 48, pb_at, m.pb_unknown, unknown_len);
+                    pb_unknown_element(r, 48, pb_at, m.pb_unknown, unknown_len, unknown_had);
                 }
             }
             if r.err != PB_OK { break; }
@@ -271,7 +273,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             if (pb_v >= 0 && pb_v <= 1) || pb_v == 5 {
                 pb_append(pb_i32s, m.packed_colors, pb_len7, pb_had7, pb_v);
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 58 {
             let pb_n = pb_read_len(r);
@@ -285,7 +287,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
                 if (pb_v >= 0 && pb_v <= 1) || pb_v == 5 {
                     pb_append(pb_i32s, m.packed_colors, pb_len7, pb_had7, pb_v);
                 } else {
-                    pb_unknown_element(r, 56, pb_at, m.pb_unknown, unknown_len);
+                    pb_unknown_element(r, 56, pb_at, m.pb_unknown, unknown_len, unknown_had);
                 }
             }
             if r.err != PB_OK { break; }
@@ -336,7 +338,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             if (pb_v >= 1 && pb_v <= 2) {
                 pb_append(pb_i32s, m.fars, pb_len12, pb_had12, pb_v);
             } else {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 98 {
             let pb_n = pb_read_len(r);
@@ -350,13 +352,13 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
                 if (pb_v >= 1 && pb_v <= 2) {
                     pb_append(pb_i32s, m.fars, pb_len12, pb_had12, pb_v);
                 } else {
-                    pb_unknown_element(r, 96, pb_at, m.pb_unknown, unknown_len);
+                    pb_unknown_element(r, 96, pb_at, m.pb_unknown, unknown_len, unknown_had);
                 }
             }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.ints = pb_trim(pb_i32s, m.ints, pb_len1);
@@ -772,6 +774,7 @@ reusable[] var Pick_links: Pick_Ref[>..] = [];
 // unknown fields.
 fn Pick_decode_from(r: pb_Reader&, m: Pick&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -806,7 +809,7 @@ fn Pick_decode_from(r: pb_Reader&, m: Pick&) {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
             if r.err != PB_OK { break; }
             if !((pb_v >= 0 && pb_v <= 1) || pb_v == 5) {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 continue;
             }
             Pick_clear_pick(m);
@@ -815,7 +818,7 @@ fn Pick_decode_from(r: pb_Reader&, m: Pick&) {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
             if r.err != PB_OK { break; }
             if !((pb_v >= 1 && pb_v <= 2)) {
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 continue;
             }
             Pick_clear_pick(m);
@@ -824,7 +827,7 @@ fn Pick_decode_from(r: pb_Reader&, m: Pick&) {
             m.after = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1142,6 +1145,7 @@ reusable[] var Maps_links: Maps_Ref[>..] = [];
 // unknown fields.
 fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.counts.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.names.len;
@@ -1215,13 +1219,13 @@ fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             let pb_v = pb_e.value;
             if !((pb_v >= 0 && pb_v <= 1) || pb_v == 5) {
                 Maps_ColorsEntry_clear(pb_e);
-                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
                 continue;
             }
             Maps_ColorsEntry_place(pb_e);
             pb_len4++;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.counts = pb_trim(Maps_CountsEntry_entries, m.counts, pb_len1);
@@ -1498,6 +1502,7 @@ reusable[] var Maps_CountsEntry_links: Maps_CountsEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_CountsEntry_decode_from(r: pb_Reader&, m: Maps_CountsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1507,7 +1512,7 @@ fn Maps_CountsEntry_decode_from(r: pb_Reader&, m: Maps_CountsEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1651,6 +1656,7 @@ reusable[] var Maps_NamesEntry_links: Maps_NamesEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_NamesEntry_decode_from(r: pb_Reader&, m: Maps_NamesEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1660,7 +1666,7 @@ fn Maps_NamesEntry_decode_from(r: pb_Reader&, m: Maps_NamesEntry&) {
         } else if tag == 18 {
             m.value = pb_read_bytes(r, m.value);
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1804,6 +1810,7 @@ reusable[] var Maps_SubsEntry_links: Maps_SubsEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_SubsEntry_decode_from(r: pb_Reader&, m: Maps_SubsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -1822,7 +1829,7 @@ fn Maps_SubsEntry_decode_from(r: pb_Reader&, m: Maps_SubsEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -1998,6 +2005,7 @@ reusable[] var Maps_ColorsEntry_links: Maps_ColorsEntry_Ref[>..] = [];
 // unknown fields.
 fn Maps_ColorsEntry_decode_from(r: pb_Reader&, m: Maps_ColorsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2007,7 +2015,7 @@ fn Maps_ColorsEntry_decode_from(r: pb_Reader&, m: Maps_ColorsEntry&) {
         } else if tag == 16 {
             m.value = pb_u64_to_int32(pb_read_varint(r));
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2142,6 +2150,7 @@ reusable[] var ReqSub_links: ReqSub_Ref[>..] = [];
 // unknown fields.
 fn ReqSub_decode_from(r: pb_Reader&, m: ReqSub&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2150,7 +2159,7 @@ fn ReqSub_decode_from(r: pb_Reader&, m: ReqSub&) {
             m.r = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2242,6 +2251,7 @@ reusable[] var Reqs_links: Reqs_Ref[>..] = [];
 // unknown fields.
 fn Reqs_decode_from(r: pb_Reader&, m: Reqs&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.list.len;
     var pb_len1: i64 = pb_had1;
     let pb_had2: i64 = m.by_name.len;
@@ -2292,7 +2302,7 @@ fn Reqs_decode_from(r: pb_Reader&, m: Reqs&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.list = pb_trim(ReqSub_links, m.list, pb_len1);
@@ -2553,6 +2563,7 @@ reusable[] var Reqs_ByNameEntry_links: Reqs_ByNameEntry_Ref[>..] = [];
 // unknown fields.
 fn Reqs_ByNameEntry_decode_from(r: pb_Reader&, m: Reqs_ByNameEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2571,7 +2582,7 @@ fn Reqs_ByNameEntry_decode_from(r: pb_Reader&, m: Reqs_ByNameEntry&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2759,6 +2770,7 @@ reusable[] var OnlyGroup_links: OnlyGroup_Ref[>..] = [];
 // unknown fields.
 fn OnlyGroup_decode_from(r: pb_Reader&, m: OnlyGroup&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2778,7 +2790,7 @@ fn OnlyGroup_decode_from(r: pb_Reader&, m: OnlyGroup&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -2905,6 +2917,7 @@ reusable[] var OnlyGroup_Grp_links: OnlyGroup_Grp_Ref[>..] = [];
 // unknown fields.
 fn OnlyGroup_Grp_decode_from(r: pb_Reader&, m: OnlyGroup_Grp&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -2913,7 +2926,7 @@ fn OnlyGroup_Grp_decode_from(r: pb_Reader&, m: OnlyGroup_Grp&) {
             m.g = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);

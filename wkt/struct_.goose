@@ -69,6 +69,7 @@ reusable[] var Struct_links: Struct_Ref[>..] = [];
 // unknown fields.
 recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.fields_.len;
     var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
@@ -91,7 +92,7 @@ recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
             Struct_FieldsEntry_place(pb_e);
             pb_len1++;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.fields_ = pb_trim(Struct_FieldsEntry_entries, m.fields_, pb_len1);
@@ -209,6 +210,7 @@ reusable[] var Struct_FieldsEntry_links: Struct_FieldsEntry_Ref[>..] = [];
 // unknown fields.
 recursive fn Struct_FieldsEntry_decode_from(r: pb_Reader&, m: Struct_FieldsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -227,7 +229,7 @@ recursive fn Struct_FieldsEntry_decode_from(r: pb_Reader&, m: Struct_FieldsEntry
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -421,6 +423,7 @@ reusable[] var Value_links: Value_Ref[>..] = [];
 // unknown fields.
 recursive fn Value_decode_from(r: pb_Reader&, m: Value&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -468,7 +471,7 @@ recursive fn Value_decode_from(r: pb_Reader&, m: Value&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -805,6 +808,7 @@ reusable[] var ListValue_links: ListValue_Ref[>..] = [];
 // unknown fields.
 recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
     let pb_had1: i64 = m.values.len;
     var pb_len1: i64 = pb_had1;
     while r.pos < r.end {
@@ -827,7 +831,7 @@ recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
             r.depth--;
             r.end = pb_outer;
         } else {
-            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
         }
     }
     m.values = pb_trim(Value_links, m.values, pb_len1);
