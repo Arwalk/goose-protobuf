@@ -6,10 +6,11 @@
 //   repeat until stdin reaches EOF.
 //
 // The first request has message_type == "conformance.FailureSet"; reply
-// with an empty FailureSet in protobuf_payload. A binary request for
-// TestAllTypesProto3 or TestAllTypesProto2 with binary output is decoded with
-// the generated bindings and re-encoded into protobuf_payload; a decode error
-// is a parse_error. Everything else (editions, JSON, text) gets `skipped`.
+// with an empty FailureSet in protobuf_payload. A binary request with binary
+// output, for TestAllTypesProto3, TestAllTypesProto2, their editions variants or
+// TestAllTypesEdition2023, is decoded with the generated bindings and re-encoded
+// into protobuf_payload; a decode error is a parse_error. Everything else (JSON,
+// text, later editions) gets `skipped`.
 //
 // The envelope, ConformanceRequest and ConformanceResponse, is generated from
 // conformance/conformance.proto too. The 4-byte length around it is framing, not
@@ -28,6 +29,9 @@ import pb_wire;
 import conformance.conformance;
 import google.protobuf.test_messages_proto3;
 import google.protobuf.test_messages_proto2;
+import editions.golden.test_messages_proto3_editions;
+import editions.golden.test_messages_proto2_editions;
+import conformance.test_protos.test_messages_edition2023;
 
 extern "pbio_read_exact" fn read_exact(out: u8[>..]&, n: i64) -> i32;
 
@@ -81,6 +85,52 @@ fn roundtrip_proto2(payload: const u8[:], resp: conformance::ConformanceResponse
     conformance::ConformanceResponse_set_protobuf_payload(resp, out);
 }
 
+// The editions variants, likewise.
+var e3 = protobuf_test_messages_editions_proto3::TestAllTypesProto3 { .. };
+
+fn roundtrip_proto3_editions(payload: const u8[:], resp: conformance::ConformanceResponse&) {
+    let err = protobuf_test_messages_editions_proto3::TestAllTypesProto3_decode(payload, e3);
+    if err != PB_OK {
+        protobuf_test_messages_editions_proto3::TestAllTypesProto3_clear(e3);
+        conformance::ConformanceResponse_set_parse_error(resp, str("decode error ", err));
+        return;
+    }
+    var out: u8[>..] = [];
+    protobuf_test_messages_editions_proto3::TestAllTypesProto3_encode(e3, out);
+    protobuf_test_messages_editions_proto3::TestAllTypesProto3_clear(e3);
+    conformance::ConformanceResponse_set_protobuf_payload(resp, out);
+}
+
+var e2 = protobuf_test_messages_editions_proto2::TestAllTypesProto2 { .. };
+
+fn roundtrip_proto2_editions(payload: const u8[:], resp: conformance::ConformanceResponse&) {
+    let err = protobuf_test_messages_editions_proto2::TestAllTypesProto2_decode(payload, e2);
+    if err != PB_OK {
+        protobuf_test_messages_editions_proto2::TestAllTypesProto2_clear(e2);
+        conformance::ConformanceResponse_set_parse_error(resp, str("decode error ", err));
+        return;
+    }
+    var out: u8[>..] = [];
+    protobuf_test_messages_editions_proto2::TestAllTypesProto2_encode(e2, out);
+    protobuf_test_messages_editions_proto2::TestAllTypesProto2_clear(e2);
+    conformance::ConformanceResponse_set_protobuf_payload(resp, out);
+}
+
+var e23 = protobuf_test_messages_editions::TestAllTypesEdition2023 { .. };
+
+fn roundtrip_edition2023(payload: const u8[:], resp: conformance::ConformanceResponse&) {
+    let err = protobuf_test_messages_editions::TestAllTypesEdition2023_decode(payload, e23);
+    if err != PB_OK {
+        protobuf_test_messages_editions::TestAllTypesEdition2023_clear(e23);
+        conformance::ConformanceResponse_set_parse_error(resp, str("decode error ", err));
+        return;
+    }
+    var out: u8[>..] = [];
+    protobuf_test_messages_editions::TestAllTypesEdition2023_encode(e23, out);
+    protobuf_test_messages_editions::TestAllTypesEdition2023_clear(e23);
+    conformance::ConformanceResponse_set_protobuf_payload(resp, out);
+}
+
 var request = conformance::ConformanceRequest { .. };
 var response = conformance::ConformanceResponse { .. };
 
@@ -102,8 +152,20 @@ fn respond(buf: const u8[:]) {
         var payload: u8[>..] = [];
         payload.append(conformance::ConformanceRequest_protobuf_payload(request));
         roundtrip_proto2(payload, response);
+    } else if conformance::ConformanceRequest_message_type(request) == "protobuf_test_messages.editions.proto3.TestAllTypesProto3" {
+        var payload: u8[>..] = [];
+        payload.append(conformance::ConformanceRequest_protobuf_payload(request));
+        roundtrip_proto3_editions(payload, response);
+    } else if conformance::ConformanceRequest_message_type(request) == "protobuf_test_messages.editions.proto2.TestAllTypesProto2" {
+        var payload: u8[>..] = [];
+        payload.append(conformance::ConformanceRequest_protobuf_payload(request));
+        roundtrip_proto2_editions(payload, response);
+    } else if conformance::ConformanceRequest_message_type(request) == "protobuf_test_messages.editions.TestAllTypesEdition2023" {
+        var payload: u8[>..] = [];
+        payload.append(conformance::ConformanceRequest_protobuf_payload(request));
+        roundtrip_edition2023(payload, response);
     } else {
-        conformance::ConformanceResponse_set_skipped(response, "only TestAllTypesProto3 and TestAllTypesProto2 are generated yet");
+        conformance::ConformanceResponse_set_skipped(response, "this message is not generated");
     }
     conformance::ConformanceRequest_clear(request);
     send(response);

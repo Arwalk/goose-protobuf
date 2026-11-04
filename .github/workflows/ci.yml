@@ -98,9 +98,12 @@ jobs:
       # Messages the testee will use, generated and goose-checked (no golden).
       - name: Generate conformance messages
         run: |
-          scripts/check_generated.sh -I third_party/protobuf/src \
+          scripts/check_generated.sh -I third_party/protobuf/src -I third_party/protobuf \
             google/protobuf/test_messages_proto3.proto \
-            google/protobuf/test_messages_proto2.proto
+            google/protobuf/test_messages_proto2.proto \
+            editions/golden/test_messages_proto3_editions.proto \
+            editions/golden/test_messages_proto2_editions.proto \
+            conformance/test_protos/test_messages_edition2023.proto
 
       # The committed copy in wkt/ matches the plugin (decision 0007).
       - name: Check well-known types

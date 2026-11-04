@@ -9,9 +9,10 @@ Exits 0 if every check passes. Each read has a timeout, so a testee that
 waits for EOF fails instead of hanging.
 
 Contract (gpb-41j.7): the FailureSet request gets an empty FailureSet; a
-binary TestAllTypesProto3 or TestAllTypesProto2 request with binary output
-gets its payload decoded and re-encoded in protobuf_payload, or a parse_error
-if it does not decode; every other request gets `skipped`.
+binary request with binary output, for TestAllTypesProto3, TestAllTypesProto2,
+their editions variants or TestAllTypesEdition2023, gets its payload decoded and
+re-encoded in protobuf_payload, or a parse_error if it does not decode; every
+other request gets `skipped`.
 """
 import os
 import select
@@ -140,8 +141,16 @@ CASES = [
      request(T2, payload=b"\x08\x96\x01"), b"\x08\x96\x01"),
     ("a truncated proto2 payload is a parse_error",
      request(T2, payload=b"\x08"), "parse_error"),
+    ("proto3 editions round-trips",
+     request("protobuf_test_messages.editions.proto3.TestAllTypesProto3", payload=b"\x08\x96\x01"), b"\x08\x96\x01"),
+    ("proto2 editions round-trips",
+     request("protobuf_test_messages.editions.proto2.TestAllTypesProto2", payload=b"\x08\x96\x01"), b"\x08\x96\x01"),
+    ("edition 2023 round-trips",
+     request("protobuf_test_messages.editions.TestAllTypesEdition2023", payload=b"\x08\x96\x01"), b"\x08\x96\x01"),
+    ("a truncated edition 2023 payload is a parse_error",
+     request("protobuf_test_messages.editions.TestAllTypesEdition2023", payload=b"\x08"), "parse_error"),
     ("another message is skipped",
-     request("protobuf_test_messages.editions.TestAllTypesEdition2023", payload=b"\x08\x01"), "skipped"),
+     request("protobuf_test_messages.edition_unstable.TestAllTypesEditionUnstable", payload=b"\x08\x01"), "skipped"),
     ("JSON in is skipped",
      request(T3, payload_field=2, payload=b"{}"), "skipped"),
     ("JSON out is skipped",
