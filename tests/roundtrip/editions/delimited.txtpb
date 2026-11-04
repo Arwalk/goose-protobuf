@@ -1,0 +1,5 @@
+# proto-message: ed2.Delimited
+prefixed { a: 1 }
+delimited { a: 2 }
+list_delimited { a: 3 } list_delimited { a: 4 }
+member_delimited { a: 5 }

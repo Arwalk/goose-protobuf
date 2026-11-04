@@ -5,12 +5,12 @@
 //   var m = M { .. };            an empty message: any local, global or
 //                                array element the caller owns
 //   m.f, m.f = v                 scalar fields without presence
-//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-//   M_clear_f(m)                 optional, proto2); m.f reads them, and
+//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (optional
+//   M_clear_f(m)                 or explicit); m.f reads them, and
 //                                an unset one reads as its default
 //   M_f(m) -> u8[:]              string and bytes fields: a view into
 //   M_set_f(m, v)                pb_bytes, and a copying setter; with a
-//                                proto2 default, M_f(m) -> const u8[:]
+//                                [default], M_f(m) -> const u8[:]
 //                                reads global M_f_default while unset
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
@@ -32,15 +32,15 @@
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
-//                                (PB_ERR_UTF8: a bad proto3 string;
+//                                (PB_ERR_UTF8: a string that is checked;
 //                                PB_ERR_REQUIRED: a required field is
 //                                unset, which M_is_initialized(m) checks
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed (proto2) enum does not declare as an unknown field: the field
-// stays as it was. Variable-size parts (unknown fields, strings and
+// closed enum does not declare as an unknown field: the field stays as
+// it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -52,6 +52,8 @@ import pb_wire;
 
 // message ed.Smoke
 struct Smoke {
+    a: i32,
+    pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -69,7 +71,12 @@ fn Smoke_decode_from(r: pb_Reader&, m: Smoke&) {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        if tag == 8 {
+            m.a = pb_u64_to_int32(pb_read_varint(r));
+            m.pb_has0 |= 0x00000001;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -84,18 +91,25 @@ fn Smoke_decode(buf: const u8[:], m: Smoke&) -> i32 {
 
 // Appends m's wire encoding, Smoke_size_of(m) bytes, to out.
 fn Smoke_encode(m: Smoke&, out: u8[>..]&) {
+    if (m.pb_has0 & 0x00000001) != 0 {
+        pb_write_varint(out, 8);
+        pb_write_varint(out, pb_int32_to_u64(m.a));
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Smoke_size_of(m: Smoke&) -> i64 {
     var n: i64 = 0;
+    if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.a)); }
     n += m.pb_unknown.len;
     return n;
 }
 
 // Frees what m owns and resets it to the empty message.
 fn Smoke_clear(m: Smoke&) {
+    m.a = 0;
+    m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
@@ -104,5 +118,21 @@ fn Smoke_clear(m: Smoke&) {
 fn Smoke_copy(dst: Smoke&, src: Smoke&) {
     if dst .== src { return; }
     Smoke_clear(dst);
+    dst.a = src.a;
+    dst.pb_has0 = src.pb_has0;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Sets a and marks it present:
+// it is encoded even when 0.
+fn Smoke_set_a(m: Smoke&, v: i32) {
+    m.a = v;
+    m.pb_has0 |= 0x00000001;
+}
+
+fn Smoke_has_a(m: Smoke&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
+
+fn Smoke_clear_a(m: Smoke&) {
+    m.a = 0;
+    m.pb_has0 &= 0xfffffffe;
 }

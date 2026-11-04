@@ -1,0 +1,98 @@
+// Golden and round-trip (tests/roundtrip/editions/): each value of each feature
+// that changes the wire format, on each element it can be set on, over the
+// defaults of edition 2023.
+edition = "2023";
+
+package ed2;
+
+import "editions_file.proto";
+
+enum Open {
+  O_ZERO = 0;
+  O_ONE = 1;
+}
+
+enum Closed {
+  option features.enum_type = CLOSED;
+
+  C_ONE = 1;
+  C_FIVE = 5;
+}
+
+// A map value that is closed must have 0 first.
+enum ClosedZero {
+  option features.enum_type = CLOSED;
+
+  CZ_ZERO = 0;
+  CZ_ONE = 1;
+}
+
+message Sub {
+  int32 a = 1;
+}
+
+message Presence {
+  int32 explicit_f = 1;
+  int32 implicit_f = 2 [features.field_presence = IMPLICIT];
+  int32 with_default = 3 [default = 7];
+  string str_default = 4 [default = "d"];
+  Closed first = 5;
+  string str_implicit = 6 [features.field_presence = IMPLICIT];
+}
+
+message Req {
+  int32 needed = 1 [features.field_presence = LEGACY_REQUIRED];
+}
+
+message ReqSub {
+  Req req = 1 [features.field_presence = LEGACY_REQUIRED];
+}
+
+message Enums {
+  Open open = 1;
+  Closed closed = 2;
+  repeated Closed closed_packed = 3;
+  repeated Closed closed_expanded = 4 [features.repeated_field_encoding = EXPANDED];
+  map<int32, ClosedZero> closed_map = 5;
+  map<int32, Open> open_map = 6;
+  oneof pick {
+    Closed closed_member = 7;
+    int32 other = 8;
+  }
+}
+
+message Repeats {
+  repeated int32 packed_f = 1;
+  repeated int32 expanded = 2 [features.repeated_field_encoding = EXPANDED];
+}
+
+message Utf8 {
+  string verified = 1;
+  string unchecked = 2 [features.utf8_validation = NONE];
+  repeated string list_verified = 3;
+  repeated string list_unchecked = 4 [features.utf8_validation = NONE];
+  map<string, string> map_verified = 5;
+  map<string, string> map_unchecked = 6 [features.utf8_validation = NONE];
+  oneof pick {
+    string member_verified = 7;
+    string member_unchecked = 8 [features.utf8_validation = NONE];
+  }
+}
+
+message Delimited {
+  Sub prefixed = 1;
+  Sub delimited = 2 [features.message_encoding = DELIMITED];
+  repeated Sub list_delimited = 3 [features.message_encoding = DELIMITED];
+  oneof pick {
+    Sub member_delimited = 4 [features.message_encoding = DELIMITED];
+    Sub member_prefixed = 5;
+  }
+  // Through a required check too.
+  ReqSub held = 6 [features.message_encoding = DELIMITED];
+}
+
+// Uses another file's message and closed enum.
+message Imported {
+  edf.All all = 1;
+  edf.ClosedByFile closed = 2;
+}

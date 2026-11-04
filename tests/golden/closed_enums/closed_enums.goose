@@ -5,12 +5,12 @@
 //   var m = M { .. };            an empty message: any local, global or
 //                                array element the caller owns
 //   m.f, m.f = v                 scalar fields without presence
-//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-//   M_clear_f(m)                 optional, proto2); m.f reads them, and
+//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (optional
+//   M_clear_f(m)                 or explicit); m.f reads them, and
 //                                an unset one reads as its default
 //   M_f(m) -> u8[:]              string and bytes fields: a view into
 //   M_set_f(m, v)                pb_bytes, and a copying setter; with a
-//                                proto2 default, M_f(m) -> const u8[:]
+//                                [default], M_f(m) -> const u8[:]
 //                                reads global M_f_default while unset
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
@@ -32,15 +32,15 @@
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
-//                                (PB_ERR_UTF8: a bad proto3 string;
+//                                (PB_ERR_UTF8: a string that is checked;
 //                                PB_ERR_REQUIRED: a required field is
 //                                unset, which M_is_initialized(m) checks
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed (proto2) enum does not declare as an unknown field: the field
-// stays as it was. Variable-size parts (unknown fields, strings and
+// closed enum does not declare as an unknown field: the field stays as
+// it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:

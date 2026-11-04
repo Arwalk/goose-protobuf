@@ -1,5 +1,4 @@
-// Golden: protoc hands the plugin a file of edition 2023. Until features drive
-// the emitters (gpb-buq.3) its fields have no storage, and stay unknown fields.
+// Golden: protoc hands the plugin a file of edition 2023.
 edition = "2023";
 
 package ed;

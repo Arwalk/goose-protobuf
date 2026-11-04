@@ -1,0 +1,4 @@
+# proto-message: edf.All
+implicit_f: 1 closed: CB_ONE expanded: 2 expanded: 3 unchecked: "u"
+delimited { a: 4 } subs { key: 5 value { a: 6 } }
+explicit_f: 0 prefixed { a: 7 } packed_f: 8 packed_f: 9 checked: "c" open: I_TWO

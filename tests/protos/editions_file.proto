@@ -1,0 +1,58 @@
+// Golden, and imported by editions.proto: features set on a file, which what is
+// in it inherits.
+edition = "2023";
+
+package edf;
+
+option features.field_presence = IMPLICIT;
+option features.enum_type = CLOSED;
+option features.repeated_field_encoding = EXPANDED;
+option features.utf8_validation = NONE;
+option features.message_encoding = DELIMITED;
+
+enum Inherited {
+  option features.enum_type = OPEN;
+
+  I_ZERO = 0;
+  I_TWO = 2;
+}
+
+enum ClosedByFile {
+  CB_ZERO = 0;
+  CB_ONE = 1;
+}
+
+message Sub {
+  int32 a = 1;
+}
+
+// protoc lets these features be set only on files and fields, so nested messages
+// inherit from the file, and a field overrides that.
+message Overrides {
+  message Nested {
+    repeated int32 inherited = 1;
+    string unchecked = 2;
+    string checked = 3 [features.utf8_validation = VERIFY];
+  }
+
+  repeated int32 inherited = 1;
+  repeated int32 packed_f = 2 [features.repeated_field_encoding = PACKED];
+  Nested nested = 3 [features.message_encoding = LENGTH_PREFIXED];
+}
+
+message All {
+  int32 implicit_f = 1;
+  // A closed enum needs presence.
+  ClosedByFile closed = 2 [features.field_presence = EXPLICIT];
+  repeated int32 expanded = 3;
+  string unchecked = 4;
+  Sub delimited = 5;
+  // A map stays length-prefixed, and so does a message value in it.
+  map<int32, Sub> subs = 6;
+  // The field overrides what the file says.
+  int32 explicit_f = 7 [features.field_presence = EXPLICIT];
+  Sub prefixed = 8 [features.message_encoding = LENGTH_PREFIXED];
+  repeated int32 packed_f = 9 [features.repeated_field_encoding = PACKED];
+  string checked = 10 [features.utf8_validation = VERIFY];
+  Inherited open = 11 [features.field_presence = EXPLICIT];
+}
