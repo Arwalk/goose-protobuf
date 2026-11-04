@@ -15,6 +15,7 @@ scripts/run_conformance.sh [testee] [flags]     # conformance suite
 scripts/golden.sh                               # golden tests (--update to accept)
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
+scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
 scripts/edition_defaults.sh                     # feature defaults match protoc (--update to accept)
@@ -29,7 +30,7 @@ files it imports. After an
 intended generator change, run `scripts/golden.sh --update` and review the
 golden diff in the commit, and the same with `scripts/wkt.sh --update` for the
 well-known types in `wkt/`. `scripts/test_golden.sh`,
-`scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`,
+`scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`, `scripts/test_interop.sh`,
 `scripts/test_check_generated.sh` and `scripts/test_run_conformance.sh`
 self-test the harnesses.
 
@@ -44,6 +45,13 @@ each with a `# proto-message: pkg.Msg` line, and a
 `tests/protos/<name>.proto` and the files it imports next to them, encodes each case with
 `protoc --encode` into `<case>.bin`, which the program embeds with
 `embed_file`, then builds and runs the program; it passes iff it exits 0.
+
+Interop tests: `scripts/interop.sh` needs no program. It runs every round-trip
+`.txtpb` through a generated echo (decode, encode), checking what comes out with
+`protoc --decode` and Python protobuf, and what those encode back through the echo.
+Goose's bytes must equal Python's deterministic ones, so a case whose message
+Goose only partly knows says `# interop-decode-as: pkg.Msg`. A mismatch prints a
+hex diff.
 
 ## Conventions
 

@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-# Install the pinned protoc and Goose (see TOOLCHAIN.md) into a prefix.
+# Install the pinned protoc, Goose and Python protobuf (see TOOLCHAIN.md) into a
+# prefix.
 # Usage: scripts/install_toolchain.sh [prefix]   (default: .tools)
-# Afterwards: <prefix>/bin/goose and <prefix>/bin/protoc.
+# Afterwards: <prefix>/bin/goose, <prefix>/bin/protoc, and <prefix>/python, a
+# directory for PYTHONPATH (the pure-Python wheel, so one sha256 for all).
 # Platforms: linux-x64, macos-arm64, macos-x64. Idempotent: a component
 # whose pinned version is already unpacked is skipped. Every download is
 # checked against the sha256 recorded below; a mismatch aborts.
@@ -9,6 +11,9 @@ set -euo pipefail
 
 GOOSE_VERSION="v2026.3"
 PROTOC_VERSION="36.2"
+PY_PROTOBUF_VERSION="7.36.2"
+PY_PROTOBUF_URL="https://files.pythonhosted.org/packages/e4/04/d52c7016b04b6c5108f26691f9d33ec82a9b65d041f1a9c771137693d618/protobuf-$PY_PROTOBUF_VERSION-py3-none-any.whl"
+PY_PROTOBUF_SHA="bdb3a345d48db958e6ce1f18e508beb0cc981d64f24088427549c866cd039f1e"
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 prefix="${1:-$root/.tools}"
@@ -93,6 +98,19 @@ else
   echo "protoc $PROTOC_VERSION already installed"
 fi
 ln -sfn "../protoc-$PROTOC_VERSION/bin/protoc" "$prefix/bin/protoc"
+
+# Python protobuf: a wheel is a zip, unpacked as is, with no pip or venv.
+py_dir="$prefix/python"
+if [ ! -d "$py_dir/protobuf-$PY_PROTOBUF_VERSION.dist-info" ]; then
+  echo "installing Python protobuf $PY_PROTOBUF_VERSION"
+  fetch "$PY_PROTOBUF_URL" "$PY_PROTOBUF_SHA" "$tmp/protobuf.whl"
+  rm -rf "$py_dir"
+  mkdir -p "$tmp/python"
+  unzip -q "$tmp/protobuf.whl" -d "$tmp/python"
+  mv "$tmp/python" "$py_dir"
+else
+  echo "Python protobuf $PY_PROTOBUF_VERSION already installed"
+fi
 
 "$prefix/bin/goose" version
 "$prefix/bin/protoc" --version

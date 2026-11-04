@@ -59,11 +59,15 @@ jobs:
       - name: Round-trip tests
         run: scripts/roundtrip.sh
 
+      - name: Cross-implementation round trips
+        run: scripts/interop.sh
+
       - name: Harness self-tests
         run: |
           scripts/test_golden.sh
           scripts/test_goose_tests.sh
           scripts/test_roundtrip.sh
+          scripts/test_interop.sh
           scripts/test_check_generated.sh
 
   conformance:

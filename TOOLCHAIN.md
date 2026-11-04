@@ -8,13 +8,14 @@ CI and, if needed, the golden files and the conformance failure list.
 | Zig | 0.17.1 | - | zig-protobuf v6.0.1 needs `minimum_zig_version = "0.17.0"` |
 | zig-protobuf | v6.0.1 | `b407c70b3a98` | Latest tag. Pinned by archive URL and hash in `generator/build.zig.zon`. Its own manifest says `version = "7.0.0"` |
 | protobuf / protoc | v36.2 | `2c74169b3406` | The protoc that zig-protobuf v6.0.1 downloads, and the version its conformance runs use. Submodule `third_party/protobuf` |
+| Python protobuf | 7.36.2 | - | The release of protobuf v36.2, for `scripts/interop.sh`. The pure-Python wheel, so one sha256 on every platform |
 | Goose | v2026.3 | `8511ae34bdc9` | Latest release. `goose version` prints `goose runtime 4d3da949e563`, not the tag |
 | beads (`bd`) | 1.3.2 | - | The version that created `.beads/` |
 
 ## Installing
 
-`scripts/install_toolchain.sh [prefix]` installs the pinned protoc and Goose
-into `prefix` (default `.tools/`, which is gitignored), on linux-x64,
+`scripts/install_toolchain.sh [prefix]` installs the pinned protoc, Goose and
+Python protobuf into `prefix` (default `.tools/`, which is gitignored), on linux-x64,
 macos-arm64 and macos-x64. It checks each download against a sha256 recorded
 in the script and aborts on a mismatch. It is idempotent: an
 already-unpacked pin is skipped. Then put `.tools/bin` on `PATH`:
@@ -28,7 +29,7 @@ protoc --version   # libprotoc 36.2
 
 `.tools/bin/goose` is a symlink into the unpacked release, and Goose finds
 its stdlib through it. `.tools/protoc-36.2/include` holds the well-known
-types' `.proto` files, which `scripts/wkt.sh` generates `wkt/` from. A pin change updates the version and all three sha256 sums in the
+types' `.proto` files, which `scripts/wkt.sh` generates `wkt/` from. `.tools/python` holds the unpacked protobuf wheel. A pin change updates the version and every sha256 sum in the
 script, and reruns `scripts/edition_defaults.sh --update`.
 
 ## Notes

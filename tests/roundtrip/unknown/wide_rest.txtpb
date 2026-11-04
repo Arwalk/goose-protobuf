@@ -1,5 +1,6 @@
 # proto-file: unknown.proto
 # proto-message: unknown.Wide
+# interop-decode-as: unknown.Known
 # wide.txtpb without the fields Known has: Known's unknown fields, in order.
 v: 300
 s: "unknown"
