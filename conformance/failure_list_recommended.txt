@@ -3,5 +3,5 @@
 # shrink, like that one: a new failure here is a bug.
 # After a test's name, the runner reads `#` and the rest as its failure message.
 
-# gpb-dx9.10: extensions are unknown bytes, so their UTF-8 is never looked at.
+# Decision 0009: extensions are unknown bytes, so their UTF-8 is never looked at.
 Recommended.Editions.ProtobufInput.RejectInvalidUtf8.String.Extension # Should have failed to parse, but didn't.
