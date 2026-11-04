@@ -131,6 +131,8 @@ const add_acc: Accessor = .{ .prefix = "add_", .suffix = "" };
 const map_get_acc: Accessor = .{ .prefix = "", .suffix = "_get" };
 const map_put_acc: Accessor = .{ .prefix = "", .suffix = "_put" };
 const map_remove_acc: Accessor = .{ .prefix = "", .suffix = "_remove" };
+/// The global holding a string or bytes field's [default], which is not empty.
+const default_acc: Accessor = .{ .prefix = "", .suffix = "_default" };
 
 /// The accessors every field with explicit presence has.
 const presence_accessors = [_]Accessor{ has_acc, clear_acc };
@@ -369,6 +371,12 @@ pub const FileEmitter = struct {
             for (fieldAccessors(kind, hasPresence(self.file, fd) and !isMapEntryDesc(m))) |acc| {
                 try self.claim(try accessorName(self.a, path, fname, acc), .{
                     .what = try std.fmt.allocPrint(self.a, "accessor {s}{s}{s} of {s}", .{ acc.prefix, fname, acc.suffix, full }),
+                    .generated = true,
+                });
+            }
+            if ((try defaultBytes(self.a, fd)) != null) {
+                try self.claim(try accessorName(self.a, path, fname, default_acc), .{
+                    .what = try std.fmt.allocPrint(self.a, "default of {s} of {s}", .{ fname, full }),
                     .generated = true,
                 });
             }
@@ -642,7 +650,12 @@ pub const FileEmitter = struct {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry, .closed = if (is_entry) null else try self.closedCheck(if (entry) |e| mapValueOf(e.desc) else fd), .packs = isProto3(self.file) });
+            const default = if (is_entry or repeated or sub != null or entry != null) null else try self.defaultLiteral(fd);
+            try fields.append(self.a, .{
+                .default = default,
+                .clear = if (default) |d| try std.fmt.allocPrint(self.a, "$ = {s}", .{d}) else sc.clear,
+                .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry, .closed = if (is_entry) null else try self.closedCheck(if (entry) |e| mapValueOf(e.desc) else fd), .packs = isProto3(self.file),
+            });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
@@ -686,19 +699,51 @@ pub const FileEmitter = struct {
     /// its enum is closed. The enum's own file decides that: a proto3 enum stays
     /// open in a proto2 field. Written out, the check needs nothing of that file.
     fn closedCheck(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) Error!?[]const u8 {
+        const found = (try self.enumOf(fd)) orelse return null;
+        if (!isProto2(found.file)) return null;
+        return try knownValues(self.a, found.desc);
+    }
+
+    /// The enum of field `fd`, in any file.
+    fn enumOf(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) Error!?EnumInfo {
         if (fd.type != .TYPE_ENUM) return null;
         const tn = fd.type_name orelse return null;
         const t = if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
-        if (try self.findEnum(self.file, t)) |e| return try self.closedCondition(self.file, e);
+        if (try self.findEnum(self.file, t)) |e| return .{ .desc = e, .file = self.file };
         for (self.files) |*f| {
-            if (try self.findEnum(f, t)) |e| return try self.closedCondition(f, e);
+            if (try self.findEnum(f, t)) |e| return .{ .desc = e, .file = f };
         }
         return null;
     }
 
-    fn closedCondition(self: *FileEmitter, file: *const descriptor.FileDescriptorProto, e: *const descriptor.EnumDescriptorProto) Error!?[]const u8 {
-        if (!isProto2(file)) return null;
-        return try knownValues(self.a, e);
+    /// The Goose expression of the default of singular field `fd`, if it is a
+    /// number, bool or enum whose default is not the one of its type. Only proto2
+    /// fields have one: an enum with no [default] has its first value.
+    fn defaultLiteral(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) Error!?[]const u8 {
+        if (!isProto2(self.file)) return null;
+        const t = fd.type orelse return null;
+        if (t == .TYPE_ENUM) {
+            const found = (try self.enumOf(fd)) orelse return null;
+            const number = enumDefault(found.desc, fd.default_value);
+            if (number == 0) return null;
+            return try std.fmt.allocPrint(self.a, "{d}", .{number});
+        }
+        const text = fd.default_value orelse return null;
+        return switch (t) {
+            .TYPE_STRING, .TYPE_BYTES, .TYPE_MESSAGE, .TYPE_GROUP => null,
+            .TYPE_BOOL => if (std.mem.eql(u8, text, "true")) "true" else null,
+            .TYPE_FLOAT => try floatLiteral(f32, self.a, text),
+            .TYPE_DOUBLE => try floatLiteral(f64, self.a, text),
+            else => if (std.mem.eql(u8, text, "0")) null else text,
+        };
+    }
+
+    /// The global of a string or bytes field's [default], which reads as it
+    /// while the field is not set.
+    fn emitDefaultBytes(self: *FileEmitter, name: []const u8, value: []const u8) Error!void {
+        try self.w.print("\nlet {s}: u8[{d}] = [", .{ name, value.len });
+        for (value, 0..) |c, i| try self.w.print("{s}{d}", .{ if (i == 0) "" else ", ", c });
+        try self.w.writeAll("];\n");
     }
 
     fn findEnum(self: *FileEmitter, file: *const descriptor.FileDescriptorProto, t: []const u8) Error!?*const descriptor.EnumDescriptorProto {
@@ -748,7 +793,10 @@ pub const FileEmitter = struct {
     fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, oneofs: []const *const Oneof, has_words: u32) Error!void {
         try self.w.print("struct {s} {{\n", .{goose_name});
         for (fields) |f| {
-            if (f.oneof == null) try self.w.print("    {s}: {s},\n", .{ f.name, if (f.repeated) "pb_Span" else f.sc.goose });
+            if (f.oneof != null) continue;
+            try self.w.print("    {s}: {s}", .{ f.name, if (f.repeated) "pb_Span" else f.sc.goose });
+            if (f.default) |d| try self.w.print(" = {s}", .{d});
+            try self.w.writeAll(",\n");
         }
         for (oneofs) |o| try self.w.print("    {s}: {s} = {s}.pb_none,\n", .{ o.name, o.type_name, o.type_name });
         for (0..has_words) |i| try self.w.print("    pb_has{d}: u32,   // has-bits of fields with presence\n", .{i});
@@ -1312,7 +1360,7 @@ pub const FileEmitter = struct {
                 try self.w.print("    {s}(m);\n", .{try accessorName(self.a, path, f.fd.name orelse "", clear_acc)});
                 continue;
             }
-            try self.w.print("    {f};\n", .{Subst{ .t = f.sc.clear, .x = x }});
+            try self.w.print("    {f};\n", .{Subst{ .t = f.clear, .x = x }});
         }
         for (oneofs) |o| try self.w.print("    {s}(m);\n", .{o.clear});
         for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
@@ -1547,7 +1595,21 @@ pub const FileEmitter = struct {
         const fname = f.fd.name orelse "";
         const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
         const is_bytes = f.sc.size == .bytes;
-        if (is_bytes) {
+        if (try defaultBytes(self.a, f.fd)) |value| {
+            const name = try accessorName(self.a, path, fname, default_acc);
+            const b = f.bit.?;
+            try self.emitDefaultBytes(name, value);
+            try self.w.print(
+                \\
+                \\// The contents of {s}, in pb_bytes, or {s} if it is not set: valid
+                \\// until it is next set or m is cleared.
+                \\fn {s}(m: {s}&) -> const u8[:] {{
+                \\    if (m.pb_has{d} & 0x{x:0>8}) == 0 {{ return {s}; }}
+                \\    return pb_run(pb_bytes, {s});
+                \\}}
+                \\
+            , .{ fname, name, try accessorName(self.a, path, fname, get_acc), goose_name, b / 32, bitMask(b), name, x });
+        } else if (is_bytes) {
             try self.w.print(
                 \\
                 \\// The contents of {s}, in pb_bytes: valid until it is next set or m
@@ -1585,7 +1647,7 @@ pub const FileEmitter = struct {
             b / 32, bitMask(b),
             try accessorName(self.a, path, fname, has_acc), goose_name, b / 32, bitMask(b),
             try accessorName(self.a, path, fname, clear_acc), goose_name,
-            Subst{ .t = f.sc.clear, .x = x },
+            Subst{ .t = f.clear, .x = x },
             b / 32, ~bitMask(b),
         });
     }
@@ -1920,17 +1982,38 @@ pub const FileEmitter = struct {
                 o.name, o.type_name, f.name, f.sc.goose,
             });
         } else if (f.sc.size == .bytes) {
+            if (try defaultBytes(self.a, f.fd)) |value| {
+                const name = try accessorName(self.a, path, fname, default_acc);
+                try self.emitDefaultBytes(name, value);
+                try self.w.print(
+                    \\
+                    \\// The contents of {s} in pb_bytes, {s} if it is not the member set:
+                    \\// valid until oneof {s} changes or m is cleared.
+                    \\fn {s}(m: {s}&) -> const u8[:] {{
+                    \\    match m.{s} {{
+                    \\        {s} pb_p => {{ return pb_run(pb_bytes, pb_p.v); }},
+                    \\        _ => {{}},
+                    \\    }}
+                    \\    return {s};
+                    \\}}
+                    \\
+                , .{ fname, name, o.name, get, goose_name, o.name, f.name, name });
+            } else {
+                try self.w.print(
+                    \\
+                    \\// The contents of {s} in pb_bytes, empty if it is not the member set: valid
+                    \\// until oneof {s} changes or m is cleared.
+                    \\fn {s}(m: {s}&) -> u8[:] {{
+                    \\    match m.{s} {{
+                    \\        {s} pb_p => {{ return pb_run(pb_bytes, pb_p.v); }},
+                    \\        _ => {{}},
+                    \\    }}
+                    \\    return pb_run(pb_bytes, {s});
+                    \\}}
+                    \\
+                , .{ fname, o.name, get, goose_name, o.name, f.name, empty_span });
+            }
             try self.w.print(
-                \\
-                \\// The contents of {s} in pb_bytes, empty if it is not the member set: valid
-                \\// until oneof {s} changes or m is cleared.
-                \\fn {s}(m: {s}&) -> u8[:] {{
-                \\    match m.{s} {{
-                \\        {s} pb_p => {{ return pb_run(pb_bytes, pb_p.v); }},
-                \\        _ => {{}},
-                \\    }}
-                \\    return pb_run(pb_bytes, {s});
-                \\}}
                 \\
                 \\// Makes {s} the member set, with a copy of v, which may be its own contents.
                 \\fn {s}(m: {s}&, v: const u8[:]) {{
@@ -1940,10 +2023,6 @@ pub const FileEmitter = struct {
                 \\}}
                 \\
             , .{
-                fname, o.name,
-                get, goose_name,
-                o.name, f.name,
-                empty_span,
                 fname,
                 set, goose_name,
                 empty_span,
@@ -1972,7 +2051,7 @@ pub const FileEmitter = struct {
                 fname,
                 get, goose_name, f.sc.goose,
                 o.name, f.name,
-                f.sc.zero(),
+                f.default orelse f.sc.zero(),
                 fname, f.sc.zero(),
                 set, goose_name, f.sc.goose,
                 o.clear,
@@ -2178,9 +2257,12 @@ const api_comment =
     \\//                                array element the caller owns
     \\//   m.f, m.f = v                 scalar fields without presence
     \\//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-    \\//   M_clear_f(m)                 optional, proto2); m.f reads them
+    \\//   M_clear_f(m)                 optional, proto2); m.f reads them, and
+    \\//                                an unset one reads as its default
     \\//   M_f(m) -> u8[:]              string and bytes fields: a view into
-    \\//   M_set_f(m, v)                pb_bytes, and a copying setter
+    \\//   M_set_f(m, v)                pb_bytes, and a copying setter; with a
+    \\//                                proto2 default, M_f(m) -> const u8[:]
+    \\//                                reads global M_f_default while unset
     \\//   M_f(m) -> S&?                sub-message fields: null if not set;
     \\//   M_mutable_f(m) -> S&         mutable_ first sets an empty one
     \\//   M_has_f(m), M_clear_f(m)
@@ -2217,6 +2299,12 @@ const api_comment =
     \\
     \\
 ;
+
+/// An enum and the file that declares it, which says if it is closed.
+const EnumInfo = struct {
+    desc: *const descriptor.EnumDescriptorProto,
+    file: *const descriptor.FileDescriptorProto,
+};
 
 /// A message declared in the file being generated.
 const MessageInfo = struct {
@@ -2266,6 +2354,12 @@ const Field = struct {
     closed: ?[]const u8 = null,
     /// Whether a repeated scalar is packed if it does not say: only in proto3.
     packs: bool = true,
+    /// The expression of its default, if it is not the one of its type: its
+    /// record field starts there. A string or bytes default is a global instead.
+    default: ?[]const u8 = null,
+    /// Statement resetting the value, with `$` for it: to `default`, or as
+    /// its type does.
+    clear: []const u8 = "",
 
     fn packedTag(f: Field) u64 {
         return (@as(u64, f.number()) << 3) | 2;
@@ -2507,6 +2601,83 @@ fn mapValueOf(entry: *const descriptor.DescriptorProto) *const descriptor.FieldD
         if (e.number == 2) return e;
     }
     unreachable;
+}
+
+/// The number of the value of `e` that `default_value` names, else of its first.
+fn enumDefault(e: *const descriptor.EnumDescriptorProto, default_value: ?[]const u8) i32 {
+    if (default_value) |name| {
+        for (e.value.items) |v| {
+            if (std.mem.eql(u8, v.name orelse "", name)) return v.number orelse 0;
+        }
+    }
+    if (e.value.items.len == 0) return 0;
+    return e.value.items[0].number orelse 0;
+}
+
+/// The Goose expression of float default `text`, as protoc writes it, or null
+/// if it is +0. Infinities and nan have no literal, so they go through the bits.
+fn floatLiteral(comptime T: type, a: std.mem.Allocator, text: []const u8) !?[]const u8 {
+    const is32 = T == f32;
+    if (std.mem.eql(u8, text, "inf")) return if (is32) "pb_f32_from_bits(0x7f800000)" else "pb_f64_from_bits(0x7ff0000000000000)";
+    if (std.mem.eql(u8, text, "-inf")) return if (is32) "pb_f32_from_bits(0xff800000)" else "pb_f64_from_bits(0xfff0000000000000)";
+    if (std.mem.eql(u8, text, "nan")) return if (is32) "pb_f32_from_bits(0x7fc00000)" else "pb_f64_from_bits(0x7ff8000000000000)";
+    const v = std.fmt.parseFloat(T, text) catch return text;
+    if (v == 0) return if (std.math.signbit(v)) "-0.0" else null;
+    return try std.fmt.allocPrint(a, "{e}", .{v});
+}
+
+/// The contents of the [default] of a string or bytes field, if it has one that
+/// is not empty. protoc writes a bytes default C-escaped, a string one as it is.
+fn defaultBytes(a: std.mem.Allocator, fd: *const descriptor.FieldDescriptorProto) !?[]const u8 {
+    const text = fd.default_value orelse return null;
+    if (text.len == 0) return null;
+    return switch (fd.type orelse return null) {
+        .TYPE_STRING => text,
+        .TYPE_BYTES => try cUnescape(a, text),
+        else => null,
+    };
+}
+
+fn cUnescape(a: std.mem.Allocator, text: []const u8) ![]const u8 {
+    var out: std.ArrayList(u8) = .empty;
+    var i: usize = 0;
+    while (i < text.len) {
+        const c = text[i];
+        i += 1;
+        if (c != '\\' or i == text.len) {
+            try out.append(a, c);
+            continue;
+        }
+        const e = text[i];
+        i += 1;
+        switch (e) {
+            'a' => try out.append(a, 7),
+            'b' => try out.append(a, 8),
+            'f' => try out.append(a, 12),
+            'n' => try out.append(a, '\n'),
+            'r' => try out.append(a, '\r'),
+            't' => try out.append(a, '\t'),
+            'v' => try out.append(a, 11),
+            '0'...'7' => {
+                var v: u32 = e - '0';
+                var n: u32 = 1;
+                while (n < 3 and i < text.len and text[i] >= '0' and text[i] <= '7') : (n += 1) {
+                    v = v * 8 + (text[i] - '0');
+                    i += 1;
+                }
+                try out.append(a, @truncate(v));
+            },
+            'x' => {
+                var v: u32 = 0;
+                while (i < text.len and std.ascii.isHex(text[i])) : (i += 1) {
+                    v = v * 16 + (std.fmt.charToDigit(text[i], 16) catch unreachable);
+                }
+                try out.append(a, @truncate(v));
+            },
+            else => try out.append(a, e),
+        }
+    }
+    return out.items;
 }
 
 /// The condition on pb_v that it is a value of `e`, as sorted runs of values.
@@ -2959,6 +3130,28 @@ test "a repeated message field makes a cycle; a map field stores a run of entrie
     try std.testing.expect(std.mem.indexOf(u8, out, "    a: pb_Span,\n") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "fn M_a_put(m: M&, k: i32, v: i32) {") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "reusable[] var M_AEntry_entries: M_AEntry[>..] = [];") != null);
+}
+
+test "defaults of proto2 fields are literal, and bytes are unescaped" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    try std.testing.expectEqualStrings("1.5e0", (try floatLiteral(f32, a, "1.5")).?);
+    try std.testing.expectEqualStrings("1e10", (try floatLiteral(f64, a, "1e+10")).?);
+    try std.testing.expectEqualStrings("-0.0", (try floatLiteral(f64, a, "-0")).?);
+    try std.testing.expectEqual(@as(?[]const u8, null), try floatLiteral(f64, a, "0"));
+    try std.testing.expectEqualStrings("pb_f32_from_bits(0x7fc00000)", (try floatLiteral(f32, a, "nan")).?);
+    try std.testing.expectEqualStrings("pb_f64_from_bits(0xfff0000000000000)", (try floatLiteral(f64, a, "-inf")).?);
+    try std.testing.expectEqualSlices(u8, "a\x01\xff\\\"\n?A", try cUnescape(a, "a\\001\\377\\\\\\\"\\n\\?\\x41"));
+    const named: descriptor.FieldDescriptorProto = .{ .name = "s", .type = .TYPE_BYTES, .default_value = "\\377" };
+    try std.testing.expectEqualSlices(u8, "\xff", (try defaultBytes(a, &named)).?);
+    const empty: descriptor.FieldDescriptorProto = .{ .name = "s", .type = .TYPE_STRING, .default_value = "" };
+    try std.testing.expectEqual(@as(?[]const u8, null), try defaultBytes(a, &empty));
+    var e: descriptor.EnumDescriptorProto = .{ .name = "E" };
+    try e.value.append(a, .{ .name = "A", .number = 3 });
+    try e.value.append(a, .{ .name = "B", .number = 1 });
+    try std.testing.expectEqual(@as(i32, 3), enumDefault(&e, null));
+    try std.testing.expectEqual(@as(i32, 1), enumDefault(&e, "B"));
 }
 
 test "the values of a closed enum are checked as sorted runs" {

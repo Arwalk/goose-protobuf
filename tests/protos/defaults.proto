@@ -1,0 +1,70 @@
+// Golden and round-trip (tests/roundtrip/defaults/): proto2 defaults. An unset
+// field reads as its default, and is not encoded.
+syntax = "proto2";
+
+package def;
+
+import "closed_enums_other.proto";
+
+enum Color {
+  // Not 0: an enum with no [default] reads as its first value.
+  YELLOW = 3;
+  GREEN = 1;
+  BLUE = 5;
+}
+
+message All {
+  optional int32 v_int32 = 1 [default = -5];
+  optional int64 v_int64 = 2 [default = -9223372036854775808];
+  optional uint32 v_uint32 = 3 [default = 4294967295];
+  optional uint64 v_uint64 = 4 [default = 18446744073709551615];
+  optional sint32 v_sint32 = 5 [default = -6];
+  optional sint64 v_sint64 = 6 [default = -7];
+  optional fixed32 v_fixed32 = 7 [default = 8];
+  optional fixed64 v_fixed64 = 8 [default = 9];
+  optional sfixed32 v_sfixed32 = 9 [default = -10];
+  optional sfixed64 v_sfixed64 = 10 [default = -11];
+  optional float v_float = 11 [default = 1.5];
+  optional double v_double = 12 [default = -2.5e300];
+  optional float exp_float = 13 [default = 1e10];
+  optional double hex_int = 14 [default = 16];
+  optional bool v_true = 15 [default = true];
+  optional bool v_false = 16 [default = false];
+  optional string v_string = 17 [default = "h\303\251llo \"q\"\n"];
+  optional bytes v_bytes = 18 [default = "a\001\377\\\"\x41\n"];
+  optional Color v_named = 19 [default = BLUE];
+  optional Color v_first = 20;
+  optional other_e.Outer.Nested v_imported = 21;
+  optional float inf_float = 22 [default = inf];
+  optional float neg_inf_float = 23 [default = -inf];
+  optional float nan_float = 24 [default = nan];
+  optional double inf_double = 25 [default = inf];
+  optional double neg_inf_double = 26 [default = -inf];
+  optional double nan_double = 27 [default = nan];
+  optional double neg_zero = 28 [default = -0.0];
+  optional int32 zero = 29 [default = 0];
+  optional string empty = 30 [default = ""];
+  optional int32 hex = 31 [default = 0x10];
+}
+
+message Pick {
+  oneof pick {
+    int32 p_int = 1 [default = 3];
+    string p_string = 2 [default = "x"];
+    bytes p_bytes = 3 [default = "\377"];
+    Color p_named = 4 [default = BLUE];
+    Color p_first = 5;
+    double p_nan = 6 [default = nan];
+    bool p_bool = 7 [default = true];
+  }
+}
+
+message Req {
+  required int32 r = 1 [default = 7];
+}
+
+// Held in a pool slot, and in a run of links.
+message Holder {
+  optional All one = 1;
+  repeated All many = 2;
+}

@@ -6,9 +6,12 @@
 //                                array element the caller owns
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-//   M_clear_f(m)                 optional, proto2); m.f reads them
+//   M_clear_f(m)                 optional, proto2); m.f reads them, and
+//                                an unset one reads as its default
 //   M_f(m) -> u8[:]              string and bytes fields: a view into
-//   M_set_f(m, v)                pb_bytes, and a copying setter
+//   M_set_f(m, v)                pb_bytes, and a copying setter; with a
+//                                proto2 default, M_f(m) -> const u8[:]
+//                                reads global M_f_default while unset
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
@@ -59,9 +62,9 @@ let Mode_MODE_MAX: i32 = 2147483647;
 
 // message closed_e.M
 struct M {
-    mode: i32,
-    inner: i32,
-    nested: i32,
+    mode: i32 = 7,
+    inner: i32 = 1,
+    nested: i32 = 2,
     open: i32,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
@@ -160,9 +163,9 @@ fn M_size_of(m: M&) -> i64 {
 
 // Frees what m owns and resets it to the empty message.
 fn M_clear(m: M&) {
-    m.mode = 0;
-    m.inner = 0;
-    m.nested = 0;
+    m.mode = 7;
+    m.inner = 1;
+    m.nested = 2;
     m.open = 0;
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
@@ -191,7 +194,7 @@ fn M_set_mode(m: M&, v: i32) {
 fn M_has_mode(m: M&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
 
 fn M_clear_mode(m: M&) {
-    m.mode = 0;
+    m.mode = 7;
     m.pb_has0 &= 0xfffffffe;
 }
 
@@ -205,7 +208,7 @@ fn M_set_inner(m: M&, v: i32) {
 fn M_has_inner(m: M&) -> bool { return (m.pb_has0 & 0x00000002) != 0; }
 
 fn M_clear_inner(m: M&) {
-    m.inner = 0;
+    m.inner = 1;
     m.pb_has0 &= 0xfffffffd;
 }
 
@@ -219,7 +222,7 @@ fn M_set_nested(m: M&, v: i32) {
 fn M_has_nested(m: M&) -> bool { return (m.pb_has0 & 0x00000004) != 0; }
 
 fn M_clear_nested(m: M&) {
-    m.nested = 0;
+    m.nested = 2;
     m.pb_has0 &= 0xfffffffb;
 }
 
@@ -242,7 +245,7 @@ let M_Inner_INNER_ONE: i32 = 1;
 
 // message closed_e.Req
 struct Req {
-    mode: i32,
+    mode: i32 = 7,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
@@ -305,7 +308,7 @@ fn Req_size_of(m: Req&) -> i64 {
 
 // Frees what m owns and resets it to the empty message.
 fn Req_clear(m: Req&) {
-    m.mode = 0;
+    m.mode = 7;
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
@@ -336,7 +339,7 @@ fn Req_set_mode(m: Req&, v: i32) {
 fn Req_has_mode(m: Req&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
 
 fn Req_clear_mode(m: Req&) {
-    m.mode = 0;
+    m.mode = 7;
     m.pb_has0 &= 0xfffffffe;
 }
 

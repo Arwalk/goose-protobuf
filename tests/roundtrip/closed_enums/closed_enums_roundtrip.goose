@@ -44,7 +44,7 @@ fn main() {
 
     // Accessors, and a deep copy keeps presence.
     closed_e::M_clear_mode(m);
-    if closed_e::M_has_mode(m) || m.mode != 0 { fail_at("accessors", "clear_"); }
+    if closed_e::M_has_mode(m) || m.mode != closed_e::Mode_MODE_SEVEN { fail_at("accessors", "clear_"); }
     closed_e::M_set_mode(m, closed_e::Mode_MODE_ZERO);
     if !closed_e::M_has_mode(m) { fail_at("accessors", "set_"); }
     var c = closed_e::M { .. };
@@ -63,15 +63,15 @@ fn main() {
     let v8: u8[2] = [0x08, 8];
     check_mode("8", v8, true, 8);
     let v1: u8[2] = [0x08, 1];
-    check_mode("1", v1, false, 0);
+    check_mode("1", v1, false, closed_e::Mode_MODE_SEVEN);
     let v5: u8[2] = [0x08, 5];
-    check_mode("5", v5, false, 0);
+    check_mode("5", v5, false, closed_e::Mode_MODE_SEVEN);
     let v9: u8[2] = [0x08, 9];
-    check_mode("9", v9, false, 0);
+    check_mode("9", v9, false, closed_e::Mode_MODE_SEVEN);
     let neg1: u8[11] = [0x08, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01];
     check_mode("-1", neg1, true, -1);
     let neg2: u8[11] = [0x08, 0xfe, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0x01];
-    check_mode("-2", neg2, false, 0);
+    check_mode("-2", neg2, false, closed_e::Mode_MODE_SEVEN);
     let imax: u8[6] = [0x08, 0xff, 0xff, 0xff, 0xff, 0x07];
     check_mode("max", imax, true, 2147483647);
     let imin: u8[11] = [0x08, 0x80, 0x80, 0x80, 0x80, 0xf8, 0xff, 0xff, 0xff, 0xff, 0x01];
@@ -79,7 +79,7 @@ fn main() {
 
     // A non-canonical unknown value keeps its bytes, as an overlong varint.
     let long: u8[3] = [0x08, 0x81, 0x00];
-    check_mode("overlong", long, false, 0);
+    check_mode("overlong", long, false, closed_e::Mode_MODE_SEVEN);
 
     // An unknown value leaves an earlier one in place, and a later one wins.
     let seq: u8[6] = [0x08, 6, 0x08, 1, 0x08, 7];

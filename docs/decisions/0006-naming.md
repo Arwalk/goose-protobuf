@@ -131,6 +131,8 @@ the reserved list, in `generator/src/emit.zig`:
   is stored the same way, with `<M>_is_initialized` (gpb-6xy.4) on any message
   that can reach one. The name is claimed for every message. A field is unset until set, read as 0 until
   gpb-6xy.2 brings declared defaults.
+  A string or bytes field with a proto2 `[default]` also has the global
+  `<M>_<f>_default` (gpb-6xy.2), so its getter returns `const u8[:]`.
 - A singular message field (gpb-8qn.2) has `<M>_<f>`, which returns the
   sub-message or null; `<M>_mutable_<f>`, which first sets an empty one
   if there is none; and `<M>_has_<f>` and `<M>_clear_<f>`. Its link is

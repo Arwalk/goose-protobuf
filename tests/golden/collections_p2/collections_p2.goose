@@ -6,9 +6,12 @@
 //                                array element the caller owns
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-//   M_clear_f(m)                 optional, proto2); m.f reads them
+//   M_clear_f(m)                 optional, proto2); m.f reads them, and
+//                                an unset one reads as its default
 //   M_f(m) -> u8[:]              string and bytes fields: a view into
-//   M_set_f(m, v)                pb_bytes, and a copying setter
+//   M_set_f(m, v)                pb_bytes, and a copying setter; with a
+//                                proto2 default, M_f(m) -> const u8[:]
+//                                reads global M_f_default while unset
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
@@ -1092,7 +1095,7 @@ fn Pick_f(m: Pick&) -> i32 {
         f pb_p => { return pb_p.v; },
         _ => {},
     }
-    return 0;
+    return 1;
 }
 
 // Makes f the member set, with value v: it is encoded even when 0.

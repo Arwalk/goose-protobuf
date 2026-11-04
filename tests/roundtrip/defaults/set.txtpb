@@ -1,0 +1,2 @@
+# proto-message: def.All
+v_int32: -5 v_string: "" v_named: BLUE v_first: GREEN nan_float: 1 zero: 0
