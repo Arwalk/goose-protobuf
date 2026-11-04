@@ -4,7 +4,7 @@
 [Goose](https://aardappel.github.io/goose/) code for the **protobuf binary
 wire format**. It is tested against the official protobuf conformance suite.
 
-Status: Phase 3 in progress. The plugin emits one `.goose` file per `.proto`
+Status: Phase 3 complete. The plugin emits one `.goose` file per `.proto`
 file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
 those (packed or not), oneofs as ADTs and maps, with `optional` presence and
