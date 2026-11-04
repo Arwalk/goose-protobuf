@@ -1,0 +1,10 @@
+// Golden, and imported by closed_enums.proto: a proto3 enum is open, even when
+// a proto2 field uses it.
+syntax = "proto3";
+
+package open_e;
+
+enum Open {
+  OPEN_ZERO = 0;
+  OPEN_ONE = 1;
+}

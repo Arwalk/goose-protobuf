@@ -35,8 +35,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, strings and bytes, sub-messages, repeated fields)
+// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
+// closed (proto2) enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
+// bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
 // use M_copy.
@@ -44,9 +46,6 @@
 namespace req;
 
 import pb_wire;
-
-// enum req.Mode
-let Mode_MODE_A: i32 = 0;
 
 // message req.Inner
 struct Inner {
@@ -692,4 +691,91 @@ fn NotStored_copy(dst: NotStored&, src: NotStored&) {
     if dst .== src { return; }
     NotStored_clear(dst);
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// message req.NotStored.Grp
+struct NotStored_Grp {
+    g: i32,
+    pb_has0: u32,   // has-bits of fields with presence
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
+
+// A link to a NotStored_Grp in NotStored_Grp_pool, for sub-message fields.
+struct NotStored_Grp_Ref { m: NotStored_Grp&<u32 in NotStored_Grp_pool>? }
+reusable var NotStored_Grp_pool: NotStored_Grp[>..] = [];
+reusable[] var NotStored_Grp_links: NotStored_Grp_Ref[>..] = [];
+
+// Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
+fn NotStored_Grp_decode_from(r: pb_Reader&, m: NotStored_Grp&) {
+    var unknown_len: i64 = m.pb_unknown.len;
+    while r.pos < r.end {
+        let start = r.pos;
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { break; }
+        if tag == 8 {
+            m.g = pb_u64_to_int32(pb_read_varint(r));
+            m.pb_has0 |= 0x00000001;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
+    }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn NotStored_Grp_decode(buf: const u8[:], m: NotStored_Grp&) -> i32 {
+    var r = pb_reader(buf);
+    NotStored_Grp_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, NotStored_Grp_size_of(m) bytes, to out.
+fn NotStored_Grp_encode(m: NotStored_Grp&, out: u8[>..]&) {
+    if (m.pb_has0 & 0x00000001) != 0 {
+        pb_write_varint(out, 8);
+        pb_write_varint(out, pb_int32_to_u64(m.g));
+    }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
+}
+
+// The size of m's wire encoding, in bytes.
+fn NotStored_Grp_size_of(m: NotStored_Grp&) -> i64 {
+    var n: i64 = 0;
+    if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.g)); }
+    n += m.pb_unknown.len;
+    return n;
+}
+
+// Frees what m owns and resets it to the empty message.
+fn NotStored_Grp_clear(m: NotStored_Grp&) {
+    m.g = 0;
+    m.pb_has0 = 0;
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn NotStored_Grp_copy(dst: NotStored_Grp&, src: NotStored_Grp&) {
+    if dst .== src { return; }
+    NotStored_Grp_clear(dst);
+    dst.g = src.g;
+    dst.pb_has0 = src.pb_has0;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// Sets g and marks it present:
+// it is encoded even when 0.
+fn NotStored_Grp_set_g(m: NotStored_Grp&, v: i32) {
+    m.g = v;
+    m.pb_has0 |= 0x00000001;
+}
+
+fn NotStored_Grp_has_g(m: NotStored_Grp&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
+
+fn NotStored_Grp_clear_g(m: NotStored_Grp&) {
+    m.g = 0;
+    m.pb_has0 &= 0xfffffffe;
 }

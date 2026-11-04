@@ -143,7 +143,7 @@ fn check_kinds() {
     holder::Uses_clear(two);
 }
 
-// A required enum is stored later: decoding does not fail on what it cannot see.
+// A required group is stored later: decoding does not fail on what it cannot see.
 fn check_not_stored() {
     var m = req::NotStored { .. };
     let none: u8[0] = [];

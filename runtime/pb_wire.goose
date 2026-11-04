@@ -536,6 +536,12 @@ fn pb_append_unknown(r: pb_Reader&, start: i64, tag: u32, out: u8[>..]&) {
 fn pb_unknown_append(r: pb_Reader&, start: i64, tag: u32, s: pb_Span&, used: i64&) {
     pb_skip_field(r, tag);
     if r.err != PB_OK { return; }
+    pb_unknown_keep(r, start, s, used);
+}
+
+// Appends the field just read, whose tag began at start, to run s, as
+// pb_unknown_append does.
+fn pb_unknown_keep(r: pb_Reader&, start: i64, s: pb_Span&, used: i64&) {
     let n = r.pos - start;
     if used + n > s.len {
         var cap: i64 = s.len * 2;

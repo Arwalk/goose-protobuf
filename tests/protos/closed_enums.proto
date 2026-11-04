@@ -1,0 +1,43 @@
+// Golden and round-trip (tests/roundtrip/closed_enums/): singular proto2 enum
+// fields are stored, with presence, and a value that the enum does not declare
+// stays an unknown field.
+syntax = "proto2";
+
+package closed_e;
+
+import "closed_enums_open.proto";
+import "closed_enums_other.proto";
+
+enum Mode {
+  option allow_alias = true;
+
+  // Out of order, with an alias, a run, and both ends of the range.
+  MODE_SEVEN = 7;
+  MODE_ZERO = 0;
+  MODE_SIX = 6;
+  MODE_SIX_AGAIN = 6;
+  MODE_EIGHT = 8;
+  MODE_NEG = -1;
+  MODE_MIN = -2147483648;
+  MODE_MAX = 2147483647;
+}
+
+message M {
+  enum Inner {
+    INNER_ONE = 1;
+  }
+
+  optional Mode mode = 1;
+  optional Inner inner = 2;
+  optional other_e.Outer.Nested nested = 3;
+  optional open_e.Open open = 4;
+}
+
+message Req {
+  required Mode mode = 1;
+}
+
+// Required through a message it holds.
+message Holder {
+  optional Req req = 1;
+}

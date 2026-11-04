@@ -114,12 +114,13 @@ fn main() {
     }
     p2::Pres_clear(m);
 
-    // Later: only `stored` is stored. The rest, unknown for now, stay on the wire.
+    // Later: only `stored` and `mode` are stored. The rest, unknown for now, stay on the wire.
     let later = embed_file("later.bin");
     var l = p2::Later { .. };
     if p2::Later_decode(later, l) != PB_OK { fail_at("later", "decode"); }
     if !p2::Later_has_stored(l) || l.stored != 1 { fail_at("later", "stored"); }
-    if l.pb_unknown.len != later.len - 2 { fail_at("later", str("unknown bytes ", l.pb_unknown.len, " of ", later.len)); }
+    if !p2::Later_has_mode(l) || l.mode != p2::Mode_MODE_B { fail_at("later", "mode"); }
+    if l.pb_unknown.len != later.len - 4 { fail_at("later", str("unknown bytes ", l.pb_unknown.len, " of ", later.len)); }
     var lo: u8[>..] = [];
     p2::Later_encode(l, lo);
     if lo != later { fail_at("later", "re-encoding differs"); }

@@ -1,0 +1,11 @@
+// Golden, and imported by closed_enums.proto: a proto2 enum of another file is
+// closed too, and using it does not import the file.
+syntax = "proto2";
+
+package other_e;
+
+message Outer {
+  enum Nested {
+    NESTED_TWO = 2;
+  }
+}

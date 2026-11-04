@@ -29,9 +29,8 @@ message Free {
 
 // A required field of a kind not stored yet is not checked: it would be a
 // false failure, as it is kept as an unknown field.
-enum Mode {
-  MODE_A = 0;
-}
 message NotStored {
-  required Mode mode = 1;
+  required group Grp = 1 {
+    optional int32 g = 1;
+  }
 }

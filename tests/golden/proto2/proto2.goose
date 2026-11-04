@@ -35,8 +35,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-// fields, strings and bytes, sub-messages, repeated fields)
+// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
+// closed (proto2) enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
+// bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
 // use M_copy.
@@ -801,6 +803,7 @@ fn Req_clear_r_string(m: Req&) {
 // message p2.Later
 struct Later {
     stored: i32,
+    mode: i32,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
@@ -822,6 +825,15 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
         if tag == 8 {
             m.stored = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
+        } else if tag == 16 {
+            let pb_v = pb_u64_to_int32(pb_read_varint(r));
+            if r.err != PB_OK { break; }
+            if (pb_v >= 0 && pb_v <= 1) {
+                m.mode = pb_v;
+                m.pb_has0 |= 0x00000002;
+            } else {
+                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+            }
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -843,6 +855,10 @@ fn Later_encode(m: Later&, out: u8[>..]&) {
         pb_write_varint(out, 8);
         pb_write_varint(out, pb_int32_to_u64(m.stored));
     }
+    if (m.pb_has0 & 0x00000002) != 0 {
+        pb_write_varint(out, 16);
+        pb_write_varint(out, pb_int32_to_u64(m.mode));
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
@@ -850,6 +866,7 @@ fn Later_encode(m: Later&, out: u8[>..]&) {
 fn Later_size_of(m: Later&) -> i64 {
     var n: i64 = 0;
     if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.stored)); }
+    if (m.pb_has0 & 0x00000002) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.mode)); }
     n += m.pb_unknown.len;
     return n;
 }
@@ -857,6 +874,7 @@ fn Later_size_of(m: Later&) -> i64 {
 // Frees what m owns and resets it to the empty message.
 fn Later_clear(m: Later&) {
     m.stored = 0;
+    m.mode = 0;
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
@@ -867,6 +885,7 @@ fn Later_copy(dst: Later&, src: Later&) {
     if dst .== src { return; }
     Later_clear(dst);
     dst.stored = src.stored;
+    dst.mode = src.mode;
     dst.pb_has0 = src.pb_has0;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
@@ -883,6 +902,20 @@ fn Later_has_stored(m: Later&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
 fn Later_clear_stored(m: Later&) {
     m.stored = 0;
     m.pb_has0 &= 0xfffffffe;
+}
+
+// Sets mode and marks it present:
+// it is encoded even when 0.
+fn Later_set_mode(m: Later&, v: i32) {
+    m.mode = v;
+    m.pb_has0 |= 0x00000002;
+}
+
+fn Later_has_mode(m: Later&) -> bool { return (m.pb_has0 & 0x00000002) != 0; }
+
+fn Later_clear_mode(m: Later&) {
+    m.mode = 0;
+    m.pb_has0 &= 0xfffffffd;
 }
 
 // message p2.Later.CountsEntry

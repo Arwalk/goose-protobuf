@@ -140,8 +140,9 @@ after a decode with no other error, from `M_is_initialized(m)`, which walks the
 whole message. Checking each occurrence of a sub-message would be wrong, since a
 later one that merges into it may set what an earlier one lacks. That function
 exists only for a message that can reach a required field, so proto3-only code
-pays nothing. A required field of a kind not stored yet, an enum or a group, is
-not checked, as it would fail falsely.
+pays nothing. A required field of a kind not stored yet, a group, is not
+checked, as it would fail falsely. A required enum whose value the enum does not
+declare stays unset, so it fails.
 
 ## Consequences
 

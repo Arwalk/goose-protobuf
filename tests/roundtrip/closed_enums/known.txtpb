@@ -1,0 +1,2 @@
+# proto-message: closed_e.M
+mode: MODE_NEG inner: INNER_ONE nested: NESTED_TWO open: OPEN_ONE

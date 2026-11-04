@@ -9,7 +9,7 @@ file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
 those (packed or not), oneofs as ADTs and maps, with `optional` presence and
 unknown fields kept. Phase 4 is under way: singular proto2 fields are stored, with
-presence, and a missing required field fails decoding; proto2's enums, groups, extensions and repeated, oneof and map fields
+presence, and a missing required field fails decoding; singular proto2 enums are closed, so a value they do not declare stays an unknown field; proto2's groups, extensions and repeated, oneof and map fields
 are kept as unknown fields. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers them. Every
 required proto3 binary conformance test passes. The backlog lives in beads
 (`bd ready`).

@@ -641,7 +641,7 @@ pub const FileEmitter = struct {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry });
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry, .closed = try self.closedCheck(fd) });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
@@ -679,6 +679,40 @@ pub const FileEmitter = struct {
             .{ self.file.name orelse "", full, rname },
         );
         return error.NameCollision;
+    }
+
+    /// The condition on pb_v that a value of enum field `fd` is declared, if
+    /// its enum is closed. The enum's own file decides that: a proto3 enum stays
+    /// open in a proto2 field. Written out, the check needs nothing of that file.
+    fn closedCheck(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) Error!?[]const u8 {
+        if (fd.type != .TYPE_ENUM) return null;
+        const tn = fd.type_name orelse return null;
+        const t = if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
+        if (try self.findEnum(self.file, t)) |e| return try self.closedCondition(self.file, e);
+        for (self.files) |*f| {
+            if (try self.findEnum(f, t)) |e| return try self.closedCondition(f, e);
+        }
+        return null;
+    }
+
+    fn closedCondition(self: *FileEmitter, file: *const descriptor.FileDescriptorProto, e: *const descriptor.EnumDescriptorProto) Error!?[]const u8 {
+        if (!isProto2(file)) return null;
+        return try knownValues(self.a, e);
+    }
+
+    fn findEnum(self: *FileEmitter, file: *const descriptor.FileDescriptorProto, t: []const u8) Error!?*const descriptor.EnumDescriptorProto {
+        return self.findEnumIn(file.enum_type.items, file.message_type.items, file.package orelse "", t);
+    }
+
+    fn findEnumIn(self: *FileEmitter, enums: []const descriptor.EnumDescriptorProto, msgs: []const descriptor.DescriptorProto, scope: []const u8, t: []const u8) Error!?*const descriptor.EnumDescriptorProto {
+        for (enums) |*e| {
+            if (std.mem.eql(u8, try self.fullName(scope, e.name orelse ""), t)) return e;
+        }
+        for (msgs) |*m| {
+            const found = try self.findEnumIn(m.enum_type.items, m.nested_type.items, try self.fullName(scope, m.name orelse ""), t);
+            if (found) |e| return e;
+        }
+        return null;
     }
 
     /// The storage of a sub-message field: a link, whose presence is the
@@ -782,6 +816,21 @@ pub const FileEmitter = struct {
                     \\            m.{s} = {s}.{s} {{ v: pb_v }};
                     \\
                 , .{ Subst{ .t = f.sc.read, .x = empty_span }, o.clear, o.name, o.type_name, f.name });
+                continue;
+            }
+            if (f.closed) |known| {
+                // Its value, as it is on the wire, goes with the unknown fields.
+                try self.w.print(
+                    \\            let pb_v = {f};
+                    \\            if r.err != PB_OK {{ break; }}
+                    \\            if {s} {{
+                    \\                {s} = pb_v;
+                    \\                m.pb_has{d} |= 0x{x:0>8};
+                    \\            }} else {{
+                    \\                pb_unknown_keep(r, start, m.pb_unknown, unknown_len);
+                    \\            }}
+                    \\
+                , .{ Subst{ .t = f.sc.read, .x = x }, known, x, f.bit.? / 32, bitMask(f.bit.?) });
                 continue;
             }
             try self.w.print("            {s} = {f};\n", .{ x, Subst{ .t = f.sc.read, .x = x } });
@@ -2091,8 +2140,10 @@ const api_comment =
     \\//                                in a message that can hold one)
     \\//   M_clear(m)                   frees what m owns, empties it
     \\//   M_copy(dst, src)             makes dst a deep copy of src
-    \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
-    \\// fields, strings and bytes, sub-messages, repeated fields)
+    \\// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
+    \\// closed (proto2) enum does not declare as an unknown field: the field
+    \\// stays as it was. Variable-size parts (unknown fields, strings and
+    \\// bytes, sub-messages, repeated fields)
     \\// live in global pools (pb_bytes, M_pool, M_links): clear a message
     \\// to free them. Assigning a record copies spans, not their contents:
     \\// use M_copy.
@@ -2142,6 +2193,9 @@ const Field = struct {
     map: ?MessageInfo = null,
     /// A field of a map entry: encoded even at its default, as protobuf does.
     always: bool = false,
+    /// An enum field of a closed enum: the condition on pb_v that a value is
+    /// declared. Any other value is kept as an unknown field.
+    closed: ?[]const u8 = null,
 
     fn packedTag(f: Field) u64 {
         return (@as(u64, f.number()) << 3) | 2;
@@ -2363,13 +2417,8 @@ fn isRealOneof(m: *const descriptor.DescriptorProto, i: usize) bool {
 /// enum, string or bytes field.
 fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
     if (!isStorable(file, fd)) return null;
-    if (isProto2(file)) {
-        // A proto2 enum is closed, which storing it would not honour yet:
-        // kept as an unknown field, it is at least preserved. A proto2
-        // string is not validated.
-        if (fd.type == .TYPE_ENUM) return null;
-        if (fd.type == .TYPE_STRING) return &sc_bytes;
-    }
+    // A proto2 string is not validated.
+    if (isProto2(file) and fd.type == .TYPE_STRING) return &sc_bytes;
     return scalarOfType(fd);
 }
 
@@ -2379,6 +2428,27 @@ fn repeatedScalarOf(file: *const descriptor.FileDescriptorProto, fd: *const desc
     if (fd.label != .LABEL_REPEATED) return null;
     if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return null;
     return scalarOfType(fd);
+}
+
+/// The condition on pb_v that it is a value of `e`, as sorted runs of values.
+fn knownValues(a: std.mem.Allocator, e: *const descriptor.EnumDescriptorProto) ![]const u8 {
+    const values = try a.alloc(i64, e.value.items.len);
+    for (values, e.value.items) |*v, ev| v.* = ev.number orelse 0;
+    std.mem.sortUnstable(i64, values, {}, std.sort.asc(i64));
+    var out: std.ArrayList(u8) = .empty;
+    var i: usize = 0;
+    while (i < values.len) {
+        var j = i;
+        while (j + 1 < values.len and values[j + 1] <= values[j] + 1) j += 1;
+        if (out.items.len > 0) try out.appendSlice(a, " || ");
+        if (values[i] == values[j]) {
+            try out.print(a, "pb_v == {d}", .{values[i]});
+        } else {
+            try out.print(a, "(pb_v >= {d} && pb_v <= {d})", .{ values[i], values[j] });
+        }
+        i = j + 1;
+    }
+    return out.items;
 }
 
 /// True if `info` is the synthetic entry of a map field.
@@ -2692,7 +2762,7 @@ test "proto3 optional is stored with a has-bit; a real oneof as an ADT; proto2 i
     try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &m.field.items[0]));
 }
 
-test "singular proto2 fields are stored, but not enums; editions are not stored" {
+test "singular proto2 fields are stored, enums too; editions are not stored" {
     const p2: descriptor.FileDescriptorProto = .{};
     const named: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
     const ed: descriptor.FileDescriptorProto = .{ .syntax = "editions" };
@@ -2705,7 +2775,7 @@ test "singular proto2 fields are stored, but not enums; editions are not stored"
     try std.testing.expectEqual(@as(?*const Scalar, &sc_int32), scalarOf(&named, &i));
     try std.testing.expectEqual(@as(?*const Scalar, &sc_int32), scalarOf(&p2, &r));
     try std.testing.expectEqualStrings("pb_read_bytes(r, $)", scalarOf(&p2, &s).?.read);
-    try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &e));
+    try std.testing.expectEqual(@as(?*const Scalar, &sc_int32), scalarOf(&p2, &e));
     try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &g));
     try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&ed, &i));
     try std.testing.expect(hasPresence(&p2, &i));
@@ -2799,6 +2869,15 @@ test "a repeated message field makes a cycle; a map field stores a run of entrie
     try std.testing.expect(std.mem.indexOf(u8, out, "    a: pb_Span,\n") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "fn M_a_put(m: M&, k: i32, v: i32) {") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "reusable[] var M_AEntry_entries: M_AEntry[>..] = [];") != null);
+}
+
+test "the values of a closed enum are checked as sorted runs" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var e: descriptor.EnumDescriptorProto = .{ .name = "E" };
+    for ([_]i32{ 7, 0, 6, 6, 8, -1, 3 }) |v| try e.value.append(a, .{ .number = v });
+    try std.testing.expectEqualStrings("(pb_v >= -1 && pb_v <= 0) || pb_v == 3 || (pb_v >= 6 && pb_v <= 8)", try knownValues(a, &e));
 }
 
 test "well-known files are recognised by name and package" {
