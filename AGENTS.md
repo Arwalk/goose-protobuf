@@ -84,6 +84,11 @@ Each phase is an epic, and each task carries labels from `generator`,
 yet, so the Dolt database is local only. `.beads/issues.jsonl`, the
 committed export, is the git-tracked copy.
 
+**The project owner handles the remote, pushes, tags and releases.** Agents
+do not add a remote, push, tag or ask about them. The repository will be on
+GitHub, so CI is GitHub Actions (`.github/workflows/ci.yml`), which cannot run
+until the owner pushes.
+
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:1105d646 -->
 ## Beads Issue Tracker
 

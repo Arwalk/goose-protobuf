@@ -1,7 +1,8 @@
 # 0005: generated code imports pb_wire by bare name
 
 - Status: accepted. The owner chose to publish from this repository
-  (gpb-dx9.6), and that is done: only the host and path remain (gpb-dx9.1).
+  (gpb-dx9.6), and that is done. It will be hosted on GitHub; the owner adds the
+remote and makes the releases, when the project is ready (gpb-dx9.1).
 - Date: 2026-11-04
 - Bead: gpb-wof.5
 - Toolchain: Goose v2026.3 (`goose runtime 4d3da949e563`), linux-x64
@@ -75,7 +76,7 @@ three.
 
 ## Release procedure
 
-Once there is a remote (gpb-dx9.1 settles the path), for version `X.Y.Z`:
+For the project owner, once there is a remote, for version `X.Y.Z`:
 
 1. On `main`, with every gate green (the commands in AGENTS.md).
 2. `git tag -a vX.Y.Z -m "vX.Y.Z"`, then push the tag.
