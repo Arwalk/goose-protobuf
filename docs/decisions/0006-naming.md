@@ -141,6 +141,15 @@ the reserved list, in `generator/src/emit.zig`:
 - A repeated message field (gpb-gp4.2) has `<M>_<f>`, a view of its links;
   `<M>_<f>_at`; `<M>_add_<f>`, which returns the new message; and
   `<M>_clear_<f>`. It has no set_.
+- A real oneof `o` (gpb-gp4.3) has the type `<M>_o` and record field `o`, an
+  ADT to match on, whose variants are `pb_none`, which no field name can be, and
+  the escaped name of each member, with its value in the payload field `v`;
+  and `<M>_clear_o`. Generated names, so a nested type yields to them. Each
+  member has `<M>_<f>`, which reads the default if another member is set, and
+  `<M>_has_<f>` and `<M>_clear_<f>`, which clears only if `f` is the member set;
+  plus `<M>_set_<f>`, or for a message `<M>_mutable_<f>`, which makes it the
+  member set. Decoding reads a value before it replaces the member, so a
+  value that fails to read replaces nothing.
 - The accessors of map fields are provisional: 0001 does not fix them. The
   task that emits them updates the table, its goldens and this note.
 

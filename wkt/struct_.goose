@@ -18,6 +18,11 @@
 //   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
+//   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
+//   M_has_f(m), M_clear_f(m)     default if another member is set;
+//   M_mutable_f(m) -> S&         messages have mutable_, not set_.
+//   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
+//                                or a variant f { v } per member
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -220,7 +225,18 @@ fn Struct_FieldsEntry_clear_value(m: Struct_FieldsEntry&) {
 }
 
 // message google.protobuf.Value
+enum Value_kind {
+    pb_none,
+    null_value { v: i32 },
+    number_value { v: f64 },
+    string_value { v: pb_Span },
+    bool_value { v: bool },
+    struct_value { v: Struct_Ref },
+    list_value { v: ListValue_Ref },
+}
+
 struct Value {
+    kind: Value_kind = Value_kind.pb_none,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -232,13 +248,57 @@ reusable[] var Value_links: Value_Ref[>..] = [];
 // Merges the fields in r's window into m; on failure r.err is set.
 // Fields it does not know, or with another wire type, are kept as
 // unknown fields.
-fn Value_decode_from(r: pb_Reader&, m: Value&) {
+recursive fn Value_decode_from(r: pb_Reader&, m: Value&) {
     var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        if tag == 8 {
+            let pb_v = pb_u64_to_int32(pb_read_varint(r));
+            if r.err != PB_OK { break; }
+            Value_clear_kind(m);
+            m.kind = Value_kind.null_value { v: pb_v };
+        } else if tag == 17 {
+            let pb_v = pb_read_double(r);
+            if r.err != PB_OK { break; }
+            Value_clear_kind(m);
+            m.kind = Value_kind.number_value { v: pb_v };
+        } else if tag == 26 {
+            let pb_v = pb_read_string(r, pb_Span { at: 0, len: 0 });
+            if r.err != PB_OK { break; }
+            Value_clear_kind(m);
+            m.kind = Value_kind.string_value { v: pb_v };
+        } else if tag == 32 {
+            let pb_v = pb_read_varint(r) != 0;
+            if r.err != PB_OK { break; }
+            Value_clear_kind(m);
+            m.kind = Value_kind.bool_value { v: pb_v };
+        } else if tag == 42 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Struct_decode_from(r, Value_mutable_struct_value(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else if tag == 50 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            ListValue_decode_from(r, Value_mutable_list_value(m));
+            if r.err != PB_OK { break; }
+            r.depth--;
+            r.end = pb_outer;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
     }
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
@@ -252,29 +312,290 @@ fn Value_decode(buf: const u8[:], m: Value&) -> i32 {
 }
 
 // Appends m's wire encoding, Value_size_of(m) bytes, to out.
-fn Value_encode(m: Value&, out: u8[>..]&) {
+recursive fn Value_encode(m: Value&, out: u8[>..]&) {
+    match m.kind {
+        null_value pb_p => {
+            pb_write_varint(out, 8);
+            pb_write_varint(out, pb_int32_to_u64(pb_p.v));
+        },
+        _ => {},
+    }
+    match m.kind {
+        number_value pb_p => {
+            pb_write_varint(out, 17);
+            pb_write_double(out, pb_p.v);
+        },
+        _ => {},
+    }
+    match m.kind {
+        string_value pb_p => {
+            pb_write_varint(out, 26);
+            pb_write_bytes(out, pb_p.v);
+        },
+        _ => {},
+    }
+    match m.kind {
+        bool_value pb_p => {
+            pb_write_varint(out, 32);
+            pb_write_varint(out, pb_bool_to_u64(pb_p.v));
+        },
+        _ => {},
+    }
+    match m.kind {
+        struct_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l {
+                pb_write_varint(out, 42);
+                pb_write_varint(out, Struct_size_of(pb_l) as! u64);
+                Struct_encode(pb_l, out);
+            }
+        },
+        _ => {},
+    }
+    match m.kind {
+        list_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l {
+                pb_write_varint(out, 50);
+                pb_write_varint(out, ListValue_size_of(pb_l) as! u64);
+                ListValue_encode(pb_l, out);
+            }
+        },
+        _ => {},
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
-fn Value_size_of(m: Value&) -> i64 {
+recursive fn Value_size_of(m: Value&) -> i64 {
     var n: i64 = 0;
+    match m.kind {
+        null_value pb_p => { n += 1 + pb_varint_size(pb_int32_to_u64(pb_p.v)); },
+        _ => {},
+    }
+    match m.kind {
+        number_value => { n += 9; },
+        _ => {},
+    }
+    match m.kind {
+        string_value pb_p => { n += 1 + pb_bytes_size(pb_p.v); },
+        _ => {},
+    }
+    match m.kind {
+        bool_value => { n += 2; },
+        _ => {},
+    }
+    match m.kind {
+        struct_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { n += 1 + pb_len_size(Struct_size_of(pb_l)); }
+        },
+        _ => {},
+    }
+    match m.kind {
+        list_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { n += 1 + pb_len_size(ListValue_size_of(pb_l)); }
+        },
+        _ => {},
+    }
     n += m.pb_unknown.len;
     return n;
 }
 
 // Frees what m owns and resets it to the empty message.
-fn Value_clear(m: Value&) {
+recursive fn Value_clear(m: Value&) {
+    Value_clear_kind(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // Makes dst a deep copy of src, freeing what dst owned. The two share
 // nothing afterwards. Neither may be a sub-message of the other.
-fn Value_copy(dst: Value&, src: Value&) {
+recursive fn Value_copy(dst: Value&, src: Value&) {
     if dst .== src { return; }
     Value_clear(dst);
+    match src.kind {
+        null_value pb_p => { dst.kind = Value_kind.null_value { v: pb_p.v }; },
+        number_value pb_p => { dst.kind = Value_kind.number_value { v: pb_p.v }; },
+        string_value pb_p => { dst.kind = Value_kind.string_value { v: pb_bytes_copy(pb_p.v) }; },
+        bool_value pb_p => { dst.kind = Value_kind.bool_value { v: pb_p.v }; },
+        struct_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { Struct_copy(Value_mutable_struct_value(dst), pb_l); }
+        },
+        list_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { ListValue_copy(Value_mutable_list_value(dst), pb_l); }
+        },
+        _ => {},
+    }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
+
+// Frees what oneof kind holds, and sets no member.
+recursive fn Value_clear_kind(m: Value&) {
+    match m.kind {
+        string_value pb_p => { pb_bytes_free(pb_p.v); },
+        struct_value pb_p => {
+            let pb_sub = pb_p.v.m;
+            if pb_sub {
+                Struct_clear(pb_sub);
+                Struct_pool.free(Struct_pool.index_of(pb_sub));
+            }
+        },
+        list_value pb_p => {
+            let pb_sub = pb_p.v.m;
+            if pb_sub {
+                ListValue_clear(pb_sub);
+                ListValue_pool.free(ListValue_pool.index_of(pb_sub));
+            }
+        },
+        _ => {},
+    }
+    m.kind = Value_kind.pb_none;
+}
+
+// The value of null_value, the default if it is not the member set.
+fn Value_null_value(m: Value&) -> i32 {
+    match m.kind {
+        null_value pb_p => { return pb_p.v; },
+        _ => {},
+    }
+    return 0;
+}
+
+// Makes null_value the member set, with value v: it is encoded even when 0.
+fn Value_set_null_value(m: Value&, v: i32) {
+    Value_clear_kind(m);
+    m.kind = Value_kind.null_value { v: v };
+}
+
+fn Value_has_null_value(m: Value&) -> bool { return match m.kind { null_value => true, _ => false }; }
+
+// Clears oneof kind if null_value is the member set.
+fn Value_clear_null_value(m: Value&) { if Value_has_null_value(m) { Value_clear_kind(m); } }
+
+// The value of number_value, the default if it is not the member set.
+fn Value_number_value(m: Value&) -> f64 {
+    match m.kind {
+        number_value pb_p => { return pb_p.v; },
+        _ => {},
+    }
+    return 0.0;
+}
+
+// Makes number_value the member set, with value v: it is encoded even when 0.0.
+fn Value_set_number_value(m: Value&, v: f64) {
+    Value_clear_kind(m);
+    m.kind = Value_kind.number_value { v: v };
+}
+
+fn Value_has_number_value(m: Value&) -> bool { return match m.kind { number_value => true, _ => false }; }
+
+// Clears oneof kind if number_value is the member set.
+fn Value_clear_number_value(m: Value&) { if Value_has_number_value(m) { Value_clear_kind(m); } }
+
+// The contents of string_value in pb_bytes, empty if it is not the member set: valid
+// until oneof kind changes or m is cleared.
+fn Value_string_value(m: Value&) -> u8[:] {
+    match m.kind {
+        string_value pb_p => { return pb_run(pb_bytes, pb_p.v); },
+        _ => {},
+    }
+    return pb_run(pb_bytes, pb_Span { at: 0, len: 0 });
+}
+
+// Makes string_value the member set, with a copy of v, which may be its own contents.
+fn Value_set_string_value(m: Value&, v: const u8[:]) {
+    let pb_t = pb_bytes_set(pb_Span { at: 0, len: 0 }, v);
+    Value_clear_kind(m);
+    m.kind = Value_kind.string_value { v: pb_t };
+}
+
+fn Value_has_string_value(m: Value&) -> bool { return match m.kind { string_value => true, _ => false }; }
+
+// Clears oneof kind if string_value is the member set.
+fn Value_clear_string_value(m: Value&) { if Value_has_string_value(m) { Value_clear_kind(m); } }
+
+// The value of bool_value, the default if it is not the member set.
+fn Value_bool_value(m: Value&) -> bool {
+    match m.kind {
+        bool_value pb_p => { return pb_p.v; },
+        _ => {},
+    }
+    return false;
+}
+
+// Makes bool_value the member set, with value v: it is encoded even when false.
+fn Value_set_bool_value(m: Value&, v: bool) {
+    Value_clear_kind(m);
+    m.kind = Value_kind.bool_value { v: v };
+}
+
+fn Value_has_bool_value(m: Value&) -> bool { return match m.kind { bool_value => true, _ => false }; }
+
+// Clears oneof kind if bool_value is the member set.
+fn Value_clear_bool_value(m: Value&) { if Value_has_bool_value(m) { Value_clear_kind(m); } }
+
+// The sub-message struct_value, or null if it is not the member set. Valid until
+// oneof kind changes or m is cleared.
+fn Value_struct_value(m: Value&) -> Struct&? {
+    match m.kind {
+        struct_value pb_p => { return pb_p.v.m; },
+        _ => {},
+    }
+    return null;
+}
+
+// The sub-message struct_value, first made the member set, and empty, if it is not.
+fn Value_mutable_struct_value(m: Value&) -> Struct& {
+    match m.kind {
+        struct_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { return pb_l; }
+        },
+        _ => {},
+    }
+    Value_clear_kind(m);
+    let pb_new .= Struct_pool.alloc_ref(Struct { .. });
+    m.kind = Value_kind.struct_value { v: Struct_Ref { m: pb_new } };
+    return pb_new;
+}
+
+fn Value_has_struct_value(m: Value&) -> bool { return match m.kind { struct_value => true, _ => false }; }
+
+// Clears oneof kind if struct_value is the member set.
+fn Value_clear_struct_value(m: Value&) { if Value_has_struct_value(m) { Value_clear_kind(m); } }
+
+// The sub-message list_value, or null if it is not the member set. Valid until
+// oneof kind changes or m is cleared.
+fn Value_list_value(m: Value&) -> ListValue&? {
+    match m.kind {
+        list_value pb_p => { return pb_p.v.m; },
+        _ => {},
+    }
+    return null;
+}
+
+// The sub-message list_value, first made the member set, and empty, if it is not.
+fn Value_mutable_list_value(m: Value&) -> ListValue& {
+    match m.kind {
+        list_value pb_p => {
+            let pb_l = pb_p.v.m;
+            if pb_l { return pb_l; }
+        },
+        _ => {},
+    }
+    Value_clear_kind(m);
+    let pb_new .= ListValue_pool.alloc_ref(ListValue { .. });
+    m.kind = Value_kind.list_value { v: ListValue_Ref { m: pb_new } };
+    return pb_new;
+}
+
+fn Value_has_list_value(m: Value&) -> bool { return match m.kind { list_value => true, _ => false }; }
+
+// Clears oneof kind if list_value is the member set.
+fn Value_clear_list_value(m: Value&) { if Value_has_list_value(m) { Value_clear_kind(m); } }
 
 // message google.protobuf.ListValue
 struct ListValue {
@@ -290,7 +611,7 @@ reusable[] var ListValue_links: ListValue_Ref[>..] = [];
 // Merges the fields in r's window into m; on failure r.err is set.
 // Fields it does not know, or with another wire type, are kept as
 // unknown fields.
-fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
+recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
     var unknown_len: i64 = m.pb_unknown.len;
     var pb_len1: i64 = m.values.len;
     while r.pos < r.end {
@@ -329,7 +650,7 @@ fn ListValue_decode(buf: const u8[:], m: ListValue&) -> i32 {
 }
 
 // Appends m's wire encoding, ListValue_size_of(m) bytes, to out.
-fn ListValue_encode(m: ListValue&, out: u8[>..]&) {
+recursive fn ListValue_encode(m: ListValue&, out: u8[>..]&) {
     for pb_ref in pb_run(Value_links, m.values) {
         let pb_l = pb_ref.m;
         guard pb_l else { continue; }
@@ -341,7 +662,7 @@ fn ListValue_encode(m: ListValue&, out: u8[>..]&) {
 }
 
 // The size of m's wire encoding, in bytes.
-fn ListValue_size_of(m: ListValue&) -> i64 {
+recursive fn ListValue_size_of(m: ListValue&) -> i64 {
     var n: i64 = 0;
     for pb_ref in pb_run(Value_links, m.values) {
         let pb_l = pb_ref.m;
@@ -353,14 +674,14 @@ fn ListValue_size_of(m: ListValue&) -> i64 {
 }
 
 // Frees what m owns and resets it to the empty message.
-fn ListValue_clear(m: ListValue&) {
+recursive fn ListValue_clear(m: ListValue&) {
     ListValue_clear_values(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // Makes dst a deep copy of src, freeing what dst owned. The two share
 // nothing afterwards. Neither may be a sub-message of the other.
-fn ListValue_copy(dst: ListValue&, src: ListValue&) {
+recursive fn ListValue_copy(dst: ListValue&, src: ListValue&) {
     if dst .== src { return; }
     ListValue_clear(dst);
     dst.values = pb_resize(Value_links, dst.values, src.values.len);

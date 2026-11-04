@@ -18,6 +18,11 @@
 //   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
+//   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
+//   M_has_f(m), M_clear_f(m)     default if another member is set;
+//   M_mutable_f(m) -> S&         messages have mutable_, not set_.
+//   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
+//                                or a variant f { v } per member
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m

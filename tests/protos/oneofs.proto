@@ -1,0 +1,50 @@
+// Golden and round-trip (tests/roundtrip/oneofs/): a real oneof is a
+// fixed-mode ADT with a none variant. Members are a scalar of each kind of
+// storage, string, bytes and message, same-file, recursive and imported;
+// names that could trip the emitter (a keyword, m, v); two oneofs in a
+// message; and a proto3 optional, whose synthetic oneof is no ADT.
+syntax = "proto3";
+
+package oneofs;
+
+import "google/protobuf/duration.proto";
+
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_ON = 1;
+}
+
+message Sub {
+  int32 a = 1;
+  string s = 2;
+  repeated int32 r = 3;
+}
+
+message Choice {
+  int32 before = 1;
+  oneof pick {
+    int32 p_int32 = 2;
+    sint64 p_sint64 = 3;
+    uint64 p_uint64 = 4;
+    fixed32 p_fixed32 = 5;
+    sfixed64 p_sfixed64 = 6;
+    float p_float = 7;
+    double p_double = 8;
+    bool p_bool = 9;
+    Mode p_mode = 10;
+    string p_string = 11;
+    bytes p_bytes = 12;
+    Sub p_sub = 13;
+    google.protobuf.Duration p_dep = 14;
+    Choice p_self = 15;
+    int32 type = 16;
+    int32 m = 17;
+    int32 v = 18;
+  }
+  oneof second {
+    string s_string = 20;
+    Sub s_sub = 21;
+  }
+  optional int32 maybe = 30;
+  int32 after = 31;
+}

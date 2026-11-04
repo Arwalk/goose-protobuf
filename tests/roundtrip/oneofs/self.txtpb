@@ -1,0 +1,2 @@
+# proto-message: oneofs.Choice
+p_self { p_self { p_string: "deep" s_string: "t" } after: 3 }

@@ -226,6 +226,12 @@ The design above is unchanged. gpb-41j.6 and gpb-8qn.1 put it in place:
 - String and bytes fields use these pools since gpb-8qn.4, singular
   sub-messages since gpb-8qn.2, repeated scalars since gpb-gp4.1, and
   repeated strings, bytes and messages since gpb-gp4.2.
+- Real oneofs are fixed-mode ADTs since gpb-gp4.3: `enum M_o { pb_none,
+  f { v: T }, ... }`, inline in the record as `o: M_o = M_o.pb_none`. `v` is
+  what the field would store on its own: a scalar, a `pb_Span` or a `Sub_Ref`.
+  Goose allows no reference into such a payload, so a match binds a copy,
+  and the span or link it holds still reaches the pool. A proto3 `optional`
+  is in a synthetic oneof, which has no ADT.
 - A sub-message field holds a link into its type's pool, also when that
   type is in an imported file (gpb-8qn.9). A message that can hold another
   of its own type has `recursive fn` codecs (gpb-8qn.3).

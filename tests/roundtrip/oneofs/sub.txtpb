@@ -1,0 +1,2 @@
+# proto-message: oneofs.Choice
+p_sub { a: 1 s: "x" r: 1 r: 2 }

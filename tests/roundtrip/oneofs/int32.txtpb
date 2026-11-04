@@ -1,0 +1,2 @@
+# proto-message: oneofs.Choice
+before: 1 p_int32: -5 maybe: 0 after: 2

@@ -91,7 +91,7 @@ pub const message_ops = [_][]const u8{
 };
 
 /// How a field is stored, which decides its accessors.
-pub const FieldKind = enum { scalar, string, message, repeated, repeated_message, map };
+pub const FieldKind = enum { scalar, oneof_scalar, string, message, repeated, repeated_message, map };
 
 /// One accessor of a field: `<path>_<prefix><field><suffix>`.
 pub const Accessor = struct { prefix: []const u8, suffix: []const u8 };
@@ -105,6 +105,7 @@ pub const Accessor = struct { prefix: []const u8, suffix: []const u8 };
 pub fn fieldAccessors(kind: FieldKind, presence: bool) []const Accessor {
     return switch (kind) {
         .scalar => if (presence) &(.{set_acc} ++ presence_accessors) else &.{},
+        .oneof_scalar => &(.{ get_acc, set_acc } ++ presence_accessors),
         .string => if (presence)
             &(.{ get_acc, set_acc } ++ presence_accessors)
         else
@@ -356,6 +357,19 @@ pub const FileEmitter = struct {
                 });
             }
         }
+        // A oneof's type and its clear_. A field cannot have its name.
+        for (m.oneof_decl.items, 0..) |*od, i| {
+            if (!isRealOneof(m, i)) continue;
+            const oname = od.name orelse "";
+            try self.claim(try generatedName(self.a, path, oname), .{
+                .what = try std.fmt.allocPrint(self.a, "oneof {s} of {s}", .{ oname, full }),
+                .generated = true,
+            });
+            try self.claim(try accessorName(self.a, path, oname, clear_acc), .{
+                .what = try std.fmt.allocPrint(self.a, "accessor clear_{s} of {s}", .{ oname, full }),
+                .generated = true,
+            });
+        }
         for (m.nested_type.items) |*n| try self.claimGenerated(n, path, full);
     }
 
@@ -533,43 +547,67 @@ pub const FileEmitter = struct {
         var fields: std.ArrayList(Field) = .empty;
         var record_names: std.StringHashMapUnmanaged(void) = .empty;
         var bits: u32 = 0;
+        // The real oneofs of a stored message, by their index in oneof_decl.
+        const by_index = try self.a.alloc(?*const Oneof, m.oneof_decl.items.len);
+        var oneofs: std.ArrayList(*const Oneof) = .empty;
+        for (m.oneof_decl.items, by_index, 0..) |*od, *slot, i| {
+            slot.* = null;
+            if (!isProto3(self.file) or !isRealOneof(m, i)) continue;
+            const oname = od.name orelse "";
+            const o = try self.a.create(Oneof);
+            o.* = .{
+                .name = try ident(self.a, oname),
+                .type_name = try generatedName(self.a, path, oname),
+                .clear = try accessorName(self.a, path, oname, clear_acc),
+            };
+            try self.claimRecordField(&record_names, o.name, full);
+            slot.* = o;
+            try oneofs.append(self.a, o);
+        }
         for (m.field.items) |*fd| {
             const sub = try self.subMessageOf(fd);
             const element = repeatedScalarOf(self.file, fd);
             const sc = if (sub) |s| try self.refStorage(s) else element orelse scalarOf(self.file, fd) orelse continue;
             const repeated = fd.label == .LABEL_REPEATED;
             const rname = try ident(self.a, fd.name orelse "");
-            if ((try record_names.getOrPut(self.a, rname)).found_existing) {
-                self.diag = try std.fmt.allocPrint(
-                    self.a,
-                    "{s}: two fields of {s} map to the Goose record field {s}",
-                    .{ self.file.name orelse "", full, rname },
-                );
-                return error.NameCollision;
-            }
+            try self.claimRecordField(&record_names, rname, full);
+            const oneof = if (isRealOneofMember(fd)) by_index[@intCast(fd.oneof_index.?)] else null;
             var bit: ?u32 = null;
-            if (sub == null and !repeated and hasPresence(self.file, fd)) {
+            if (sub == null and !repeated and oneof == null and hasPresence(self.file, fd)) {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated });
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
         std.mem.sortUnstable(Field, by_number, {}, Field.lessThan);
         self.fn_kw = if (try self.isRecursive(full)) "recursive fn" else "fn";
 
-        try self.emitRecord(goose_name, fields.items, has_words);
+        try self.emitOneofTypes(oneofs.items, fields.items);
+        try self.emitRecord(goose_name, fields.items, oneofs.items, has_words);
         try self.emitPools(goose_name, path);
         try self.emitDecode(goose_name, path, fields.items);
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
-        try self.emitClear(goose_name, path, fields.items, has_words);
-        try self.emitCopy(goose_name, path, fields.items, has_words);
+        try self.emitClear(goose_name, path, fields.items, oneofs.items, has_words);
+        try self.emitCopy(goose_name, path, fields.items, oneofs.items, has_words);
+        for (oneofs.items) |o| try self.emitOneofClear(goose_name, o, fields.items);
         for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
 
         for (m.enum_type.items) |*e| try self.emitEnum(e, full);
         for (m.nested_type.items) |*n| try self.emitMessage(n, path, full);
+    }
+
+    /// Claims a record field name of the message `full`.
+    fn claimRecordField(self: *FileEmitter, names: *std.StringHashMapUnmanaged(void), rname: []const u8, full: []const u8) Error!void {
+        if (!(try names.getOrPut(self.a, rname)).found_existing) return;
+        self.diag = try std.fmt.allocPrint(
+            self.a,
+            "{s}: two fields of {s} map to the Goose record field {s}",
+            .{ self.file.name orelse "", full, rname },
+        );
+        return error.NameCollision;
     }
 
     /// The storage of a sub-message field: a link, whose presence is the
@@ -589,9 +627,24 @@ pub const FileEmitter = struct {
         return sc;
     }
 
-    fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, has_words: u32) Error!void {
+    /// The ADT of each oneof: a variant per member, its name the member's
+    /// record field name, and pb_none, which no field name can be.
+    fn emitOneofTypes(self: *FileEmitter, oneofs: []const *const Oneof, fields: []const Field) Error!void {
+        for (oneofs) |o| {
+            try self.w.print("enum {s} {{\n    pb_none,\n", .{o.type_name});
+            for (fields) |f| {
+                if (f.oneof == o) try self.w.print("    {s} {{ v: {s} }},\n", .{ f.name, f.sc.goose });
+            }
+            try self.w.writeAll("}\n\n");
+        }
+    }
+
+    fn emitRecord(self: *FileEmitter, goose_name: []const u8, fields: []const Field, oneofs: []const *const Oneof, has_words: u32) Error!void {
         try self.w.print("struct {s} {{\n", .{goose_name});
-        for (fields) |f| try self.w.print("    {s}: {s},\n", .{ f.name, if (f.repeated) "pb_Span" else f.sc.goose });
+        for (fields) |f| {
+            if (f.oneof == null) try self.w.print("    {s}: {s},\n", .{ f.name, if (f.repeated) "pb_Span" else f.sc.goose });
+        }
+        for (oneofs) |o| try self.w.print("    {s}: {s} = {s}.pb_none,\n", .{ o.name, o.type_name, o.type_name });
         for (0..has_words) |i| try self.w.print("    pb_has{d}: u32,   // has-bits of fields with presence\n", .{i});
         try self.w.writeAll("    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes\n}\n");
     }
@@ -643,6 +696,17 @@ pub const FileEmitter = struct {
             }
             if (f.sub) |sub| {
                 try self.emitDecodeSubMessage(path, f, sub);
+                continue;
+            }
+            if (f.oneof) |o| {
+                // Read first: a value that fails to read replaces nothing.
+                try self.w.print(
+                    \\            let pb_v = {f};
+                    \\            if r.err != PB_OK {{ break; }}
+                    \\            {s}(m);
+                    \\            m.{s} = {s}.{s} {{ v: pb_v }};
+                    \\
+                , .{ Subst{ .t = f.sc.read, .x = empty_span }, o.clear, o.name, o.type_name, f.name });
                 continue;
             }
             try self.w.print("            {s} = {f};\n", .{ x, Subst{ .t = f.sc.read, .x = x } });
@@ -781,6 +845,36 @@ pub const FileEmitter = struct {
         , .{ try generatedName(self.a, path, "size_of"), self.fn_kw, try generatedName(self.a, path, "encode"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.oneof) |o| {
+                if (f.sub) |sub| {
+                    try self.w.print(
+                        \\    match m.{s} {{
+                        \\        {s} pb_p => {{
+                        \\            let pb_l = pb_p.v.m;
+                        \\            if pb_l {{
+                        \\                pb_write_varint(out, {d});
+                        \\                pb_write_varint(out, {s}(pb_l) as! u64);
+                        \\                {s}(pb_l, out);
+                        \\            }}
+                        \\        }},
+                        \\        _ => {{}},
+                        \\    }}
+                        \\
+                    , .{ o.name, f.name, f.tag(), try self.subName(sub, "size_of"), try self.subName(sub, "encode") });
+                } else {
+                    try self.w.print(
+                        \\    match m.{s} {{
+                        \\        {s} pb_p => {{
+                        \\            pb_write_varint(out, {d});
+                        \\            {f};
+                        \\        }},
+                        \\        _ => {{}},
+                        \\    }}
+                        \\
+                    , .{ o.name, f.name, f.tag(), Subst{ .t = f.sc.write, .x = "pb_p.v" } });
+                }
+                continue;
+            }
             if (f.repeated and f.sub != null) {
                 const sub = f.sub.?;
                 try self.w.print(
@@ -861,6 +955,23 @@ pub const FileEmitter = struct {
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             const ts = varintSize(f.tag());
+            if (f.oneof) |o| {
+                try self.w.print("    match m.{s} {{\n", .{o.name});
+                switch (f.sc.size) {
+                    .message => try self.w.print(
+                        \\        {s} pb_p => {{
+                        \\            let pb_l = pb_p.v.m;
+                        \\            if pb_l {{ n += {d} + pb_len_size({s}(pb_l)); }}
+                        \\        }},
+                        \\
+                    , .{ f.name, ts, try self.subName(f.sub.?, "size_of") }),
+                    .varint => try self.w.print("        {s} pb_p => {{ n += {d} + pb_varint_size({f}); }},\n", .{ f.name, ts, Subst{ .t = f.sc.write_value, .x = "pb_p.v" } }),
+                    .fixed => |k| try self.w.print("        {s} => {{ n += {d}; }},\n", .{ f.name, ts + k }),
+                    .bytes => try self.w.print("        {s} pb_p => {{ n += {d} + pb_bytes_size(pb_p.v); }},\n", .{ f.name, ts }),
+                }
+                try self.w.writeAll("        _ => {},\n    }\n");
+                continue;
+            }
             if (f.repeated and f.sub != null) {
                 try self.w.print(
                     \\    for pb_ref in pb_run({s}, m.{s}) {{
@@ -907,7 +1018,7 @@ pub const FileEmitter = struct {
         try self.w.writeAll("    n += m.pb_unknown.len;\n    return n;\n}\n");
     }
 
-    fn emitClear(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
+    fn emitClear(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, oneofs: []const *const Oneof, has_words: u32) Error!void {
         try self.w.print(
             \\
             \\// Frees what m owns and resets it to the empty message.
@@ -915,6 +1026,7 @@ pub const FileEmitter = struct {
             \\
         , .{ self.fn_kw, try generatedName(self.a, path, "clear"), goose_name });
         for (fields) |f| {
+            if (f.oneof != null) continue;
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             if (f.repeated and f.sub != null) {
                 try self.w.print("    {s}(m);\n", .{try accessorName(self.a, path, f.fd.name orelse "", clear_acc)});
@@ -934,13 +1046,14 @@ pub const FileEmitter = struct {
             }
             try self.w.print("    {f};\n", .{Subst{ .t = f.sc.clear, .x = x }});
         }
+        for (oneofs) |o| try self.w.print("    {s}(m);\n", .{o.clear});
         for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
         try self.w.writeAll("    m.pb_unknown = pb_bytes_free(m.pb_unknown);\n}\n");
     }
 
     /// Decision 0001: copying a record shares what its spans and links
     /// reach, so M_copy duplicates that too.
-    fn emitCopy(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
+    fn emitCopy(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, oneofs: []const *const Oneof, has_words: u32) Error!void {
         try self.w.print(
             \\
             \\// Makes dst a deep copy of src, freeing what dst owned. The two share
@@ -951,6 +1064,7 @@ pub const FileEmitter = struct {
             \\
         , .{ self.fn_kw, try generatedName(self.a, path, "copy"), goose_name, goose_name, try generatedName(self.a, path, "clear") });
         for (fields) |f| {
+            if (f.oneof != null) continue;
             if (f.repeated and f.sub != null) {
                 const sub = f.sub.?;
                 const links = try self.runPool(f);
@@ -994,6 +1108,26 @@ pub const FileEmitter = struct {
                 try self.w.print("    dst.{s} = src.{s};\n", .{ f.name, f.name });
             }
         }
+        for (oneofs) |o| {
+            try self.w.print("    match src.{s} {{\n", .{o.name});
+            for (fields) |f| {
+                if (f.oneof != o) continue;
+                if (f.sub) |sub| {
+                    try self.w.print(
+                        \\        {s} pb_p => {{
+                        \\            let pb_l = pb_p.v.m;
+                        \\            if pb_l {{ {s}({s}(dst), pb_l); }}
+                        \\        }},
+                        \\
+                    , .{ f.name, try self.subName(sub, "copy"), try accessorName(self.a, path, f.fd.name orelse "", mutable_acc) });
+                } else if (f.sc.size == .bytes) {
+                    try self.w.print("        {s} pb_p => {{ dst.{s} = {s}.{s} {{ v: pb_bytes_copy(pb_p.v) }}; }},\n", .{ f.name, o.name, o.type_name, f.name });
+                } else {
+                    try self.w.print("        {s} pb_p => {{ dst.{s} = {s}.{s} {{ v: pb_p.v }}; }},\n", .{ f.name, o.name, o.type_name, f.name });
+                }
+            }
+            try self.w.writeAll("        _ => {},\n    }\n");
+        }
         for (0..has_words) |i| try self.w.print("    dst.pb_has{d} = src.pb_has{d};\n", .{ i, i });
         try self.w.writeAll("    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);\n}\n");
     }
@@ -1002,6 +1136,7 @@ pub const FileEmitter = struct {
     /// and set_ of strings and bytes, and set_, has_ and clear_ of fields
     /// with presence; a sub-message has its own (emitSubMessageAccessors).
     fn emitAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
+        if (f.oneof) |o| return self.emitOneofAccessors(goose_name, path, f, o);
         if (f.repeated) {
             if (f.sub) |sub| return self.emitRepeatedMessageAccessors(goose_name, path, f, sub);
             if (f.sc.size == .bytes) return self.emitRepeatedStringAccessors(goose_name, path, f);
@@ -1052,6 +1187,162 @@ pub const FileEmitter = struct {
             Subst{ .t = f.sc.clear, .x = x },
             b / 32, ~bitMask(b),
         });
+    }
+
+    /// clear_<oneof>: frees what the member that is set owns. It is in the
+    /// cycle of M_clear, and may be the first call into it, so it is declared
+    /// as the codecs are.
+    fn emitOneofClear(self: *FileEmitter, goose_name: []const u8, o: *const Oneof, fields: []const Field) Error!void {
+        try self.w.print(
+            \\
+            \\// Frees what oneof {s} holds, and sets no member.
+            \\{s} {s}(m: {s}&) {{
+            \\    match m.{s} {{
+            \\
+        , .{ o.name, self.fn_kw, o.clear, goose_name, o.name });
+        for (fields) |f| {
+            if (f.oneof != o) continue;
+            if (f.sub) |sub| {
+                const pool = try self.subName(sub, "pool");
+                try self.w.print(
+                    \\        {s} pb_p => {{
+                    \\            let pb_sub = pb_p.v.m;
+                    \\            if pb_sub {{
+                    \\                {s}(pb_sub);
+                    \\                {s}.free({s}.index_of(pb_sub));
+                    \\            }}
+                    \\        }},
+                    \\
+                , .{ f.name, try self.subName(sub, "clear"), pool, pool });
+            } else if (f.sc.size == .bytes) {
+                try self.w.print("        {s} pb_p => {{ pb_bytes_free(pb_p.v); }},\n", .{f.name});
+            }
+        }
+        try self.w.print(
+            \\        _ => {{}},
+            \\    }}
+            \\    m.{s} = {s}.pb_none;
+            \\}}
+            \\
+        , .{ o.name, o.type_name });
+    }
+
+    /// The accessors of a member of a oneof: has_, clear_ (of this member
+    /// only if it is the one set), and those of its kind of storage, which
+    /// read the default when another member is set.
+    fn emitOneofAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field, o: *const Oneof) Error!void {
+        const fname = f.fd.name orelse "";
+        const get = try accessorName(self.a, path, fname, get_acc);
+        const set = try accessorName(self.a, path, fname, set_acc);
+        const has = try accessorName(self.a, path, fname, has_acc);
+        const clear = try accessorName(self.a, path, fname, clear_acc);
+        if (f.sub) |sub| {
+            try self.w.print(
+                \\
+                \\// The sub-message {s}, or null if it is not the member set. Valid until
+                \\// oneof {s} changes or m is cleared.
+                \\fn {s}(m: {s}&) -> {s}&? {{
+                \\    match m.{s} {{
+                \\        {s} pb_p => {{ return pb_p.v.m; }},
+                \\        _ => {{}},
+                \\    }}
+                \\    return null;
+                \\}}
+                \\
+                \\// The sub-message {s}, first made the member set, and empty, if it is not.
+                \\fn {s}(m: {s}&) -> {s}& {{
+                \\    match m.{s} {{
+                \\        {s} pb_p => {{
+                \\            let pb_l = pb_p.v.m;
+                \\            if pb_l {{ return pb_l; }}
+                \\        }},
+                \\        _ => {{}},
+                \\    }}
+                \\    {s}(m);
+                \\    let pb_new .= {s}.alloc_ref({s} {{ .. }});
+                \\    m.{s} = {s}.{s} {{ v: {s} {{ m: pb_new }} }};
+                \\    return pb_new;
+                \\}}
+                \\
+            , .{
+                fname, o.name,
+                get, goose_name, sub.goose_name,
+                o.name, f.name,
+                fname,
+                try accessorName(self.a, path, fname, mutable_acc), goose_name, sub.goose_name,
+                o.name, f.name,
+                o.clear,
+                try self.subName(sub, "pool"), sub.goose_name,
+                o.name, o.type_name, f.name, f.sc.goose,
+            });
+        } else if (f.sc.size == .bytes) {
+            try self.w.print(
+                \\
+                \\// The contents of {s} in pb_bytes, empty if it is not the member set: valid
+                \\// until oneof {s} changes or m is cleared.
+                \\fn {s}(m: {s}&) -> u8[:] {{
+                \\    match m.{s} {{
+                \\        {s} pb_p => {{ return pb_run(pb_bytes, pb_p.v); }},
+                \\        _ => {{}},
+                \\    }}
+                \\    return pb_run(pb_bytes, {s});
+                \\}}
+                \\
+                \\// Makes {s} the member set, with a copy of v, which may be its own contents.
+                \\fn {s}(m: {s}&, v: const u8[:]) {{
+                \\    let pb_t = pb_bytes_set({s}, v);
+                \\    {s}(m);
+                \\    m.{s} = {s}.{s} {{ v: pb_t }};
+                \\}}
+                \\
+            , .{
+                fname, o.name,
+                get, goose_name,
+                o.name, f.name,
+                empty_span,
+                fname,
+                set, goose_name,
+                empty_span,
+                o.clear,
+                o.name, o.type_name, f.name,
+            });
+        } else {
+            try self.w.print(
+                \\
+                \\// The value of {s}, the default if it is not the member set.
+                \\fn {s}(m: {s}&) -> {s} {{
+                \\    match m.{s} {{
+                \\        {s} pb_p => {{ return pb_p.v; }},
+                \\        _ => {{}},
+                \\    }}
+                \\    return {s};
+                \\}}
+                \\
+                \\// Makes {s} the member set, with value v: it is encoded even when {s}.
+                \\fn {s}(m: {s}&, v: {s}) {{
+                \\    {s}(m);
+                \\    m.{s} = {s}.{s} {{ v: v }};
+                \\}}
+                \\
+            , .{
+                fname,
+                get, goose_name, f.sc.goose,
+                o.name, f.name,
+                f.sc.zero(),
+                fname, f.sc.zero(),
+                set, goose_name, f.sc.goose,
+                o.clear,
+                o.name, o.type_name, f.name,
+            });
+        }
+        try self.w.print(
+            \\
+            \\fn {s}(m: {s}&) -> bool {{ return match m.{s} {{ {s} => true, _ => false }}; }}
+            \\
+            \\// Clears oneof {s} if {s} is the member set.
+            \\fn {s}(m: {s}&) {{ if {s}(m) {{ {s}(m); }} }}
+            \\
+        , .{ has, goose_name, o.name, f.name, o.name, fname, clear, goose_name, has, o.clear });
     }
 
     /// The accessors of a repeated string or bytes field.
@@ -1253,6 +1544,11 @@ const api_comment =
     \\//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
     \\//   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
     \\//                                add_ of a message returns it
+    \\//   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
+    \\//   M_has_f(m), M_clear_f(m)     default if another member is set;
+    \\//   M_mutable_f(m) -> S&         messages have mutable_, not set_.
+    \\//   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
+    \\//                                or a variant f { v } per member
     \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
     \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     \\//                                PB_ERR_* code and a partial m
@@ -1300,6 +1596,9 @@ const Field = struct {
     /// links, of pb_spans for strings and bytes, else of the pool of `sc`'s
     /// type. Its tag() is that of a value on its own.
     repeated: bool = false,
+    /// The oneof it is a member of. Its value is the payload of a variant
+    /// named `name` of the oneof's ADT, and that it is set is its presence.
+    oneof: ?*const Oneof = null,
 
     fn packedTag(f: Field) u64 {
         return (@as(u64, f.number()) << 3) | 2;
@@ -1329,6 +1628,18 @@ const Field = struct {
         return a.number() < b.number();
     }
 };
+
+/// A real oneof: a fixed-mode ADT in the record, with a variant per member.
+const Oneof = struct {
+    /// The record field name, escaped.
+    name: []const u8,
+    type_name: []const u8,
+    /// The name of its clear_ accessor.
+    clear: []const u8,
+};
+
+/// A span that owns nothing, for reading a value into a new run.
+const empty_span = "pb_Span { at: 0, len: 0 }";
 
 /// Formats the encode condition of a field: its has-bit if it has
 /// presence, else a value other than the default.
@@ -1369,6 +1680,13 @@ const Scalar = struct {
     /// The parameter type of set_, and its statement storing `v`.
     set_type: []const u8 = "",
     set: []const u8 = "$ = v",
+
+    /// The default value of a numeric or bool type.
+    fn zero(sc: *const Scalar) []const u8 {
+        if (std.mem.eql(u8, sc.goose, "bool")) return "false";
+        if (sc.goose[0] == 'f') return "0.0";
+        return "0";
+    }
 
     fn setType(sc: *const Scalar) []const u8 {
         return if (sc.set_type.len > 0) sc.set_type else sc.goose;
@@ -1438,15 +1756,28 @@ const sc_string: Scalar = blk: {
     break :blk sc;
 };
 
-/// True if this generator stores fields like `fd` yet: only singular fields
-/// of proto3, with implicit presence or `optional`, are stored (repeated
-/// fields, oneofs and proto2 come with later tasks).
+fn isProto3(file: *const descriptor.FileDescriptorProto) bool {
+    return std.mem.eql(u8, file.syntax orelse "proto2", "proto3");
+}
+
+/// True if this generator stores fields like `fd` as singular fields: those
+/// of proto3 (proto2 comes with a later task), oneof members included.
 fn isStorable(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) bool {
-    if (fd.label == .LABEL_REPEATED) return false;
-    if (!std.mem.eql(u8, file.syntax orelse "proto2", "proto3")) return false;
-    // A proto3 optional is in a synthetic oneof, which is not an ADT: its
-    // field is stored like any other.
-    return fd.oneof_index == null or (fd.proto3_optional orelse false);
+    return fd.label != .LABEL_REPEATED and isProto3(file);
+}
+
+/// True if `fd` is in a real oneof. A proto3 optional is in a synthetic one,
+/// which is not an ADT: its field is stored like any other.
+fn isRealOneofMember(fd: *const descriptor.FieldDescriptorProto) bool {
+    return fd.oneof_index != null and !(fd.proto3_optional orelse false);
+}
+
+/// True if oneof `i` of `m` is real: synthetic ones hold only a proto3 optional.
+fn isRealOneof(m: *const descriptor.DescriptorProto, i: usize) bool {
+    for (m.field.items) |*fd| {
+        if (isRealOneofMember(fd) and fd.oneof_index.? == i) return true;
+    }
+    return false;
 }
 
 /// The scalar storage of `fd`, or null if it is not a stored numeric, bool,
@@ -1521,7 +1852,7 @@ fn fieldKind(m: *const descriptor.DescriptorProto, full: []const u8, fd: *const 
     }
     if (is_msg) return .message;
     if (t == .TYPE_STRING or t == .TYPE_BYTES) return .string;
-    return .scalar;
+    return if (isRealOneofMember(fd)) .oneof_scalar else .scalar;
 }
 
 /// True if `type_name` (`.pkg.M.XEntry`) names a map entry nested in `m`.
@@ -1538,13 +1869,13 @@ fn isMapEntry(m: *const descriptor.DescriptorProto, full: []const u8, type_name:
     return false;
 }
 
-/// True if singular field `fd` tracks presence: a message, a proto3
-/// `optional`, or any singular field outside proto3.
+/// True if singular field `fd` tracks presence: a message, a oneof member
+/// (a proto3 `optional` is one), or any singular field outside proto3.
 fn hasPresence(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) bool {
     if (fd.label == .LABEL_REPEATED) return false;
     const t = fd.type orelse .TYPE_INT32;
     if (t == .TYPE_MESSAGE or t == .TYPE_GROUP) return true;
-    if (fd.proto3_optional orelse false) return true;
+    if (fd.oneof_index != null or (fd.proto3_optional orelse false)) return true;
     return !std.mem.eql(u8, file.syntax orelse "proto2", "proto3");
 }
 
@@ -1743,25 +2074,50 @@ test "accessors depend on kind and presence" {
     try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.message, true).len);
     try std.testing.expectEqual(@as(usize, 5), fieldAccessors(.repeated, false).len);
     try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.repeated_message, false).len);
+    try std.testing.expectEqual(@as(usize, 4), fieldAccessors(.oneof_scalar, true).len);
 }
 
-test "proto3 optional is stored with a has-bit; real oneofs and proto2 are not" {
+test "proto3 optional is stored with a has-bit; a real oneof as an ADT; proto2 is not" {
     var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     var m: descriptor.DescriptorProto = .{ .name = "M" };
+    try m.oneof_decl.append(a, .{ .name = "_o" });
+    try m.oneof_decl.append(a, .{ .name = "pick" });
     try m.field.append(a, .{ .name = "o", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32, .oneof_index = 0, .proto3_optional = true });
     try m.field.append(a, .{ .name = "u", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32, .oneof_index = 1 });
+    try std.testing.expect(!isRealOneof(&m, 0));
+    try std.testing.expect(isRealOneof(&m, 1));
     var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .syntax = "proto3" };
     try file.message_type.append(a, m);
     var diag: []const u8 = "";
     const out = try generateForTest(a, &file, &diag);
-    try std.testing.expect(std.mem.indexOf(u8, out, "    o: i32,\n    pb_has0: u32,") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    o: i32,\n    pick: M_pick = M_pick.pb_none,\n    pb_has0: u32,") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "fn M_set_o(m: M&, v: i32)") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "enum M_pick {\n    pb_none,\n    u { v: i32 },\n}") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "    u: i32,") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "enum M__o") == null);
 
     const p2: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
     try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &m.field.items[0]));
+}
+
+test "a nested name equal to a oneof's type or clear_ is escaped" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var m: descriptor.DescriptorProto = .{ .name = "M" };
+    try m.oneof_decl.append(a, .{ .name = "pick" });
+    try m.field.append(a, .{ .name = "u", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32, .oneof_index = 0 });
+    try m.nested_type.append(a, .{ .name = "pick" });
+    try m.nested_type.append(a, .{ .name = "clear_pick" });
+    var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .syntax = "proto3" };
+    try file.message_type.append(a, m);
+    var diag: []const u8 = "";
+    const out = try generateForTest(a, &file, &diag);
+    try std.testing.expect(std.mem.indexOf(u8, out, "enum M_pick {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "struct M_pick_ {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "struct M_clear_pick_ {") != null);
 }
 
 test "proto3 strings are validated, bytes are not" {

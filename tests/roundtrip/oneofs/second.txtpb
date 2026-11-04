@@ -1,0 +1,2 @@
+# proto-message: oneofs.Choice
+p_int32: 9 s_sub { a: 2 }
