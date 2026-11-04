@@ -1,0 +1,3 @@
+# proto-file: mangled.proto
+# proto-message: my_api.Hyphenated
+s: "x"

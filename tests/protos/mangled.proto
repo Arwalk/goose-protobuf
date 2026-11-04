@@ -1,0 +1,8 @@
+// Round-trip: the files it imports have mangled names (gpb-8qn.8).
+syntax = "proto3";
+
+package mangled;
+
+import "foo.v1.proto";
+import "my-api.proto";
+import "recursive.proto";

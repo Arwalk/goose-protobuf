@@ -42,6 +42,7 @@ fn generate(
     request: *const plugin.CodeGeneratorRequest,
     response: *plugin.CodeGeneratorResponse,
 ) !void {
+    var outputs: std.StringHashMapUnmanaged([]const u8) = .empty;
     for (request.file_to_generate.items) |name| {
         const file = findFile(request, name) orelse {
             response.@"error" = try std.fmt.allocPrint(a, "{s}: not in proto_file", .{name});
@@ -56,10 +57,18 @@ fn generate(
             },
             else => return err,
         };
-        try response.file.append(a, .{
-            .name = try emit.outputName(a, name),
-            .content = content.written(),
-        });
+        const output = try emit.outputName(a, name);
+        const gop = try outputs.getOrPut(a, output);
+        if (gop.found_existing) {
+            response.@"error" = try std.fmt.allocPrint(
+                a,
+                "{s} and {s} both map to the Goose file {s}",
+                .{ gop.value_ptr.*, name, output },
+            );
+            return error.Rejected;
+        }
+        gop.value_ptr.* = name;
+        try response.file.append(a, .{ .name = output, .content = content.written() });
     }
 }
 
@@ -198,5 +207,22 @@ test "a name collision is a response error with no files" {
 
     const res = try runOn(a, &req);
     try std.testing.expectEqualStrings("bad.proto: E.X and E_X both map to the Goose name E_X", res.@"error".?);
+    try std.testing.expectEqual(@as(usize, 0), res.file.items.len);
+}
+
+test "two protos with one output file are a response error with no files" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+    const a = arena.allocator();
+    var req: plugin.CodeGeneratorRequest = .{};
+    try req.file_to_generate.append(a, "a.b.proto");
+    try req.file_to_generate.append(a, "c.proto");
+    try req.file_to_generate.append(a, "a-b.proto");
+    try req.proto_file.append(a, .{ .name = "a.b.proto" });
+    try req.proto_file.append(a, .{ .name = "c.proto" });
+    try req.proto_file.append(a, .{ .name = "a-b.proto" });
+
+    const res = try runOn(a, &req);
+    try std.testing.expectEqualStrings("a.b.proto and a-b.proto both map to the Goose file a_b.goose", res.@"error".?);
     try std.testing.expectEqual(@as(usize, 0), res.file.items.len);
 }

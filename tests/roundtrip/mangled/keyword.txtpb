@@ -1,0 +1,3 @@
+# proto-file: mangled.proto
+# proto-message: kw.Keyword
+b: true

@@ -1,0 +1,3 @@
+# proto-file: mangled.proto
+# proto-message: foo.v1.Dotted
+n: 7

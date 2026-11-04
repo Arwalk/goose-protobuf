@@ -35,7 +35,7 @@ Goose facts this rests on:
 | Accessors | `<message>_<field>` plus the operation | `Node_name`, `Node_set_name`, `Node_children_at`, `Node_attrs_get` |
 | Record fields | Proto field names, escaped | `type` → `type_` |
 | Reserved names | Any final name on the reserved list gets a trailing `_` | `message type` → `type_`; `struct.self` → `struct_self` |
-| Collisions | Two declarations that end up with the same Goose name produce `CodeGeneratorResponse.error` and no files. protoc still exits 0. | `A.B` and a top-level `A_B` |
+| Collisions | Two declarations that end up with the same Goose name produce `CodeGeneratorResponse.error` and no files. The plugin exits 0; protoc prints the error and exits 1. | `A.B` and a top-level `A_B` |
 | Output files | Each path segment of the `.proto` name with `-` and `.` replaced by `_`, then escaped. Two protos that map to the same output path are a collision error. | `api/foo.v1.proto` → `api/foo_v1.goose`, imported as `import api.foo_v1;` |
 
 ### The reserved list
@@ -135,6 +135,7 @@ the reserved list, in `generator/src/emit.zig`:
   provisional: 0001 does not fix them. The task that emits a field kind
   updates the table, its goldens and this note.
 
-Still to do:
-
-- gpb-8qn.8: output file name mangling.
+gpb-8qn.8 implemented output file names, with one addition to the rule
+above: any character an identifier cannot hold is replaced, not only `-`
+and `.`, and a segment starting with a digit gets a leading `_` (verified:
+`import _3d;` works). Such a name would otherwise be just as unimportable.

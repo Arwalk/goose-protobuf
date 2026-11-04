@@ -1,0 +1,8 @@
+// Golden: a dotted proto name maps to an importable file (gpb-8qn.8).
+syntax = "proto3";
+
+package foo.v1;
+
+message Dotted {
+  int32 n = 1;
+}

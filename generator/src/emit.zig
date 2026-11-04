@@ -140,13 +140,30 @@ pub fn accessorName(a: std.mem.Allocator, path: []const u8, field: []const u8, a
     return ident(a, try std.fmt.allocPrint(a, "{s}_{s}{s}{s}", .{ path, acc.prefix, field, acc.suffix }));
 }
 
-/// `foo/bar.proto` -> `foo/bar.goose`.
+/// The output file of a .proto, which `import a.b.c;` loads as a/b/c.goose:
+/// `api/foo.v1.proto` -> `api/foo_v1.goose`. In each path segment, whatever
+/// an identifier cannot hold becomes `_`, a leading digit gets a `_` before
+/// it, and a reserved result is escaped.
 pub fn outputName(a: std.mem.Allocator, proto_name: []const u8) ![]const u8 {
     const stem = if (std.mem.endsWith(u8, proto_name, ".proto"))
         proto_name[0 .. proto_name.len - ".proto".len]
     else
         proto_name;
-    return std.fmt.allocPrint(a, "{s}.goose", .{stem});
+    var out: std.ArrayList(u8) = .empty;
+    var segments = std.mem.splitScalar(u8, stem, '/');
+    var first = true;
+    while (segments.next()) |segment| {
+        if (!first) try out.append(a, '/');
+        first = false;
+        const mangled = try a.dupe(u8, segment);
+        for (mangled) |*c| {
+            if (!std.ascii.isAlphanumeric(c.*) and c.* != '_') c.* = '_';
+        }
+        if (mangled.len > 0 and std.ascii.isDigit(mangled[0])) try out.append(a, '_');
+        try out.appendSlice(a, try ident(a, mangled));
+    }
+    try out.appendSlice(a, ".goose");
+    return out.items;
 }
 
 pub const Error = error{NameCollision} || std.mem.Allocator.Error || std.Io.Writer.Error;
@@ -1000,6 +1017,16 @@ test "output names" {
     const a = arena.allocator();
     try std.testing.expectEqualStrings("foo/bar.goose", try outputName(a, "foo/bar.proto"));
     try std.testing.expectEqualStrings("x.goose", try outputName(a, "x"));
+    try std.testing.expectEqualStrings("api/foo_v1.goose", try outputName(a, "api/foo.v1.proto"));
+    try std.testing.expectEqualStrings("my_api.goose", try outputName(a, "my-api.proto"));
+    try std.testing.expectEqualStrings("my_api/v_2/x.goose", try outputName(a, "my-api/v.2/x.proto"));
+    // Every segment is escaped, directories too.
+    try std.testing.expectEqualStrings("recursive_.goose", try outputName(a, "recursive.proto"));
+    try std.testing.expectEqualStrings("type_/fn_/str_.goose", try outputName(a, "type/fn/str.proto"));
+    try std.testing.expectEqualStrings("pb_wire_.goose", try outputName(a, "pb_wire.proto"));
+    // Anything else an import path cannot hold.
+    try std.testing.expectEqualStrings("a_b_c.goose", try outputName(a, "a b+c.proto"));
+    try std.testing.expectEqualStrings("_3d/_1.goose", try outputName(a, "3d/1.proto"));
 }
 
 test "nested and top-level names that collide are reported" {
