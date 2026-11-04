@@ -641,7 +641,7 @@ fn Tree_add_children(m: Tree&) -> Tree& {
 }
 
 // Frees the messages of children and everything they own.
-fn Tree_clear_children(m: Tree&) {
+recursive fn Tree_clear_children(m: Tree&) {
     for pb_ref in pb_run(Tree_links, m.children) {
         let pb_l = pb_ref.m;
         guard pb_l else { continue; }
@@ -769,7 +769,7 @@ fn Forest_add_groves(m: Forest&) -> Grove& {
 }
 
 // Frees the messages of groves and everything they own.
-fn Forest_clear_groves(m: Forest&) {
+recursive fn Forest_clear_groves(m: Forest&) {
     for pb_ref in pb_run(Grove_links, m.groves) {
         let pb_l = pb_ref.m;
         guard pb_l else { continue; }
@@ -877,7 +877,7 @@ fn Grove_mutable_forest(m: Grove&) -> Forest& {
 fn Grove_has_forest(m: Grove&) -> bool { return m.forest.m != null; }
 
 // Frees the sub-message forest and everything it owns.
-fn Grove_clear_forest(m: Grove&) {
+recursive fn Grove_clear_forest(m: Grove&) {
     let pb_sub = m.forest.m;
     guard pb_sub else { return; }
     Forest_clear(pb_sub);

@@ -1415,7 +1415,7 @@ pub const FileEmitter = struct {
             \\}}
             \\
             \\// Frees the messages of {s} and everything they own.
-            \\fn {s}(m: {s}&) {{
+            \\{s} {s}(m: {s}&) {{
             \\    for pb_ref in pb_run({s}, m.{s}) {{
             \\        let pb_l = pb_ref.m;
             \\        guard pb_l else {{ continue; }}
@@ -1433,7 +1433,7 @@ pub const FileEmitter = struct {
             pool, sub.goose_name,
             links, f.name,
             fname,
-            try accessorName(self.a, path, fname, clear_acc), goose_name,
+            self.fn_kw, try accessorName(self.a, path, fname, clear_acc), goose_name,
             links, f.name,
             try self.subName(sub, "clear"),
             pool, pool,
@@ -1476,6 +1476,8 @@ pub const FileEmitter = struct {
     /// The getter, mutable_, has_ and clear_ of a sub-message. Its slot in
     /// the pool is the sub-message's own, so a reference to it stays valid
     /// until the field is cleared.
+    /// clear_ is in the cycle of M_clear, and may be the first call into it,
+    /// so it is declared as the codecs are; likewise for a repeated message.
     fn emitSubMessageAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field, sub: MessageInfo) Error!void {
         const fname = f.fd.name orelse "";
         const pool = try self.subName(sub, "pool");
@@ -1497,7 +1499,7 @@ pub const FileEmitter = struct {
             \\fn {s}(m: {s}&) -> bool {{ return m.{s}.m != null; }}
             \\
             \\// Frees the sub-message {s} and everything it owns.
-            \\fn {s}(m: {s}&) {{
+            \\{s} {s}(m: {s}&) {{
             \\    let pb_sub = m.{s}.m;
             \\    guard pb_sub else {{ return; }}
             \\    {s}(pb_sub);
@@ -1515,7 +1517,7 @@ pub const FileEmitter = struct {
             f.name,
             try accessorName(self.a, path, fname, has_acc), goose_name, f.name,
             fname,
-            try accessorName(self.a, path, fname, clear_acc), goose_name,
+            self.fn_kw, try accessorName(self.a, path, fname, clear_acc), goose_name,
             f.name,
             try self.subName(sub, "clear"),
             pool, pool,

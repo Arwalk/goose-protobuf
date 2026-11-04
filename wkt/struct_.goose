@@ -715,7 +715,7 @@ fn ListValue_add_values(m: ListValue&) -> Value& {
 }
 
 // Frees the messages of values and everything they own.
-fn ListValue_clear_values(m: ListValue&) {
+recursive fn ListValue_clear_values(m: ListValue&) {
     for pb_ref in pb_run(Value_links, m.values) {
         let pb_l = pb_ref.m;
         guard pb_l else { continue; }

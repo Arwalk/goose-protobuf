@@ -299,7 +299,7 @@ fn Msg_mutable_leaf(m: Msg&) -> Leaf& {
 fn Msg_has_leaf(m: Msg&) -> bool { return m.leaf.m != null; }
 
 // Frees the sub-message leaf and everything it owns.
-fn Msg_clear_leaf(m: Msg&) {
+recursive fn Msg_clear_leaf(m: Msg&) {
     let pb_sub = m.leaf.m;
     guard pb_sub else { return; }
     Leaf_clear(pb_sub);
@@ -323,7 +323,7 @@ fn Msg_mutable_next(m: Msg&) -> Msg& {
 fn Msg_has_next(m: Msg&) -> bool { return m.next.m != null; }
 
 // Frees the sub-message next and everything it owns.
-fn Msg_clear_next(m: Msg&) {
+recursive fn Msg_clear_next(m: Msg&) {
     let pb_sub = m.next.m;
     guard pb_sub else { return; }
     Msg_clear(pb_sub);
@@ -347,7 +347,7 @@ fn Msg_mutable_timeout(m: Msg&) -> google_protobuf::Duration& {
 fn Msg_has_timeout(m: Msg&) -> bool { return m.timeout.m != null; }
 
 // Frees the sub-message timeout and everything it owns.
-fn Msg_clear_timeout(m: Msg&) {
+recursive fn Msg_clear_timeout(m: Msg&) {
     let pb_sub = m.timeout.m;
     guard pb_sub else { return; }
     google_protobuf::Duration_clear(pb_sub);

@@ -356,7 +356,7 @@ fn Node_add_children(m: Node&) -> Node& {
 }
 
 // Frees the messages of children and everything they own.
-fn Node_clear_children(m: Node&) {
+recursive fn Node_clear_children(m: Node&) {
     for pb_ref in pb_run(Node_links, m.children) {
         let pb_l = pb_ref.m;
         guard pb_l else { continue; }

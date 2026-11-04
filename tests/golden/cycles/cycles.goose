@@ -157,7 +157,7 @@ fn Node_mutable_child(m: Node&) -> Node& {
 fn Node_has_child(m: Node&) -> bool { return m.child.m != null; }
 
 // Frees the sub-message child and everything it owns.
-fn Node_clear_child(m: Node&) {
+recursive fn Node_clear_child(m: Node&) {
     let pb_sub = m.child.m;
     guard pb_sub else { return; }
     Node_clear(pb_sub);
@@ -305,7 +305,7 @@ fn Ping_mutable_pong(m: Ping&) -> Ping_Pong& {
 fn Ping_has_pong(m: Ping&) -> bool { return m.pong.m != null; }
 
 // Frees the sub-message pong and everything it owns.
-fn Ping_clear_pong(m: Ping&) {
+recursive fn Ping_clear_pong(m: Ping&) {
     let pb_sub = m.pong.m;
     guard pb_sub else { return; }
     Ping_Pong_clear(pb_sub);
@@ -329,7 +329,7 @@ fn Ping_mutable_leaf(m: Ping&) -> Leaf& {
 fn Ping_has_leaf(m: Ping&) -> bool { return m.leaf.m != null; }
 
 // Frees the sub-message leaf and everything it owns.
-fn Ping_clear_leaf(m: Ping&) {
+recursive fn Ping_clear_leaf(m: Ping&) {
     let pb_sub = m.leaf.m;
     guard pb_sub else { return; }
     Leaf_clear(pb_sub);
@@ -445,7 +445,7 @@ fn Ping_Pong_mutable_ping(m: Ping_Pong&) -> Ping& {
 fn Ping_Pong_has_ping(m: Ping_Pong&) -> bool { return m.ping.m != null; }
 
 // Frees the sub-message ping and everything it owns.
-fn Ping_Pong_clear_ping(m: Ping_Pong&) {
+recursive fn Ping_Pong_clear_ping(m: Ping_Pong&) {
     let pb_sub = m.ping.m;
     guard pb_sub else { return; }
     Ping_clear(pb_sub);
@@ -620,7 +620,7 @@ fn A_mutable_b(m: A&) -> B& {
 fn A_has_b(m: A&) -> bool { return m.b.m != null; }
 
 // Frees the sub-message b and everything it owns.
-fn A_clear_b(m: A&) {
+recursive fn A_clear_b(m: A&) {
     let pb_sub = m.b.m;
     guard pb_sub else { return; }
     B_clear(pb_sub);
@@ -726,7 +726,7 @@ fn B_mutable_c(m: B&) -> C& {
 fn B_has_c(m: B&) -> bool { return m.c.m != null; }
 
 // Frees the sub-message c and everything it owns.
-fn B_clear_c(m: B&) {
+recursive fn B_clear_c(m: B&) {
     let pb_sub = m.c.m;
     guard pb_sub else { return; }
     C_clear(pb_sub);
@@ -855,7 +855,7 @@ fn C_mutable_a(m: C&) -> A& {
 fn C_has_a(m: C&) -> bool { return m.a.m != null; }
 
 // Frees the sub-message a and everything it owns.
-fn C_clear_a(m: C&) {
+recursive fn C_clear_a(m: C&) {
     let pb_sub = m.a.m;
     guard pb_sub else { return; }
     A_clear(pb_sub);
@@ -879,7 +879,7 @@ fn C_mutable_b(m: C&) -> B& {
 fn C_has_b(m: C&) -> bool { return m.b.m != null; }
 
 // Frees the sub-message b and everything it owns.
-fn C_clear_b(m: C&) {
+recursive fn C_clear_b(m: C&) {
     let pb_sub = m.b.m;
     guard pb_sub else { return; }
     B_clear(pb_sub);

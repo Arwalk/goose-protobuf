@@ -1514,7 +1514,7 @@ fn Tree_mutable_next(m: Tree&) -> Tree& {
 fn Tree_has_next(m: Tree&) -> bool { return m.next.m != null; }
 
 // Frees the sub-message next and everything it owns.
-fn Tree_clear_next(m: Tree&) {
+recursive fn Tree_clear_next(m: Tree&) {
     let pb_sub = m.next.m;
     guard pb_sub else { return; }
     Tree_clear(pb_sub);
