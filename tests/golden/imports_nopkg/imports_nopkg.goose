@@ -6,7 +6,7 @@
 //                                array element the caller owns
 //   m.f, m.f = v                 scalar fields without presence
 //   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-//   M_clear_f(m)                 optional); m.f reads them
+//   M_clear_f(m)                 optional, proto2); m.f reads them
 //   M_f(m) -> u8[:]              string and bytes fields: a view into
 //   M_set_f(m, v)                pb_bytes, and a copying setter
 //   M_f(m) -> S&?                sub-message fields: null if not set;

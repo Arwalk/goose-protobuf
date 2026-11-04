@@ -8,7 +8,9 @@ Status: Phase 3 complete. The plugin emits one `.goose` file per `.proto`
 file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
 those (packed or not), oneofs as ADTs and maps, with `optional` presence and
-unknown fields kept. Proto2 is kept as unknown fields until Phase 4. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers them. Every
+unknown fields kept. Phase 4 is under way: singular proto2 fields are stored, with
+presence; proto2's enums, groups, extensions and repeated, oneof and map fields
+are kept as unknown fields. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers them. Every
 required proto3 binary conformance test passes. The backlog lives in beads
 (`bd ready`).
 

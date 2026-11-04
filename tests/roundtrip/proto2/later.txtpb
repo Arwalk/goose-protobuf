@@ -1,0 +1,2 @@
+# proto-message: p2.Later
+stored: 1 mode: MODE_B list: 2 member: 3 counts { key: "k" value: 4 } Grp { g: 5 } [p2.ext]: 6

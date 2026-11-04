@@ -1846,7 +1846,7 @@ const api_comment =
     \\//                                array element the caller owns
     \\//   m.f, m.f = v                 scalar fields without presence
     \\//   M_set_f(m, v), M_has_f(m),   scalar fields with presence (proto3
-    \\//   M_clear_f(m)                 optional); m.f reads them
+    \\//   M_clear_f(m)                 optional, proto2); m.f reads them
     \\//   M_f(m) -> u8[:]              string and bytes fields: a view into
     \\//   M_set_f(m, v)                pb_bytes, and a copying setter
     \\//   M_f(m) -> S&?                sub-message fields: null if not set;
@@ -2092,10 +2092,17 @@ fn isProto3(file: *const descriptor.FileDescriptorProto) bool {
     return std.mem.eql(u8, file.syntax orelse "proto2", "proto3");
 }
 
+fn isProto2(file: *const descriptor.FileDescriptorProto) bool {
+    return std.mem.eql(u8, file.syntax orelse "proto2", "proto2");
+}
+
 /// True if this generator stores fields like `fd` as singular fields: those
-/// of proto3 (proto2 comes with a later task), oneof members included.
+/// of proto3, oneof members included, and those of proto2 outside a oneof.
+/// Editions come with a later task.
 fn isStorable(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) bool {
-    return fd.label != .LABEL_REPEATED and isProto3(file);
+    if (fd.label == .LABEL_REPEATED) return false;
+    if (isProto3(file)) return true;
+    return isProto2(file) and fd.oneof_index == null;
 }
 
 /// True if `fd` is in a real oneof. A proto3 optional is in a synthetic one,
@@ -2116,6 +2123,13 @@ fn isRealOneof(m: *const descriptor.DescriptorProto, i: usize) bool {
 /// enum, string or bytes field.
 fn scalarOf(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?*const Scalar {
     if (!isStorable(file, fd)) return null;
+    if (isProto2(file)) {
+        // A proto2 enum is closed, which storing it would not honour yet:
+        // kept as an unknown field, it is at least preserved. A proto2
+        // string is not validated.
+        if (fd.type == .TYPE_ENUM) return null;
+        if (fd.type == .TYPE_STRING) return &sc_bytes;
+    }
     return scalarOfType(fd);
 }
 
@@ -2433,8 +2447,28 @@ test "proto3 optional is stored with a has-bit; a real oneof as an ADT; proto2 i
     try std.testing.expect(std.mem.indexOf(u8, out, "    u: i32,") == null);
     try std.testing.expect(std.mem.indexOf(u8, out, "enum M__o") == null);
 
+    // In proto2 only a real oneof's member is left out here.
     const p2: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
     try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &m.field.items[0]));
+}
+
+test "singular proto2 fields are stored, but not enums; editions are not stored" {
+    const p2: descriptor.FileDescriptorProto = .{};
+    const named: descriptor.FileDescriptorProto = .{ .syntax = "proto2" };
+    const ed: descriptor.FileDescriptorProto = .{ .syntax = "editions" };
+    const i: descriptor.FieldDescriptorProto = .{ .name = "i", .label = .LABEL_OPTIONAL, .type = .TYPE_INT32 };
+    const r: descriptor.FieldDescriptorProto = .{ .name = "r", .label = .LABEL_REQUIRED, .type = .TYPE_INT32 };
+    const s: descriptor.FieldDescriptorProto = .{ .name = "s", .label = .LABEL_OPTIONAL, .type = .TYPE_STRING };
+    const e: descriptor.FieldDescriptorProto = .{ .name = "e", .label = .LABEL_OPTIONAL, .type = .TYPE_ENUM };
+    const g: descriptor.FieldDescriptorProto = .{ .name = "g", .label = .LABEL_OPTIONAL, .type = .TYPE_GROUP };
+    try std.testing.expectEqual(@as(?*const Scalar, &sc_int32), scalarOf(&p2, &i));
+    try std.testing.expectEqual(@as(?*const Scalar, &sc_int32), scalarOf(&named, &i));
+    try std.testing.expectEqual(@as(?*const Scalar, &sc_int32), scalarOf(&p2, &r));
+    try std.testing.expectEqualStrings("pb_read_bytes(r, $)", scalarOf(&p2, &s).?.read);
+    try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &e));
+    try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&p2, &g));
+    try std.testing.expectEqual(@as(?*const Scalar, null), scalarOf(&ed, &i));
+    try std.testing.expect(hasPresence(&p2, &i));
 }
 
 test "a nested name equal to a oneof's type or clear_ is escaped" {

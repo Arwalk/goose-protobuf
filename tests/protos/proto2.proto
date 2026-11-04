@@ -1,0 +1,56 @@
+// Golden and round-trip (tests/roundtrip/proto2/): singular proto2 fields have
+// explicit presence. A set field is encoded even at its default, an unset one
+// never is. Strings are not validated. What later tasks store stays an unknown
+// field: closed enums, groups, extensions, and repeated, oneof and map fields.
+syntax = "proto2";
+
+package p2;
+
+enum Mode {
+  MODE_A = 0;
+  MODE_B = 1;
+}
+
+message Sub {
+  optional int32 a = 1;
+  optional Sub next = 2;
+}
+
+message Pres {
+  optional int32 o_int32 = 1;
+  optional int64 o_int64 = 2;
+  optional uint32 o_uint32 = 3;
+  optional uint64 o_uint64 = 4;
+  optional sint32 o_sint32 = 5;
+  optional sint64 o_sint64 = 6;
+  optional fixed32 o_fixed32 = 7;
+  optional fixed64 o_fixed64 = 8;
+  optional sfixed32 o_sfixed32 = 9;
+  optional sfixed64 o_sfixed64 = 10;
+  optional float o_float = 11;
+  optional double o_double = 12;
+  optional bool o_bool = 13;
+  optional string o_string = 14;
+  optional bytes o_bytes = 15;
+  optional Sub o_sub = 16;
+  required int32 r_int32 = 17;
+  required string r_string = 18;
+}
+
+message Later {
+  optional int32 stored = 1;
+  optional Mode mode = 2;
+  repeated int32 list = 3;
+  oneof pick {
+    int32 member = 4;
+  }
+  map<string, int32> counts = 5;
+  optional group Grp = 6 {
+    optional int32 g = 1;
+  }
+  extensions 100 to 199;
+}
+
+extend Later {
+  optional int32 ext = 100;
+}

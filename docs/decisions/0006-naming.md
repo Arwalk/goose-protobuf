@@ -127,6 +127,9 @@ the reserved list, in `generator/src/emit.zig`:
   also has `<M>_has_<f>` and `<M>_clear_<f>`. Has-bits live in record
   fields `pb_has<k>: u32`, which no proto field can take because `pb_`
   names are escaped.
+- A singular proto2 field (gpb-6xy.1) has the same accessors, and `required`
+  is stored the same way. A field is unset until set, read as 0 until
+  gpb-6xy.2 brings declared defaults.
 - A singular message field (gpb-8qn.2) has `<M>_<f>`, which returns the
   sub-message or null; `<M>_mutable_<f>`, which first sets an empty one
   if there is none; and `<M>_has_<f>` and `<M>_clear_<f>`. Its link is
