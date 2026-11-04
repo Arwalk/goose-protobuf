@@ -12,6 +12,8 @@ for the pinned versions and their caveats.
 goose check runtime/pb_wire.goose               # Goose typecheck
 scripts/build_runner.sh                         # conformance_test_runner
 scripts/run_conformance.sh [testee] [flags]     # conformance suite
+FAILURE_LIST=conformance/failure_list_recommended.txt scripts/run_conformance.sh \
+  build/testee --maximum_edition 2023 --enforce_recommended   # recommended tests too
 scripts/golden.sh                               # golden tests (--update to accept)
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
@@ -67,8 +69,9 @@ hex diff.
 - **Generated code must pass `goose check`.** Goose has no formatter, so
   generator output must be byte-deterministic (same input, same bytes), and
   golden tests check that.
-- **The conformance failure list may only shrink.** Never add an entry to
-  `conformance/failure_list_goose.txt` to make CI pass. A newly failing test
+- **The conformance failure lists may only shrink.** Never add an entry to
+  `conformance/failure_list_goose.txt` or `conformance/failure_list_recommended.txt`
+  to make CI pass. A newly failing test
   is a bug.
 - **Track all work in beads** (`bd`). Don't write markdown TODO lists or TODO
   comments without a bead id. Spike conclusions go in `docs/decisions/` as

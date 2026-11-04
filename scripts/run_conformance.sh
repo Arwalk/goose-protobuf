@@ -11,7 +11,8 @@
 # Exit status is the runner's: nonzero iff a test fails that is not in the
 # failure list, or a test in the failure list passes.
 # Env: RUNNER (default build/pb/conformance_test_runner)
-#      FAILURE_LIST (default conformance/failure_list_goose.txt)
+#      FAILURE_LIST (default conformance/failure_list_goose.txt; with
+#        --enforce_recommended, use conformance/failure_list_recommended.txt)
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"

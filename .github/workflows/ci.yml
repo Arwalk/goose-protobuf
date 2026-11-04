@@ -152,6 +152,12 @@ jobs:
       - name: Conformance suite
         run: scripts/run_conformance.sh --maximum_edition 2023
 
+      # Fails if any result does not match conformance/failure_list_recommended.txt.
+      - name: Conformance suite, recommended tests too
+        run: >-
+          FAILURE_LIST=conformance/failure_list_recommended.txt
+          scripts/run_conformance.sh build/testee --maximum_edition 2023 --enforce_recommended
+
       - name: Testee and harness checks
         run: |
           python3 conformance/check_testee.py build/testee
