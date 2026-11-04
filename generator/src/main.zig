@@ -9,6 +9,7 @@ const emit = @import("emit.zig");
 
 test {
     _ = emit;
+    _ = @import("features.zig");
 }
 
 /// CodeGeneratorResponse.Feature.FEATURE_PROTO3_OPTIONAL.

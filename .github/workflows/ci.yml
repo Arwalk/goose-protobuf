@@ -106,6 +106,10 @@ jobs:
       - name: Check well-known types
         run: scripts/wkt.sh
 
+      # The feature defaults that the generator tests against match protoc's.
+      - name: Check edition defaults
+        run: scripts/edition_defaults.sh
+
       - name: Protobuf submodule commit
         id: pb
         run: echo "commit=$(git rev-parse HEAD:third_party/protobuf)" >> "$GITHUB_OUTPUT"

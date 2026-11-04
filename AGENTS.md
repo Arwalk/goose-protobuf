@@ -17,6 +17,7 @@ scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_t
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
+scripts/edition_defaults.sh                     # feature defaults match protoc (--update to accept)
 scripts/bench_maps.sh [sizes]                   # map decode timings (decision 0008)
 ```
 
