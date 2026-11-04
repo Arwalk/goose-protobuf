@@ -52,21 +52,9 @@ docs/decisions/ spike conclusions and design decisions
 
 Pinned versions are listed in [TOOLCHAIN.md](TOOLCHAIN.md).
 
-## Planned usage
+## Usage
 
-```sh
-(cd generator && zig build)
-protoc --plugin=protoc-gen-goose=generator/zig-out/bin/protoc-gen-goose \
-       --goose_out=out/ -I protos protos/foo.proto
-goose build app.goose        # app.goose imports out/foo.goose + pb_wire
-```
-
-The root file of a program names this repository as the `pb_wire` package:
-`import pb_wire from "../goose-protobuf";` for a checkout. Well-known types
-come from the package, not from protoc: a field of type
-`google.protobuf.Duration` generates `import pb_wire.wkt.duration;`, and the
-plugin writes nothing for `google/protobuf/duration.proto`
-([decision 0007](docs/decisions/0007-well-known-types.md)).
+[docs/usage.md](docs/usage.md) goes from a `.proto` file to a running program.
 
 Conformance:
 

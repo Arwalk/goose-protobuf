@@ -65,8 +65,8 @@ Measured, and not obvious from the documentation:
 
 So publishing from this repository takes the entry file and `update = none`,
 and **both are in place**. The second has a cost here: a plain
-`git submodule update --init` skips the submodule, so the scripts, CI and the
-README say `--checkout`.
+`git submodule update --init` skips the submodule, so the scripts, CI, the
+README and the usage guide (`docs/usage.md`) say `--checkout`.
 
 The rejected alternative was a separate repository holding only
 `pb_wire.goose` at its root, which has no such costs but has to be kept in

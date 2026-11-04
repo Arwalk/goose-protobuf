@@ -17,6 +17,7 @@ scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_t
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
 scripts/fuzz.sh [seconds]                       # libFuzzer on generated decoders (needs clang)
+scripts/check_docs.py                           # run docs/usage.md: its snippets, commands and output
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
 scripts/edition_defaults.sh                     # feature defaults match protoc (--update to accept)
@@ -32,6 +33,7 @@ intended generator change, run `scripts/golden.sh --update` and review the
 golden diff in the commit, and the same with `scripts/wkt.sh --update` for the
 well-known types in `wkt/`. `scripts/test_golden.sh`,
 `scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`, `scripts/test_interop.sh`, `scripts/test_fuzz.sh`,
+`scripts/test_check_docs.sh`,
 `scripts/test_check_generated.sh` and `scripts/test_run_conformance.sh`
 self-test the harnesses.
 
@@ -74,7 +76,7 @@ hex diff.
 - **Goose pitfalls**: Goose `varint` is not the protobuf varint. Do zigzag
   and varint maths in `u64`, and use `as!` for wrapping casts (`as` aborts
   under `--debug`). `T?` is a nullable reference, so field presence uses
-  has-bits. Enums have no discriminants, so protobuf enums are `i32`
+  has-bits. `let x = f()` copies a record, and `let x .= f()` binds it. Enums have no discriminants, so protobuf enums are `i32`
   constants.
 - **Pins**: toolchain versions change only in a dedicated commit that updates
   TOOLCHAIN.md, CI, and any affected goldens and failure list.
