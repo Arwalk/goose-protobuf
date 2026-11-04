@@ -23,6 +23,9 @@
 //   M_mutable_f(m) -> S&         messages have mutable_, not set_.
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
+//   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
+//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_clear_f(m)                 S&?), put of a message returns it
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -44,6 +47,7 @@ let NullValue_NULL_VALUE: i32 = 0;
 
 // message google.protobuf.Struct
 struct Struct {
+    fields_: pb_Span,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -55,14 +59,32 @@ reusable[] var Struct_links: Struct_Ref[>..] = [];
 // Merges the fields in r's window into m; on failure r.err is set.
 // Fields it does not know, or with another wire type, are kept as
 // unknown fields.
-fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
+recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
     var unknown_len: i64 = m.pb_unknown.len;
+    var pb_len1: i64 = m.fields_.len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
-        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        if tag == 10 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            pb_reserve(Struct_FieldsEntry_entries, m.fields_, pb_len1);
+            let pb_e .= pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_len1];
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Struct_FieldsEntry_decode_from(r, pb_e);
+            if r.err != PB_OK { Struct_FieldsEntry_clear(pb_e); break; }
+            r.depth--;
+            r.end = pb_outer;
+            pb_len1 = Struct_FieldsEntry_place(m.fields_, pb_len1);
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
     }
+    m.fields_ = pb_trim(Struct_FieldsEntry_entries, m.fields_, pb_len1);
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
@@ -75,28 +97,80 @@ fn Struct_decode(buf: const u8[:], m: Struct&) -> i32 {
 }
 
 // Appends m's wire encoding, Struct_size_of(m) bytes, to out.
-fn Struct_encode(m: Struct&, out: u8[>..]&) {
+recursive fn Struct_encode(m: Struct&, out: u8[>..]&) {
+    for pb_i in m.fields_.len {
+        let pb_e .= pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i];
+        pb_write_varint(out, 10);
+        pb_write_varint(out, Struct_FieldsEntry_size_of(pb_e) as! u64);
+        Struct_FieldsEntry_encode(pb_e, out);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
-fn Struct_size_of(m: Struct&) -> i64 {
+recursive fn Struct_size_of(m: Struct&) -> i64 {
     var n: i64 = 0;
+    for pb_i in m.fields_.len {
+        n += 1 + pb_len_size(Struct_FieldsEntry_size_of(pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i]));
+    }
     n += m.pb_unknown.len;
     return n;
 }
 
 // Frees what m owns and resets it to the empty message.
-fn Struct_clear(m: Struct&) {
+recursive fn Struct_clear(m: Struct&) {
+    Struct_clear_fields(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
 // Makes dst a deep copy of src, freeing what dst owned. The two share
 // nothing afterwards. Neither may be a sub-message of the other.
-fn Struct_copy(dst: Struct&, src: Struct&) {
+recursive fn Struct_copy(dst: Struct&, src: Struct&) {
     if dst .== src { return; }
     Struct_clear(dst);
+    dst.fields_ = pb_resize(Struct_FieldsEntry_entries, dst.fields_, src.fields_.len);
+    for pb_i in src.fields_.len {
+        Struct_FieldsEntry_copy(pb_run(Struct_FieldsEntry_entries, dst.fields_)[pb_i], pb_run(Struct_FieldsEntry_entries, src.fields_)[pb_i]);
+    }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// The entries of fields, in insertion order: its .len is their number, and
+// each has .key and .value, or the entry type's accessors for what is in a
+// pool. Valid until the map next changes or m is cleared.
+fn Struct_fields(m: Struct&) -> Struct_FieldsEntry[:] { return pb_run(Struct_FieldsEntry_entries, m.fields_); }
+
+// The value with key k, or null if there is none. Valid until its entry
+// is removed or m is cleared.
+fn Struct_fields_get(m: Struct&, k: const u8[:]) -> Value&? {
+    let pb_i = Struct_FieldsEntry_find(m.fields_, m.fields_.len, k);
+    if pb_i < 0 { return null; }
+    return pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i].value.m;
+}
+
+// The value with key k, added empty if there is none.
+fn Struct_fields_put(m: Struct&, k: const u8[:]) -> Value& {
+    return Struct_FieldsEntry_mutable_value(Struct_FieldsEntry_slot(m.fields_, k));
+}
+
+// Removes the entry with key k and frees what it owns. False if there is
+// none. Later entries keep their order.
+fn Struct_fields_remove(m: Struct&, k: const u8[:]) -> bool {
+    let pb_i = Struct_FieldsEntry_find(m.fields_, m.fields_.len, k);
+    if pb_i < 0 { return false; }
+    let pb_r = pb_run(Struct_FieldsEntry_entries, m.fields_);
+    Struct_FieldsEntry_clear(pb_r[pb_i]);
+    var pb_j = pb_i;
+    while pb_j + 1 < pb_r.len { pb_r[pb_j] = pb_r[pb_j + 1]; pb_j++; }
+    pb_r[pb_j] = Struct_FieldsEntry { .. };
+    m.fields_ = pb_resize(Struct_FieldsEntry_entries, m.fields_, pb_j);
+    return true;
+}
+
+// Frees the entries of fields and everything they own.
+recursive fn Struct_clear_fields(m: Struct&) {
+    for pb_i in m.fields_.len { Struct_FieldsEntry_clear(pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i]); }
+    m.fields_ = pb_resize(Struct_FieldsEntry_entries, m.fields_, 0);
 }
 
 // message google.protobuf.Struct.FieldsEntry
@@ -114,7 +188,7 @@ reusable[] var Struct_FieldsEntry_links: Struct_FieldsEntry_Ref[>..] = [];
 // Merges the fields in r's window into m; on failure r.err is set.
 // Fields it does not know, or with another wire type, are kept as
 // unknown fields.
-fn Struct_FieldsEntry_decode_from(r: pb_Reader&, m: Struct_FieldsEntry&) {
+recursive fn Struct_FieldsEntry_decode_from(r: pb_Reader&, m: Struct_FieldsEntry&) {
     var unknown_len: i64 = m.pb_unknown.len;
     while r.pos < r.end {
         let start = r.pos;
@@ -149,11 +223,9 @@ fn Struct_FieldsEntry_decode(buf: const u8[:], m: Struct_FieldsEntry&) -> i32 {
 }
 
 // Appends m's wire encoding, Struct_FieldsEntry_size_of(m) bytes, to out.
-fn Struct_FieldsEntry_encode(m: Struct_FieldsEntry&, out: u8[>..]&) {
-    if m.key.len > 0 {
-        pb_write_varint(out, 10);
-        pb_write_bytes(out, m.key);
-    }
+recursive fn Struct_FieldsEntry_encode(m: Struct_FieldsEntry&, out: u8[>..]&) {
+    pb_write_varint(out, 10);
+    pb_write_bytes(out, m.key);
     let pb_f2 = m.value.m;
     if pb_f2 {
         pb_write_varint(out, 18);
@@ -164,9 +236,9 @@ fn Struct_FieldsEntry_encode(m: Struct_FieldsEntry&, out: u8[>..]&) {
 }
 
 // The size of m's wire encoding, in bytes.
-fn Struct_FieldsEntry_size_of(m: Struct_FieldsEntry&) -> i64 {
+recursive fn Struct_FieldsEntry_size_of(m: Struct_FieldsEntry&) -> i64 {
     var n: i64 = 0;
-    if m.key.len > 0 { n += 1 + pb_bytes_size(m.key); }
+    n += 1 + pb_bytes_size(m.key);
     let pb_f2 = m.value.m;
     if pb_f2 { n += 1 + pb_len_size(Value_size_of(pb_f2)); }
     n += m.pb_unknown.len;
@@ -174,7 +246,7 @@ fn Struct_FieldsEntry_size_of(m: Struct_FieldsEntry&) -> i64 {
 }
 
 // Frees what m owns and resets it to the empty message.
-fn Struct_FieldsEntry_clear(m: Struct_FieldsEntry&) {
+recursive fn Struct_FieldsEntry_clear(m: Struct_FieldsEntry&) {
     m.key = pb_bytes_free(m.key);
     Struct_FieldsEntry_clear_value(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
@@ -182,7 +254,7 @@ fn Struct_FieldsEntry_clear(m: Struct_FieldsEntry&) {
 
 // Makes dst a deep copy of src, freeing what dst owned. The two share
 // nothing afterwards. Neither may be a sub-message of the other.
-fn Struct_FieldsEntry_copy(dst: Struct_FieldsEntry&, src: Struct_FieldsEntry&) {
+recursive fn Struct_FieldsEntry_copy(dst: Struct_FieldsEntry&, src: Struct_FieldsEntry&) {
     if dst .== src { return; }
     Struct_FieldsEntry_clear(dst);
     dst.key = pb_bytes_copy(src.key);
@@ -216,12 +288,51 @@ fn Struct_FieldsEntry_mutable_value(m: Struct_FieldsEntry&) -> Value& {
 fn Struct_FieldsEntry_has_value(m: Struct_FieldsEntry&) -> bool { return m.value.m != null; }
 
 // Frees the sub-message value and everything it owns.
-fn Struct_FieldsEntry_clear_value(m: Struct_FieldsEntry&) {
+recursive fn Struct_FieldsEntry_clear_value(m: Struct_FieldsEntry&) {
     let pb_sub = m.value.m;
     guard pb_sub else { return; }
     Value_clear(pb_sub);
     Value_pool.free(Value_pool.index_of(pb_sub));
     m.value.m .= null;
+}
+
+// Runs of entries: one per map field of this type.
+reusable[] var Struct_FieldsEntry_entries: Struct_FieldsEntry[>..] = [];
+
+// The index of the entry with key k among the first `used` of run s, or -1.
+fn Struct_FieldsEntry_find(s: pb_Span, used: i64, k: const u8[:]) -> i64 {
+    let pb_run_s = pb_run(Struct_FieldsEntry_entries, s);
+    for pb_i in used {
+        if pb_run(pb_bytes, pb_run_s[pb_i].key) == k { return pb_i; }
+    }
+    return -1;
+}
+
+// The entry with key k in run s, added with the default value if there is none.
+fn Struct_FieldsEntry_slot(s: pb_Span&, k: const u8[:]) -> Struct_FieldsEntry& {
+    var pb_i = Struct_FieldsEntry_find(s, s.len, k);
+    if pb_i < 0 {
+        pb_i = s.len;
+        s = pb_resize(Struct_FieldsEntry_entries, s, pb_i + 1);
+        Struct_FieldsEntry_set_key(pb_run(Struct_FieldsEntry_entries, s)[pb_i], k);
+        Struct_FieldsEntry_mutable_value(pb_run(Struct_FieldsEntry_entries, s)[pb_i]);
+    }
+    return pb_run(Struct_FieldsEntry_entries, s)[pb_i];
+}
+
+// Settles the entry just decoded into slot `used` of run s, and returns how
+// many are in use now. A missing message value is an empty one, unknown
+// fields are dropped, and an entry with its key already there replaces it.
+fn Struct_FieldsEntry_place(s: pb_Span, used: i64) -> i64 {
+    let pb_e .= pb_run(Struct_FieldsEntry_entries, s)[used];
+    Struct_FieldsEntry_mutable_value(pb_e);
+    pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
+    let pb_i = Struct_FieldsEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
+    if pb_i < 0 { return used + 1; }
+    Struct_FieldsEntry_clear(pb_run(Struct_FieldsEntry_entries, s)[pb_i]);
+    pb_run(Struct_FieldsEntry_entries, s)[pb_i] = pb_e;
+    pb_run(Struct_FieldsEntry_entries, s)[used] = Struct_FieldsEntry { .. };
+    return used;
 }
 
 // message google.protobuf.Value

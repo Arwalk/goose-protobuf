@@ -1,0 +1,2 @@
+# proto-message: maps.Maps
+sb { key: "a" value: "\xff" }

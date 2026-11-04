@@ -7,8 +7,8 @@ wire format**. It is tested against the official protobuf conformance suite.
 Status: Phase 3 in progress. The plugin emits one `.goose` file per `.proto`
 file. For proto3 messages it stores scalars, enums, strings, bytes,
 sub-messages (recursive and imported ones too) and repeated fields of all of
-those (packed or not), oneofs as ADTs, with `optional` presence and unknown
-fields kept. Maps are kept as unknown fields for now, and so is proto2 until Phase 4. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers the scalar ones. Every
+those (packed or not), oneofs as ADTs and maps, with `optional` presence and
+unknown fields kept. Proto2 is kept as unknown fields until Phase 4. The well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt` covers the scalar ones. Every
 required proto3 binary conformance test passes. The backlog lives in beads
 (`bd ready`).
 

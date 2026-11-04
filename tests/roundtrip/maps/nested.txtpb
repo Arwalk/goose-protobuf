@@ -1,0 +1,2 @@
+# proto-message: maps.Maps
+self { key: "k" value { self { key: "in" value { si { key: "n" value: 1 } } } after: 2 } }

@@ -180,9 +180,11 @@ fn check_errors() {
     }
     lists::Lists_clear(m);
 
-    // A map stays an unknown field.
+    // A map is not a repeated message: it is stored as a map.
     let entry: u8[7] = [0x32, 0x05, 0x0a, 0x01, 0x6b, 0x10, 0x07];
-    if lists::Lists_decode(entry, m) != PB_OK || m.pb_unknown.len != 7 { fail_at("map", "not unknown"); }
+    if lists::Lists_decode(entry, m) != PB_OK || m.pb_unknown.len != 0 { fail_at("map", "kept unknown"); }
+    let count, found = lists::Lists_counts_get(m, "k");
+    if !found || count != 7 { fail_at("map", "value"); }
     lists::Lists_clear(m);
 }
 

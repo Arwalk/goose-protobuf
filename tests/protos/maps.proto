@@ -1,0 +1,43 @@
+// Golden and round-trip (tests/roundtrip/maps/): map fields are runs of inline
+// entry records. Every key type, values of each kind of storage, recursive and
+// imported message values, and a keyword as the field name.
+syntax = "proto3";
+
+package maps;
+
+import "google/protobuf/duration.proto";
+
+enum Mode {
+  MODE_UNSPECIFIED = 0;
+  MODE_ON = 1;
+}
+
+message Sub {
+  int32 a = 1;
+  string s = 2;
+  repeated int32 r = 3;
+}
+
+message Maps {
+  map<string, string> ss = 1;
+  map<string, bytes> sb = 2;
+  map<string, int32> si = 3;
+  map<int32, string> is = 4;
+  map<int64, int64> ll = 5;
+  map<uint32, uint32> uu = 6;
+  map<uint64, uint64> vv = 7;
+  map<sint32, sint32> zz = 8;
+  map<sint64, sint64> yy = 9;
+  map<fixed32, fixed32> ff = 10;
+  map<fixed64, fixed64> gg = 11;
+  map<sfixed32, sfixed32> hh = 12;
+  map<sfixed64, sfixed64> jj = 13;
+  map<bool, bool> bb = 14;
+  map<string, float> sf = 15;
+  map<string, double> sd = 16;
+  map<string, Mode> se = 17;
+  map<string, Sub> sm = 18;
+  map<int32, google.protobuf.Duration> dur = 19;
+  map<string, Maps> self = 20;
+  int32 after = 21;
+}

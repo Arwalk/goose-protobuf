@@ -23,6 +23,9 @@
 //   M_mutable_f(m) -> S&         messages have mutable_, not set_.
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
+//   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
+//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_clear_f(m)                 S&?), put of a message returns it
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m

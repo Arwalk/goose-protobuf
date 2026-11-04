@@ -1,0 +1,2 @@
+# proto-message: maps.Maps
+dur { key: 1 value { seconds: 4 } }

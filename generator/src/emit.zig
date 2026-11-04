@@ -90,6 +90,10 @@ pub const message_ops = [_][]const u8{
     "decode", "decode_from", "encode", "size_of", "clear", "copy", "Ref", "pool", "links",
 };
 
+/// What a map entry message has besides: its pool of runs (decision 0001) and
+/// the helpers of the map field that uses it.
+pub const map_entry_ops = [_][]const u8{ "entries", "find", "slot", "place" };
+
 /// How a field is stored, which decides its accessors.
 pub const FieldKind = enum { scalar, oneof_scalar, string, message, repeated, repeated_message, map };
 
@@ -113,7 +117,7 @@ pub fn fieldAccessors(kind: FieldKind, presence: bool) []const Accessor {
         .message => &(.{ get_acc, mutable_acc } ++ presence_accessors),
         .repeated => &.{ get_acc, at_acc, add_acc, set_acc, clear_acc },
         .repeated_message => &.{ get_acc, at_acc, add_acc, clear_acc },
-        .map => &.{ .{ .prefix = "", .suffix = "_get" }, .{ .prefix = "", .suffix = "_put" } },
+        .map => &.{ get_acc, map_get_acc, map_put_acc, map_remove_acc, clear_acc },
     };
 }
 
@@ -124,6 +128,9 @@ const clear_acc: Accessor = .{ .prefix = "clear_", .suffix = "" };
 const mutable_acc: Accessor = .{ .prefix = "mutable_", .suffix = "" };
 const at_acc: Accessor = .{ .prefix = "", .suffix = "_at" };
 const add_acc: Accessor = .{ .prefix = "add_", .suffix = "" };
+const map_get_acc: Accessor = .{ .prefix = "", .suffix = "_get" };
+const map_put_acc: Accessor = .{ .prefix = "", .suffix = "_put" };
+const map_remove_acc: Accessor = .{ .prefix = "", .suffix = "_remove" };
 
 /// The accessors every field with explicit presence has.
 const presence_accessors = [_]Accessor{ has_acc, clear_acc };
@@ -347,6 +354,14 @@ pub const FileEmitter = struct {
                 .generated = true,
             });
         }
+        if (isMapEntryDesc(m)) {
+            for (map_entry_ops) |op| {
+                try self.claim(try generatedName(self.a, path, op), .{
+                    .what = try std.fmt.allocPrint(self.a, "generated {s} of {s}", .{ op, full }),
+                    .generated = true,
+                });
+            }
+        }
         for (m.field.items) |*fd| {
             const fname = fd.name orelse "";
             const kind = fieldKind(m, full, fd);
@@ -417,6 +432,14 @@ pub const FileEmitter = struct {
         const t = self.storedMessageType(fd) orelse return null;
         if (self.messages.get(t)) |info| return if (isMapEntryType(info)) null else info;
         return self.foreignMessage(t);
+    }
+
+    /// The entry message of `fd`, if it is a map field this generator stores.
+    fn mapEntryOf(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) ?MessageInfo {
+        if (fd.label != .LABEL_REPEATED) return null;
+        const t = self.storedMessageType(fd) orelse return null;
+        const info = self.messages.get(t) orelse return null;
+        return if (isMapEntryType(info)) info else null;
     }
 
     /// The full name of the message type of `fd`, singular or repeated, if
@@ -498,11 +521,10 @@ pub const FileEmitter = struct {
     }
 
     /// The full name of the message in this file that `fd` holds, if it
-    /// is a field kind this generator stores.
+    /// is a field kind this generator stores. A map field holds its entries.
     fn sameFileMessageType(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) ?[]const u8 {
         const t = self.storedMessageType(fd) orelse return null;
-        const info = self.messages.get(t) orelse return null;
-        return if (isMapEntryType(info)) null else t;
+        return if (self.messages.contains(t)) t else null;
     }
 
     /// True if a message of type `from` can hold one of type `target`.
@@ -542,6 +564,8 @@ pub const FileEmitter = struct {
         const goose_name = self.decls.get(full).?;
         try self.w.print("\n// message {s}\n", .{full});
 
+        // In a map entry, whose fields are encoded even at their defaults.
+        const is_entry = isMapEntryDesc(m) and isProto3(self.file);
         // The fields this generator stores; every other field is kept as an
         // unknown field.
         var fields: std.ArrayList(Field) = .empty;
@@ -566,9 +590,10 @@ pub const FileEmitter = struct {
         }
         for (m.field.items) |*fd| {
             const sub = try self.subMessageOf(fd);
+            const entry = self.mapEntryOf(fd);
             const element = repeatedScalarOf(self.file, fd);
-            const sc = if (sub) |s| try self.refStorage(s) else element orelse scalarOf(self.file, fd) orelse continue;
-            const repeated = fd.label == .LABEL_REPEATED;
+            const sc = if (entry != null) &sc_map else if (sub) |s| try self.refStorage(s) else element orelse scalarOf(self.file, fd) orelse continue;
+            const repeated = fd.label == .LABEL_REPEATED and entry == null;
             const rname = try ident(self.a, fd.name orelse "");
             try self.claimRecordField(&record_names, rname, full);
             const oneof = if (isRealOneofMember(fd)) by_index[@intCast(fd.oneof_index.?)] else null;
@@ -577,7 +602,7 @@ pub const FileEmitter = struct {
                 bit = bits;
                 bits += 1;
             }
-            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof });
+            try fields.append(self.a, .{ .fd = fd, .sc = sc, .name = rname, .bit = bit, .sub = sub, .repeated = repeated, .oneof = oneof, .map = entry, .always = is_entry });
         }
         const has_words = (bits + 31) / 32;
         const by_number = try self.a.dupe(Field, fields.items);
@@ -594,6 +619,7 @@ pub const FileEmitter = struct {
         try self.emitCopy(goose_name, path, fields.items, oneofs.items, has_words);
         for (oneofs.items) |o| try self.emitOneofClear(goose_name, o, fields.items);
         for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
+        if (is_entry) try self.emitMapEntryHelpers(goose_name, path, fields.items);
 
         for (m.enum_type.items) |*e| try self.emitEnum(e, full);
         for (m.nested_type.items) |*n| try self.emitMessage(n, path, full);
@@ -678,7 +704,7 @@ pub const FileEmitter = struct {
             \\
         , .{ self.fn_kw, decode_from, goose_name });
         for (fields) |f| {
-            if (f.repeated) try self.w.print("    var pb_len{d}: i64 = m.{s}.len;\n", .{ f.number(), f.name });
+            if (f.repeated or f.map != null) try self.w.print("    var pb_len{d}: i64 = m.{s}.len;\n", .{ f.number(), f.name });
         }
         try self.w.writeAll(
             \\    while r.pos < r.end {
@@ -692,6 +718,10 @@ pub const FileEmitter = struct {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             if (f.repeated) {
                 try self.emitDecodeRepeated(f);
+                continue;
+            }
+            if (f.map) |entry| {
+                try self.emitDecodeMapEntry(f, entry);
                 continue;
             }
             if (f.sub) |sub| {
@@ -724,7 +754,7 @@ pub const FileEmitter = struct {
         }
         try self.w.writeAll("    }\n");
         for (fields) |f| {
-            if (f.repeated) try self.w.print("    m.{s} = pb_trim({s}, m.{s}, pb_len{d});\n", .{ f.name, try self.runPool(f), f.name, f.number() });
+            if (f.repeated or f.map != null) try self.w.print("    m.{s} = pb_trim({s}, m.{s}, pb_len{d});\n", .{ f.name, try self.runPool(f), f.name, f.number() });
         }
         try self.w.print(
             \\    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
@@ -797,8 +827,38 @@ pub const FileEmitter = struct {
         });
     }
 
-    /// The pool that holds the run of repeated field `f`.
+    /// The branch of decode_from for a map entry. It decodes into the next
+    /// slot of the run, which <entry>_place keeps or folds into an entry with
+    /// its key. A partial entry is freed: only whole ones are in the map.
+    fn emitDecodeMapEntry(self: *FileEmitter, f: Field, entry: MessageInfo) Error!void {
+        const pool = try self.runPool(f);
+        try self.w.print(
+            \\            let pb_n = pb_read_len(r);
+            \\            if r.err != PB_OK {{ break; }}
+            \\            if r.depth >= PB_MAX_DEPTH {{ pb_fail(r, PB_ERR_DEPTH); break; }}
+            \\            pb_reserve({s}, m.{s}, pb_len{d});
+            \\            let pb_e .= pb_run({s}, m.{s})[pb_len{d}];
+            \\            let pb_outer = r.end;
+            \\            r.end = r.pos + pb_n;
+            \\            r.depth++;
+            \\            {s}(r, pb_e);
+            \\            if r.err != PB_OK {{ {s}(pb_e); break; }}
+            \\            r.depth--;
+            \\            r.end = pb_outer;
+            \\            pb_len{d} = {s}(m.{s}, pb_len{d});
+            \\
+        , .{
+            pool, f.name, f.number(),
+            pool, f.name, f.number(),
+            try self.subName(entry, "decode_from"),
+            try self.subName(entry, "clear"),
+            f.number(), try self.subName(entry, "place"), f.name, f.number(),
+        });
+    }
+
+    /// The pool that holds the run of repeated or map field `f`.
     fn runPool(self: *FileEmitter, f: Field) Error![]const u8 {
+        if (f.map) |entry| return self.subName(entry, "entries");
         if (f.sub) |sub| return self.subName(sub, "links");
         return f.sc.pool();
     }
@@ -845,6 +905,22 @@ pub const FileEmitter = struct {
         , .{ try generatedName(self.a, path, "size_of"), self.fn_kw, try generatedName(self.a, path, "encode"), goose_name });
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
+            if (f.map) |entry| {
+                try self.w.print(
+                    \\    for pb_i in m.{s}.len {{
+                    \\        let pb_e .= pb_run({s}, m.{s})[pb_i];
+                    \\        pb_write_varint(out, {d});
+                    \\        pb_write_varint(out, {s}(pb_e) as! u64);
+                    \\        {s}(pb_e, out);
+                    \\    }}
+                    \\
+                , .{
+                    f.name, try self.runPool(f), f.name, f.tag(),
+                    try self.subName(entry, "size_of"),
+                    try self.subName(entry, "encode"),
+                });
+                continue;
+            }
             if (f.oneof) |o| {
                 if (f.sub) |sub| {
                     try self.w.print(
@@ -936,6 +1012,11 @@ pub const FileEmitter = struct {
                 });
                 continue;
             }
+            if (f.always) {
+                try self.w.print("    pb_write_varint(out, {d});\n", .{f.tag()});
+                try self.w.print("    {f};\n", .{Subst{ .t = f.sc.write, .x = x }});
+                continue;
+            }
             try self.w.print("    if {f} {{\n", .{f.isSet(x)});
             try self.w.print("        pb_write_varint(out, {d});\n", .{f.tag()});
             try self.w.print("        {f};\n", .{Subst{ .t = f.sc.write, .x = x }});
@@ -955,6 +1036,15 @@ pub const FileEmitter = struct {
         for (fields) |f| {
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
             const ts = varintSize(f.tag());
+            if (f.map) |entry| {
+                try self.w.print(
+                    \\    for pb_i in m.{s}.len {{
+                    \\        n += {d} + pb_len_size({s}(pb_run({s}, m.{s})[pb_i]));
+                    \\    }}
+                    \\
+                , .{ f.name, ts, try self.subName(entry, "size_of"), try self.runPool(f), f.name });
+                continue;
+            }
             if (f.oneof) |o| {
                 try self.w.print("    match m.{s} {{\n", .{o.name});
                 switch (f.sc.size) {
@@ -1006,14 +1096,18 @@ pub const FileEmitter = struct {
                 });
                 continue;
             }
-            try self.w.print("    if {f} {{ n += ", .{f.isSet(x)});
+            if (f.always) {
+                try self.w.writeAll("    n += ");
+            } else {
+                try self.w.print("    if {f} {{ n += ", .{f.isSet(x)});
+            }
             switch (f.sc.size) {
                 .varint => try self.w.print("{d} + pb_varint_size({f});", .{ ts, Subst{ .t = f.sc.write_value, .x = x } }),
                 .fixed => |k| try self.w.print("{d};", .{ts + k}),
                 .bytes => try self.w.print("{d} + pb_bytes_size({s});", .{ ts, x }),
                 .message => unreachable,
             }
-            try self.w.writeAll(" }\n");
+            try self.w.writeAll(if (f.always) "\n" else " }\n");
         }
         try self.w.writeAll("    n += m.pb_unknown.len;\n    return n;\n}\n");
     }
@@ -1028,7 +1122,7 @@ pub const FileEmitter = struct {
         for (fields) |f| {
             if (f.oneof != null) continue;
             const x = try std.fmt.allocPrint(self.a, "m.{s}", .{f.name});
-            if (f.repeated and f.sub != null) {
+            if ((f.repeated and f.sub != null) or f.map != null) {
                 try self.w.print("    {s}(m);\n", .{try accessorName(self.a, path, f.fd.name orelse "", clear_acc)});
                 continue;
             }
@@ -1065,7 +1159,20 @@ pub const FileEmitter = struct {
         , .{ self.fn_kw, try generatedName(self.a, path, "copy"), goose_name, goose_name, try generatedName(self.a, path, "clear") });
         for (fields) |f| {
             if (f.oneof != null) continue;
-            if (f.repeated and f.sub != null) {
+            if (f.map) |entry| {
+                const pool = try self.runPool(f);
+                try self.w.print(
+                    \\    dst.{s} = pb_resize({s}, dst.{s}, src.{s}.len);
+                    \\    for pb_i in src.{s}.len {{
+                    \\        {s}(pb_run({s}, dst.{s})[pb_i], pb_run({s}, src.{s})[pb_i]);
+                    \\    }}
+                    \\
+                , .{
+                    f.name, pool, f.name, f.name,
+                    f.name,
+                    try self.subName(entry, "copy"), pool, f.name, pool, f.name,
+                });
+            } else if (f.repeated and f.sub != null) {
                 const sub = f.sub.?;
                 const links = try self.runPool(f);
                 const pool = try self.subName(sub, "pool");
@@ -1137,6 +1244,7 @@ pub const FileEmitter = struct {
     /// with presence; a sub-message has its own (emitSubMessageAccessors).
     fn emitAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field) Error!void {
         if (f.oneof) |o| return self.emitOneofAccessors(goose_name, path, f, o);
+        if (f.map) |entry| return self.emitMapAccessors(goose_name, path, f, entry);
         if (f.repeated) {
             if (f.sub) |sub| return self.emitRepeatedMessageAccessors(goose_name, path, f, sub);
             if (f.sc.size == .bytes) return self.emitRepeatedStringAccessors(goose_name, path, f);
@@ -1186,6 +1294,210 @@ pub const FileEmitter = struct {
             try accessorName(self.a, path, fname, clear_acc), goose_name,
             Subst{ .t = f.sc.clear, .x = x },
             b / 32, ~bitMask(b),
+        });
+    }
+
+    /// What a map entry has besides a message's functions. Lookup is linear
+    /// (decision 0001).
+    fn emitMapEntryHelpers(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+        const key = mapField(fields, 1);
+        const value = mapField(fields, 2);
+        const entries = try generatedName(self.a, path, "entries");
+        const find = try generatedName(self.a, path, "find");
+        const key_is_bytes = key.sc.size == .bytes;
+        try self.w.print(
+            \\
+            \\// Runs of entries: one per map field of this type.
+            \\reusable[] var {s}: {s}[>..] = [];
+            \\
+            \\// The index of the entry with key k among the first `used` of run s, or -1.
+            \\fn {s}(s: pb_Span, used: i64, k: {s}) -> i64 {{
+            \\    let pb_run_s = pb_run({s}, s);
+            \\    for pb_i in used {{
+            \\
+        , .{ entries, goose_name, find, key.sc.setType(), entries });
+        if (key_is_bytes) {
+            try self.w.writeAll("        if pb_run(pb_bytes, pb_run_s[pb_i].key) == k { return pb_i; }\n");
+        } else {
+            try self.w.writeAll("        if pb_run_s[pb_i].key == k { return pb_i; }\n");
+        }
+        try self.w.print(
+            \\    }}
+            \\    return -1;
+            \\}}
+            \\
+            \\// The entry with key k in run s, added with the default value if there is none.
+            \\fn {s}(s: pb_Span&, k: {s}) -> {s}& {{
+            \\    var pb_i = {s}(s, s.len, k);
+            \\    if pb_i < 0 {{
+            \\        pb_i = s.len;
+            \\        s = pb_resize({s}, s, pb_i + 1);
+            \\
+        , .{ try generatedName(self.a, path, "slot"), key.sc.setType(), goose_name, find, entries });
+        if (key_is_bytes) {
+            try self.w.print("        {s}(pb_run({s}, s)[pb_i], k);\n", .{ try accessorName(self.a, path, "key", set_acc), entries });
+        } else {
+            try self.w.print("        pb_run({s}, s)[pb_i].key = k;\n", .{entries});
+        }
+        if (value.sub != null) {
+            try self.w.print("        {s}(pb_run({s}, s)[pb_i]);\n", .{ try accessorName(self.a, path, "value", mutable_acc), entries });
+        }
+        try self.w.print(
+            \\    }}
+            \\    return pb_run({s}, s)[pb_i];
+            \\}}
+            \\
+            \\// Settles the entry just decoded into slot `used` of run s, and returns how
+            \\// many are in use now. A missing message value is an empty one, unknown
+            \\// fields are dropped, and an entry with its key already there replaces it.
+            \\fn {s}(s: pb_Span, used: i64) -> i64 {{
+            \\    let pb_e .= pb_run({s}, s)[used];
+            \\
+        , .{ entries, try generatedName(self.a, path, "place"), entries });
+        if (value.sub != null) try self.w.print("    {s}(pb_e);\n", .{try accessorName(self.a, path, "value", mutable_acc)});
+        try self.w.print(
+            \\    pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
+            \\    let pb_i = {s}(s, used, {s});
+            \\    if pb_i < 0 {{ return used + 1; }}
+            \\    {s}(pb_run({s}, s)[pb_i]);
+            \\    pb_run({s}, s)[pb_i] = pb_e;
+            \\    pb_run({s}, s)[used] = {s} {{ .. }};
+            \\    return used;
+            \\}}
+            \\
+        , .{
+            find, if (key_is_bytes) "pb_run(pb_bytes, pb_e.key)" else "pb_e.key",
+            try generatedName(self.a, path, "clear"), entries,
+            entries,
+            entries, goose_name,
+        });
+    }
+
+    /// The accessors of a map field. Entries live in a run that may move, so
+    /// a reference to one is good until the map next changes; a message value
+    /// has a slot of its own, and outlives other changes.
+    fn emitMapAccessors(self: *FileEmitter, goose_name: []const u8, path: []const u8, f: Field, entry: MessageInfo) Error!void {
+        const fname = f.fd.name orelse "";
+        const pool = try self.runPool(f);
+        var key_fd: *const descriptor.FieldDescriptorProto = undefined;
+        var value_fd: *const descriptor.FieldDescriptorProto = undefined;
+        for (entry.desc.field.items) |*e| {
+            if (e.number == 1) key_fd = e else value_fd = e;
+        }
+        const key_type = scalarOfType(key_fd).?.setType();
+        const find = try self.subName(entry, "find");
+        const slot = try self.subName(entry, "slot");
+        try self.w.print(
+            \\
+            \\// The entries of {s}, in insertion order: its .len is their number, and
+            \\// each has .key and .value, or the entry type's accessors for what is in a
+            \\// pool. Valid until the map next changes or m is cleared.
+            \\fn {s}(m: {s}&) -> {s}[:] {{ return pb_run({s}, m.{s}); }}
+            \\
+        , .{
+            fname,
+            try accessorName(self.a, path, fname, get_acc), goose_name, entry.goose_name, pool, f.name,
+        });
+        const get = try accessorName(self.a, path, fname, map_get_acc);
+        const put = try accessorName(self.a, path, fname, map_put_acc);
+        if (try self.subMessageOf(value_fd)) |sub| {
+            try self.w.print(
+                \\
+                \\// The value with key k, or null if there is none. Valid until its entry
+                \\// is removed or m is cleared.
+                \\fn {s}(m: {s}&, k: {s}) -> {s}&? {{
+                \\    let pb_i = {s}(m.{s}, m.{s}.len, k);
+                \\    if pb_i < 0 {{ return null; }}
+                \\    return pb_run({s}, m.{s})[pb_i].value.m;
+                \\}}
+                \\
+                \\// The value with key k, added empty if there is none.
+                \\fn {s}(m: {s}&, k: {s}) -> {s}& {{
+                \\    return {s}({s}(m.{s}, k));
+                \\}}
+                \\
+            , .{
+                get, goose_name, key_type, sub.goose_name,
+                find, f.name, f.name,
+                pool, f.name,
+                put, goose_name, key_type, sub.goose_name,
+                try accessorName(self.a, entry.path, "value", mutable_acc), slot, f.name,
+            });
+        } else {
+            const value_sc = scalarOfType(value_fd).?;
+            const is_bytes = value_sc.size == .bytes;
+            try self.w.print(
+                \\
+                \\// The value with key k and true, or the default and false.{s}
+                \\fn {s}(m: {s}&, k: {s}) -> {s}, bool {{
+                \\    let pb_i = {s}(m.{s}, m.{s}.len, k);
+                \\
+            , .{
+                if (is_bytes) " Valid until the\n// map next changes or m is cleared." else "",
+                get, goose_name, key_type, if (is_bytes) "u8[:]" else value_sc.goose,
+                find, f.name, f.name,
+            });
+            if (is_bytes) {
+                try self.w.print(
+                    \\    if pb_i < 0 {{ return pb_run(pb_bytes, {s}), false; }}
+                    \\    return pb_run(pb_bytes, pb_run({s}, m.{s})[pb_i].value), true;
+                    \\
+                , .{ empty_span, pool, f.name });
+            } else {
+                try self.w.print(
+                    \\    if pb_i < 0 {{ return {s}, false; }}
+                    \\    return pb_run({s}, m.{s})[pb_i].value, true;
+                    \\
+                , .{ value_sc.zero(), pool, f.name });
+            }
+            try self.w.print(
+                \\}}
+                \\
+                \\// Sets the value with key k{s}, adding an entry if there is none.
+                \\fn {s}(m: {s}&, k: {s}, v: {s}) {{
+                \\
+            , .{ if (is_bytes) " to a copy of v" else " to v", put, goose_name, key_type, value_sc.setType() });
+            if (is_bytes) {
+                try self.w.print("    {s}({s}(m.{s}, k), v);\n", .{ try accessorName(self.a, entry.path, "value", set_acc), slot, f.name });
+            } else {
+                try self.w.print("    {s}(m.{s}, k).value = v;\n", .{ slot, f.name });
+            }
+            try self.w.writeAll("}\n");
+        }
+        const clear_entry = try self.subName(entry, "clear");
+        try self.w.print(
+            \\
+            \\// Removes the entry with key k and frees what it owns. False if there is
+            \\// none. Later entries keep their order.
+            \\fn {s}(m: {s}&, k: {s}) -> bool {{
+            \\    let pb_i = {s}(m.{s}, m.{s}.len, k);
+            \\    if pb_i < 0 {{ return false; }}
+            \\    let pb_r = pb_run({s}, m.{s});
+            \\    {s}(pb_r[pb_i]);
+            \\    var pb_j = pb_i;
+            \\    while pb_j + 1 < pb_r.len {{ pb_r[pb_j] = pb_r[pb_j + 1]; pb_j++; }}
+            \\    pb_r[pb_j] = {s} {{ .. }};
+            \\    m.{s} = pb_resize({s}, m.{s}, pb_j);
+            \\    return true;
+            \\}}
+            \\
+            \\// Frees the entries of {s} and everything they own.
+            \\{s} {s}(m: {s}&) {{
+            \\    for pb_i in m.{s}.len {{ {s}(pb_run({s}, m.{s})[pb_i]); }}
+            \\    m.{s} = pb_resize({s}, m.{s}, 0);
+            \\}}
+            \\
+        , .{
+            try accessorName(self.a, path, fname, map_remove_acc), goose_name, key_type,
+            find, f.name, f.name,
+            pool, f.name,
+            clear_entry,
+            entry.goose_name,
+            f.name, pool, f.name,
+            fname,
+            self.fn_kw, try accessorName(self.a, path, fname, clear_acc), goose_name,
+            f.name, clear_entry, pool, f.name,
+            f.name, pool, f.name,
         });
     }
 
@@ -1551,6 +1863,9 @@ const api_comment =
     \\//   M_mutable_f(m) -> S&         messages have mutable_, not set_.
     \\//   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
     \\//                                or a variant f { v } per member
+    \\//   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
+    \\//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+    \\//   M_clear_f(m)                 S&?), put of a message returns it
     \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
     \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     \\//                                PB_ERR_* code and a partial m
@@ -1601,6 +1916,11 @@ const Field = struct {
     /// The oneof it is a member of. Its value is the payload of a variant
     /// named `name` of the oneof's ADT, and that it is set is its presence.
     oneof: ?*const Oneof = null,
+    /// The entry message of a map field, whose record field is a span of a
+    /// run of entries.
+    map: ?MessageInfo = null,
+    /// A field of a map entry: encoded even at its default, as protobuf does.
+    always: bool = false,
 
     fn packedTag(f: Field) u64 {
         return (@as(u64, f.number()) << 3) | 2;
@@ -1639,6 +1959,14 @@ const Oneof = struct {
     /// The name of its clear_ accessor.
     clear: []const u8,
 };
+
+/// The field numbered `number` of a map entry.
+fn mapField(fields: []const Field, number: u32) Field {
+    for (fields) |f| {
+        if (f.number() == number) return f;
+    }
+    unreachable;
+}
 
 /// A span that owns nothing, for reading a value into a new run.
 const empty_span = "pb_Span { at: 0, len: 0 }";
@@ -1751,6 +2079,8 @@ const sc_bytes: Scalar = .{
     .set_type = "const u8[:]",
     .set = "$ = pb_bytes_set($, v)",
 };
+/// The storage of a map field: a span. Its emitters handle the rest.
+const sc_map: Scalar = .{ .goose = "pb_Span", .wire = 2, .clear = "", .read = "", .write = "", .nonzero = "", .size = .message };
 /// proto3 strings must be valid UTF-8 (validated on decode).
 const sc_string: Scalar = blk: {
     var sc = sc_bytes;
@@ -1797,10 +2127,13 @@ fn repeatedScalarOf(file: *const descriptor.FileDescriptorProto, fd: *const desc
     return scalarOfType(fd);
 }
 
-/// True if `info` is the synthetic entry of a map field. Maps come with a
-/// later task: their fields stay unknown.
+/// True if `info` is the synthetic entry of a map field.
 fn isMapEntryType(info: MessageInfo) bool {
-    const opts = info.desc.options orelse return false;
+    return isMapEntryDesc(info.desc);
+}
+
+fn isMapEntryDesc(m: *const descriptor.DescriptorProto) bool {
+    const opts = m.options orelse return false;
     return opts.map_entry orelse false;
 }
 
@@ -2169,14 +2502,17 @@ test "sub-message fields of the same file are stored; cycles make functions recu
     try std.testing.expect(std.mem.indexOf(u8, out, "\nfn Later_copy(dst: Later&, src: Later&) {") != null);
 }
 
-test "a repeated message field makes a cycle; a map field does not store" {
+test "a repeated message field makes a cycle; a map field stores a run of entries" {
     var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
     defer arena.deinit();
     const a = arena.allocator();
     var node: descriptor.DescriptorProto = .{ .name = "Node" };
     try node.field.append(a, .{ .name = "children", .number = 1, .label = .LABEL_REPEATED, .type = .TYPE_MESSAGE, .type_name = ".p.Node" });
     var m: descriptor.DescriptorProto = .{ .name = "M" };
-    try m.nested_type.append(a, .{ .name = "AEntry", .options = .{ .map_entry = true } });
+    var entry: descriptor.DescriptorProto = .{ .name = "AEntry", .options = .{ .map_entry = true } };
+    try entry.field.append(a, .{ .name = "key", .number = 1, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32 });
+    try entry.field.append(a, .{ .name = "value", .number = 2, .label = .LABEL_OPTIONAL, .type = .TYPE_INT32 });
+    try m.nested_type.append(a, entry);
     try m.field.append(a, .{ .name = "a", .number = 1, .label = .LABEL_REPEATED, .type = .TYPE_MESSAGE, .type_name = ".p.M.AEntry" });
     var file: descriptor.FileDescriptorProto = .{ .name = "t.proto", .package = "p", .syntax = "proto3" };
     try file.message_type.append(a, node);
@@ -2186,7 +2522,9 @@ test "a repeated message field makes a cycle; a map field does not store" {
     try std.testing.expect(std.mem.indexOf(u8, out, "recursive fn Node_decode_from(") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "    children: pb_Span,\n") != null);
     try std.testing.expect(std.mem.indexOf(u8, out, "fn Node_add_children(m: Node&) -> Node& {") != null);
-    try std.testing.expect(std.mem.indexOf(u8, out, "    a: pb_Span,\n") == null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "    a: pb_Span,\n") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "fn M_a_put(m: M&, k: i32, v: i32) {") != null);
+    try std.testing.expect(std.mem.indexOf(u8, out, "reusable[] var M_AEntry_entries: M_AEntry[>..] = [];") != null);
 }
 
 test "well-known files are recognised by name and package" {

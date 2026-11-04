@@ -150,8 +150,13 @@ the reserved list, in `generator/src/emit.zig`:
   plus `<M>_set_<f>`, or for a message `<M>_mutable_<f>`, which makes it the
   member set. Decoding reads a value before it replaces the member, so a
   value that fails to read replaces nothing.
-- The accessors of map fields are provisional: 0001 does not fix them. The
-  task that emits them updates the table, its goldens and this note.
+- A map field (gpb-gp4.4) has `<M>_<f>`, a view of its entries in insertion
+  order; `<M>_<f>_get(m, k)`, which gives the value and whether it was found, or
+  for a message value `S&?`; `<M>_<f>_put(m, k, v)`, or for a message value
+  `<M>_<f>_put(m, k)`, which returns the value, added empty if there is none;
+  `<M>_<f>_remove(m, k)`, true if it removed one; and `<M>_clear_<f>`. Its entry
+  message `<M>_<F>Entry` keeps a message's functions, and adds the generated
+  `_entries`, `_find`, `_slot` and `_place`.
 
 A generated file imports the files whose types its stored fields use, as
 `import a.b_c;`, sorted, and writes their names as `ns::Name` (gpb-8qn.9).

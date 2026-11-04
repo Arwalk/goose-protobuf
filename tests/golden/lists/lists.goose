@@ -23,6 +23,9 @@
 //   M_mutable_f(m) -> S&         messages have mutable_, not set_.
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
+//   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
+//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_clear_f(m)                 S&?), put of a message returns it
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -47,6 +50,7 @@ struct Lists {
     items: pb_Span,
     timeouts: pb_Span,
     after: i32,
+    counts: pb_Span,
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
@@ -64,6 +68,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
     var pb_len2: i64 = m.blobs.len;
     var pb_len3: i64 = m.items.len;
     var pb_len4: i64 = m.timeouts.len;
+    var pb_len6: i64 = m.counts.len;
     while r.pos < r.end {
         let start = r.pos;
         let tag = pb_read_tag(r);
@@ -104,6 +109,20 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             r.end = pb_outer;
         } else if tag == 40 {
             m.after = pb_u64_to_int32(pb_read_varint(r));
+        } else if tag == 50 {
+            let pb_n = pb_read_len(r);
+            if r.err != PB_OK { break; }
+            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
+            pb_reserve(Lists_CountsEntry_entries, m.counts, pb_len6);
+            let pb_e .= pb_run(Lists_CountsEntry_entries, m.counts)[pb_len6];
+            let pb_outer = r.end;
+            r.end = r.pos + pb_n;
+            r.depth++;
+            Lists_CountsEntry_decode_from(r, pb_e);
+            if r.err != PB_OK { Lists_CountsEntry_clear(pb_e); break; }
+            r.depth--;
+            r.end = pb_outer;
+            pb_len6 = Lists_CountsEntry_place(m.counts, pb_len6);
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -112,6 +131,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
     m.blobs = pb_trim(pb_spans, m.blobs, pb_len2);
     m.items = pb_trim(Item_links, m.items, pb_len3);
     m.timeouts = pb_trim(google_protobuf::Duration_links, m.timeouts, pb_len4);
+    m.counts = pb_trim(Lists_CountsEntry_entries, m.counts, pb_len6);
     m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
 }
 
@@ -151,6 +171,12 @@ fn Lists_encode(m: Lists&, out: u8[>..]&) {
         pb_write_varint(out, 40);
         pb_write_varint(out, pb_int32_to_u64(m.after));
     }
+    for pb_i in m.counts.len {
+        let pb_e .= pb_run(Lists_CountsEntry_entries, m.counts)[pb_i];
+        pb_write_varint(out, 50);
+        pb_write_varint(out, Lists_CountsEntry_size_of(pb_e) as! u64);
+        Lists_CountsEntry_encode(pb_e, out);
+    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
@@ -170,6 +196,9 @@ fn Lists_size_of(m: Lists&) -> i64 {
         n += 1 + pb_len_size(google_protobuf::Duration_size_of(pb_l));
     }
     if m.after != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.after)); }
+    for pb_i in m.counts.len {
+        n += 1 + pb_len_size(Lists_CountsEntry_size_of(pb_run(Lists_CountsEntry_entries, m.counts)[pb_i]));
+    }
     n += m.pb_unknown.len;
     return n;
 }
@@ -181,6 +210,7 @@ fn Lists_clear(m: Lists&) {
     Lists_clear_items(m);
     Lists_clear_timeouts(m);
     m.after = 0;
+    Lists_clear_counts(m);
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
 
@@ -208,6 +238,10 @@ fn Lists_copy(dst: Lists&, src: Lists&) {
         google_protobuf::Duration_copy(pb_c, pb_l);
     }
     dst.after = src.after;
+    dst.counts = pb_resize(Lists_CountsEntry_entries, dst.counts, src.counts.len);
+    for pb_i in src.counts.len {
+        Lists_CountsEntry_copy(pb_run(Lists_CountsEntry_entries, dst.counts)[pb_i], pb_run(Lists_CountsEntry_entries, src.counts)[pb_i]);
+    }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
@@ -301,6 +335,43 @@ fn Lists_clear_timeouts(m: Lists&) {
     m.timeouts = pb_resize(google_protobuf::Duration_links, m.timeouts, 0);
 }
 
+// The entries of counts, in insertion order: its .len is their number, and
+// each has .key and .value, or the entry type's accessors for what is in a
+// pool. Valid until the map next changes or m is cleared.
+fn Lists_counts(m: Lists&) -> Lists_CountsEntry[:] { return pb_run(Lists_CountsEntry_entries, m.counts); }
+
+// The value with key k and true, or the default and false.
+fn Lists_counts_get(m: Lists&, k: const u8[:]) -> i32, bool {
+    let pb_i = Lists_CountsEntry_find(m.counts, m.counts.len, k);
+    if pb_i < 0 { return 0, false; }
+    return pb_run(Lists_CountsEntry_entries, m.counts)[pb_i].value, true;
+}
+
+// Sets the value with key k to v, adding an entry if there is none.
+fn Lists_counts_put(m: Lists&, k: const u8[:], v: i32) {
+    Lists_CountsEntry_slot(m.counts, k).value = v;
+}
+
+// Removes the entry with key k and frees what it owns. False if there is
+// none. Later entries keep their order.
+fn Lists_counts_remove(m: Lists&, k: const u8[:]) -> bool {
+    let pb_i = Lists_CountsEntry_find(m.counts, m.counts.len, k);
+    if pb_i < 0 { return false; }
+    let pb_r = pb_run(Lists_CountsEntry_entries, m.counts);
+    Lists_CountsEntry_clear(pb_r[pb_i]);
+    var pb_j = pb_i;
+    while pb_j + 1 < pb_r.len { pb_r[pb_j] = pb_r[pb_j + 1]; pb_j++; }
+    pb_r[pb_j] = Lists_CountsEntry { .. };
+    m.counts = pb_resize(Lists_CountsEntry_entries, m.counts, pb_j);
+    return true;
+}
+
+// Frees the entries of counts and everything they own.
+fn Lists_clear_counts(m: Lists&) {
+    for pb_i in m.counts.len { Lists_CountsEntry_clear(pb_run(Lists_CountsEntry_entries, m.counts)[pb_i]); }
+    m.counts = pb_resize(Lists_CountsEntry_entries, m.counts, 0);
+}
+
 // message lists.Lists.CountsEntry
 struct Lists_CountsEntry {
     key: pb_Span,
@@ -343,22 +414,18 @@ fn Lists_CountsEntry_decode(buf: const u8[:], m: Lists_CountsEntry&) -> i32 {
 
 // Appends m's wire encoding, Lists_CountsEntry_size_of(m) bytes, to out.
 fn Lists_CountsEntry_encode(m: Lists_CountsEntry&, out: u8[>..]&) {
-    if m.key.len > 0 {
-        pb_write_varint(out, 10);
-        pb_write_bytes(out, m.key);
-    }
-    if m.value != 0 {
-        pb_write_varint(out, 16);
-        pb_write_varint(out, pb_int32_to_u64(m.value));
-    }
+    pb_write_varint(out, 10);
+    pb_write_bytes(out, m.key);
+    pb_write_varint(out, 16);
+    pb_write_varint(out, pb_int32_to_u64(m.value));
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
 // The size of m's wire encoding, in bytes.
 fn Lists_CountsEntry_size_of(m: Lists_CountsEntry&) -> i64 {
     var n: i64 = 0;
-    if m.key.len > 0 { n += 1 + pb_bytes_size(m.key); }
-    if m.value != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.value)); }
+    n += 1 + pb_bytes_size(m.key);
+    n += 1 + pb_varint_size(pb_int32_to_u64(m.value));
     n += m.pb_unknown.len;
     return n;
 }
@@ -387,6 +454,43 @@ fn Lists_CountsEntry_key(m: Lists_CountsEntry&) -> u8[:] { return pb_run(pb_byte
 // Sets key to a copy of v.
 fn Lists_CountsEntry_set_key(m: Lists_CountsEntry&, v: const u8[:]) {
     m.key = pb_bytes_set(m.key, v);
+}
+
+// Runs of entries: one per map field of this type.
+reusable[] var Lists_CountsEntry_entries: Lists_CountsEntry[>..] = [];
+
+// The index of the entry with key k among the first `used` of run s, or -1.
+fn Lists_CountsEntry_find(s: pb_Span, used: i64, k: const u8[:]) -> i64 {
+    let pb_run_s = pb_run(Lists_CountsEntry_entries, s);
+    for pb_i in used {
+        if pb_run(pb_bytes, pb_run_s[pb_i].key) == k { return pb_i; }
+    }
+    return -1;
+}
+
+// The entry with key k in run s, added with the default value if there is none.
+fn Lists_CountsEntry_slot(s: pb_Span&, k: const u8[:]) -> Lists_CountsEntry& {
+    var pb_i = Lists_CountsEntry_find(s, s.len, k);
+    if pb_i < 0 {
+        pb_i = s.len;
+        s = pb_resize(Lists_CountsEntry_entries, s, pb_i + 1);
+        Lists_CountsEntry_set_key(pb_run(Lists_CountsEntry_entries, s)[pb_i], k);
+    }
+    return pb_run(Lists_CountsEntry_entries, s)[pb_i];
+}
+
+// Settles the entry just decoded into slot `used` of run s, and returns how
+// many are in use now. A missing message value is an empty one, unknown
+// fields are dropped, and an entry with its key already there replaces it.
+fn Lists_CountsEntry_place(s: pb_Span, used: i64) -> i64 {
+    let pb_e .= pb_run(Lists_CountsEntry_entries, s)[used];
+    pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);
+    let pb_i = Lists_CountsEntry_find(s, used, pb_run(pb_bytes, pb_e.key));
+    if pb_i < 0 { return used + 1; }
+    Lists_CountsEntry_clear(pb_run(Lists_CountsEntry_entries, s)[pb_i]);
+    pb_run(Lists_CountsEntry_entries, s)[pb_i] = pb_e;
+    pb_run(Lists_CountsEntry_entries, s)[used] = Lists_CountsEntry { .. };
+    return used;
 }
 
 // message lists.Item

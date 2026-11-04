@@ -232,6 +232,16 @@ The design above is unchanged. gpb-41j.6 and gpb-8qn.1 put it in place:
   Goose allows no reference into such a payload, so a match binds a copy,
   and the span or link it holds still reaches the pool. A proto3 `optional`
   is in a synthetic oneof, which has no ADT.
+- Maps are runs of entry records since gpb-gp4.4, in a `reusable[]` pool
+  `<Entry>_entries`. An entry is the generated entry message: its `key` and
+  `value` are stored like any field, with a message value in a slot of its own,
+  so a reference to one outlives other changes to the map. An entry decodes
+  into the next slot of the run, then `<Entry>_place` folds it into an entry
+  with the same key, which keeps its place. Entries keep insertion order and
+  encode their key and value even at the defaults, as protoc does. A message
+  value is never absent, and unknown fields in an entry are dropped, as protobuf
+  C++ does. Lookup is linear as chosen above, so decode is quadratic in the
+  entries: 160,000 entries (1.26 MB) take 5.4 s, which gpb-dx9.7 tracks.
 - A sub-message field holds a link into its type's pool, also when that
   type is in an imported file (gpb-8qn.9). A message that can hold another
   of its own type has `recursive fn` codecs (gpb-8qn.3).

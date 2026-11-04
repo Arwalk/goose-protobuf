@@ -1,0 +1,2 @@
+# proto-message: maps.Maps
+si { key: "a" value: 1 } si { key: "b" value: 2 }
