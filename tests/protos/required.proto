@@ -1,0 +1,24 @@
+// Golden and round-trip (tests/roundtrip/required/): decoding fails if a
+// required field is missing anywhere in the message, through every kind of
+// field that holds a message. Only proto2 declares them, and proto3 uses them.
+syntax = "proto3";
+
+package holder;
+
+import "required_p2.proto";
+
+message Uses {
+  req.Inner one = 1;
+  repeated req.Inner many = 2;
+  map<string, req.Inner> by_name = 3;
+  oneof pick {
+    req.Inner member = 4;
+    int32 other = 5;
+  }
+}
+
+// Reaches no required field: it has no check.
+message Plain {
+  req.Free free = 1;
+  repeated Plain more = 2;
+}

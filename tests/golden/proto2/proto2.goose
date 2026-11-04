@@ -29,7 +29,10 @@
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
-//                                (PB_ERR_UTF8: a bad proto3 string)
+//                                (PB_ERR_UTF8: a bad proto3 string;
+//                                PB_ERR_REQUIRED: a required field is
+//                                unset, which M_is_initialized(m) checks
+//                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown
@@ -198,8 +201,6 @@ struct Pres {
     o_string: pb_Span,
     o_bytes: pb_Span,
     o_sub: Sub_Ref,
-    r_int32: i32,
-    r_string: pb_Span,
     pb_has0: u32,   // has-bits of fields with presence
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
@@ -274,12 +275,6 @@ fn Pres_decode_from(r: pb_Reader&, m: Pres&) {
             if r.err != PB_OK { break; }
             r.depth--;
             r.end = pb_outer;
-        } else if tag == 136 {
-            m.r_int32 = pb_u64_to_int32(pb_read_varint(r));
-            m.pb_has0 |= 0x00008000;
-        } else if tag == 146 {
-            m.r_string = pb_read_bytes(r, m.r_string);
-            m.pb_has0 |= 0x00010000;
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
         }
@@ -363,14 +358,6 @@ fn Pres_encode(m: Pres&, out: u8[>..]&) {
         pb_write_varint(out, Sub_size_of(pb_f16) as! u64);
         Sub_encode(pb_f16, out);
     }
-    if (m.pb_has0 & 0x00008000) != 0 {
-        pb_write_varint(out, 136);
-        pb_write_varint(out, pb_int32_to_u64(m.r_int32));
-    }
-    if (m.pb_has0 & 0x00010000) != 0 {
-        pb_write_varint(out, 146);
-        pb_write_bytes(out, m.r_string);
-    }
     out.append(pb_run(pb_bytes, m.pb_unknown));
 }
 
@@ -394,8 +381,6 @@ fn Pres_size_of(m: Pres&) -> i64 {
     if (m.pb_has0 & 0x00004000) != 0 { n += 1 + pb_bytes_size(m.o_bytes); }
     let pb_f16 = m.o_sub.m;
     if pb_f16 { n += 2 + pb_len_size(Sub_size_of(pb_f16)); }
-    if (m.pb_has0 & 0x00008000) != 0 { n += 2 + pb_varint_size(pb_int32_to_u64(m.r_int32)); }
-    if (m.pb_has0 & 0x00010000) != 0 { n += 2 + pb_bytes_size(m.r_string); }
     n += m.pb_unknown.len;
     return n;
 }
@@ -418,8 +403,6 @@ fn Pres_clear(m: Pres&) {
     m.o_string = pb_bytes_free(m.o_string);
     m.o_bytes = pb_bytes_free(m.o_bytes);
     Pres_clear_o_sub(m);
-    m.r_int32 = 0;
-    m.r_string = pb_bytes_free(m.r_string);
     m.pb_has0 = 0;
     m.pb_unknown = pb_bytes_free(m.pb_unknown);
 }
@@ -446,8 +429,6 @@ fn Pres_copy(dst: Pres&, src: Pres&) {
     dst.o_bytes = pb_bytes_copy(src.o_bytes);
     let pb_f16 = src.o_sub.m;
     if pb_f16 { Sub_copy(Pres_mutable_o_sub(dst), pb_f16); }
-    dst.r_int32 = src.r_int32;
-    dst.r_string = pb_bytes_copy(src.r_string);
     dst.pb_has0 = src.pb_has0;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
@@ -694,36 +675,127 @@ fn Pres_clear_o_sub(m: Pres&) {
     m.o_sub.m .= null;
 }
 
-// Sets r_int32 and marks it present:
-// it is encoded even when 0.
-fn Pres_set_r_int32(m: Pres&, v: i32) {
-    m.r_int32 = v;
-    m.pb_has0 |= 0x00008000;
+// message p2.Req
+struct Req {
+    r_int32: i32,
+    r_string: pb_Span,
+    pb_has0: u32,   // has-bits of fields with presence
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
 }
 
-fn Pres_has_r_int32(m: Pres&) -> bool { return (m.pb_has0 & 0x00008000) != 0; }
+// A link to a Req in Req_pool, for sub-message fields.
+struct Req_Ref { m: Req&<u32 in Req_pool>? }
+reusable var Req_pool: Req[>..] = [];
+reusable[] var Req_links: Req_Ref[>..] = [];
 
-fn Pres_clear_r_int32(m: Pres&) {
+// Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
+fn Req_decode_from(r: pb_Reader&, m: Req&) {
+    var unknown_len: i64 = m.pb_unknown.len;
+    while r.pos < r.end {
+        let start = r.pos;
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { break; }
+        if tag == 8 {
+            m.r_int32 = pb_u64_to_int32(pb_read_varint(r));
+            m.pb_has0 |= 0x00000001;
+        } else if tag == 18 {
+            m.r_string = pb_read_bytes(r, m.r_string);
+            m.pb_has0 |= 0x00000002;
+        } else {
+            pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len);
+        }
+    }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Req_decode(buf: const u8[:], m: Req&) -> i32 {
+    var r = pb_reader(buf);
+    Req_decode_from(r, m);
+    if r.err == PB_OK && !Req_is_initialized(m) { return PB_ERR_REQUIRED; }
+    return r.err;
+}
+
+// Appends m's wire encoding, Req_size_of(m) bytes, to out.
+fn Req_encode(m: Req&, out: u8[>..]&) {
+    if (m.pb_has0 & 0x00000001) != 0 {
+        pb_write_varint(out, 8);
+        pb_write_varint(out, pb_int32_to_u64(m.r_int32));
+    }
+    if (m.pb_has0 & 0x00000002) != 0 {
+        pb_write_varint(out, 18);
+        pb_write_bytes(out, m.r_string);
+    }
+    out.append(pb_run(pb_bytes, m.pb_unknown));
+}
+
+// The size of m's wire encoding, in bytes.
+fn Req_size_of(m: Req&) -> i64 {
+    var n: i64 = 0;
+    if (m.pb_has0 & 0x00000001) != 0 { n += 1 + pb_varint_size(pb_int32_to_u64(m.r_int32)); }
+    if (m.pb_has0 & 0x00000002) != 0 { n += 1 + pb_bytes_size(m.r_string); }
+    n += m.pb_unknown.len;
+    return n;
+}
+
+// Frees what m owns and resets it to the empty message.
+fn Req_clear(m: Req&) {
     m.r_int32 = 0;
-    m.pb_has0 &= 0xffff7fff;
+    m.r_string = pb_bytes_free(m.r_string);
+    m.pb_has0 = 0;
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Req_copy(dst: Req&, src: Req&) {
+    if dst .== src { return; }
+    Req_clear(dst);
+    dst.r_int32 = src.r_int32;
+    dst.r_string = pb_bytes_copy(src.r_string);
+    dst.pb_has0 = src.pb_has0;
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// True if every required field is set, in m and in the messages it holds.
+fn Req_is_initialized(m: Req&) -> bool {
+    if (m.pb_has0 & 0x00000003) != 0x00000003 { return false; }
+    return true;
+}
+
+// Sets r_int32 and marks it present:
+// it is encoded even when 0.
+fn Req_set_r_int32(m: Req&, v: i32) {
+    m.r_int32 = v;
+    m.pb_has0 |= 0x00000001;
+}
+
+fn Req_has_r_int32(m: Req&) -> bool { return (m.pb_has0 & 0x00000001) != 0; }
+
+fn Req_clear_r_int32(m: Req&) {
+    m.r_int32 = 0;
+    m.pb_has0 &= 0xfffffffe;
 }
 
 // The contents of r_string, in pb_bytes: valid until it is next set or m
 // is cleared.
-fn Pres_r_string(m: Pres&) -> u8[:] { return pb_run(pb_bytes, m.r_string); }
+fn Req_r_string(m: Req&) -> u8[:] { return pb_run(pb_bytes, m.r_string); }
 
 // Sets r_string to a copy of v and marks it present:
 // it is encoded even when empty.
-fn Pres_set_r_string(m: Pres&, v: const u8[:]) {
+fn Req_set_r_string(m: Req&, v: const u8[:]) {
     m.r_string = pb_bytes_set(m.r_string, v);
-    m.pb_has0 |= 0x00010000;
+    m.pb_has0 |= 0x00000002;
 }
 
-fn Pres_has_r_string(m: Pres&) -> bool { return (m.pb_has0 & 0x00010000) != 0; }
+fn Req_has_r_string(m: Req&) -> bool { return (m.pb_has0 & 0x00000002) != 0; }
 
-fn Pres_clear_r_string(m: Pres&) {
+fn Req_clear_r_string(m: Req&) {
     m.r_string = pb_bytes_free(m.r_string);
-    m.pb_has0 &= 0xfffeffff;
+    m.pb_has0 &= 0xfffffffd;
 }
 
 // message p2.Later

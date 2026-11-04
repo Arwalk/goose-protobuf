@@ -29,7 +29,10 @@
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
-//                                (PB_ERR_UTF8: a bad proto3 string)
+//                                (PB_ERR_UTF8: a bad proto3 string;
+//                                PB_ERR_REQUIRED: a required field is
+//                                unset, which M_is_initialized(m) checks
+//                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
 // Enum values are i32 constants E_VALUE. Variable-size parts (unknown

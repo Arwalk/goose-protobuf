@@ -1,0 +1,37 @@
+// Golden, and imported by required.proto: required proto2 fields of each kind
+// of storage, nested and recursive, and messages that hold none.
+syntax = "proto2";
+
+package req;
+
+message Inner {
+  required int32 x = 1;
+  optional Inner next = 2;
+}
+
+message Req {
+  required int32 a = 1;
+  required string s = 2;
+  required Inner inner = 3;
+  optional int32 o = 4;
+}
+
+// No required field of its own, but it holds a message with one.
+message Holder {
+  optional Inner i = 1;
+}
+
+// Can reach no required field: it has no check.
+message Free {
+  optional int32 a = 1;
+  optional Free next = 2;
+}
+
+// A required field of a kind not stored yet is not checked: it would be a
+// false failure, as it is kept as an unknown field.
+enum Mode {
+  MODE_A = 0;
+}
+message NotStored {
+  required Mode mode = 1;
+}

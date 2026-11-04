@@ -33,8 +33,12 @@ message Pres {
   optional string o_string = 14;
   optional bytes o_bytes = 15;
   optional Sub o_sub = 16;
-  required int32 r_int32 = 17;
-  required string r_string = 18;
+}
+
+// Stored like any field; tests/roundtrip/required/ covers the check on them.
+message Req {
+  required int32 r_int32 = 1;
+  required string r_string = 2;
 }
 
 message Later {

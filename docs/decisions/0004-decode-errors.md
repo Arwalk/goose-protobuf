@@ -76,6 +76,7 @@ let PB_ERR_TRUNCATED = 1;   // input ends inside a value, or a length overruns i
 let PB_ERR_MALFORMED = 2;   // varint over 10 bytes, bad wire type, field number 0, ...
 let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
 let PB_ERR_UTF8 = 4;        // a proto3 string that is not valid UTF-8 (gpb-8qn.4)
+let PB_ERR_REQUIRED = 5;    // decoded whole, but a required proto2 field is unset (gpb-6xy.4)
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
 
 fn pb_fail(r: pb_Reader&, code: i32)   // keeps the first code; pos = end
@@ -133,6 +134,14 @@ as in protobuf.
   `guard` per field read, with no benefit, because S's "read 0 and stop
   the loop" is already safe.
 - **R (`return … from`).** See T.
+
+`PB_ERR_REQUIRED` is the one code not set in the reader: `M_decode` returns it
+after a decode with no other error, from `M_is_initialized(m)`, which walks the
+whole message. Checking each occurrence of a sub-message would be wrong, since a
+later one that merges into it may set what an earlier one lacks. That function
+exists only for a message that can reach a required field, so proto3-only code
+pays nothing. A required field of a kind not stored yet, an enum or a group, is
+not checked, as it would fail falsely.
 
 ## Consequences
 

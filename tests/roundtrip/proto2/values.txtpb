@@ -1,2 +1,2 @@
 # proto-message: p2.Pres
-o_int32: -1 o_int64: -2 o_uint32: 3 o_uint64: 4 o_sint32: -5 o_sint64: -6 o_fixed32: 7 o_fixed64: 8 o_sfixed32: -9 o_sfixed64: -10 o_float: 1.5 o_double: 2.5 o_bool: true o_string: "s" o_bytes: "\xff" o_sub { a: 1 next { a: 0 } } r_int32: 11 r_string: "r"
+o_int32: -1 o_int64: -2 o_uint32: 3 o_uint64: 4 o_sint32: -5 o_sint64: -6 o_fixed32: 7 o_fixed64: 8 o_sfixed32: -9 o_sfixed64: -10 o_float: 1.5 o_double: 2.5 o_bool: true o_string: "s" o_bytes: "\xff" o_sub { a: 1 next { a: 0 } }

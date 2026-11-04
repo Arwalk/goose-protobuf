@@ -34,8 +34,7 @@ fn set_all(m: p2::Pres&, s: const u8[:], b: const u8[:]) {
 }
 
 fn main() {
-    // Unset: nothing is encoded, a required field included, as checking those
-    // is gpb-6xy.4.
+    // Unset: nothing is encoded.
     var m = p2::Pres { .. };
     check_case("unset", embed_file("unset.bin"), m);
 
@@ -56,8 +55,6 @@ fn main() {
     p2::Pres_set_o_bool(m, false);
     set_all(m, "", "");
     p2::Pres_mutable_o_sub(m);
-    p2::Pres_set_r_int32(m, 0);
-    p2::Pres_set_r_string(m, "");
     check_case("defaults", embed_file("defaults.bin"), m);
 
     // clear_ drops one field, value and has-bit.
@@ -83,9 +80,17 @@ fn main() {
     let sub .= p2::Pres_mutable_o_sub(m);
     p2::Sub_set_a(sub, 1);
     p2::Sub_set_a(p2::Sub_mutable_next(sub), 0);
-    p2::Pres_set_r_int32(m, 11);
-    p2::Pres_set_r_string(m, "r");
     check_case("values", embed_file("values.bin"), m);
+
+    // A required field is stored like the others, and set to its default encodes.
+    var q = p2::Req { .. };
+    p2::Req_set_r_int32(q, 0);
+    p2::Req_set_r_string(q, "");
+    if !p2::Req_has_r_int32(q) { fail_at("req", "has_"); }
+    var qo: u8[>..] = [];
+    p2::Req_encode(q, qo);
+    if qo != embed_file("req.bin") { fail_at("req", "encoding differs from protoc"); }
+    p2::Req_clear(q);
 
     // A deep copy keeps presence.
     var c = p2::Pres { .. };

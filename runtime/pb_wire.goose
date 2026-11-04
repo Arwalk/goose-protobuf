@@ -27,6 +27,7 @@ let PB_ERR_TRUNCATED = 1;   // input ends inside a value, or a length overruns i
 let PB_ERR_MALFORMED = 2;   // varint over 10 bytes, bad wire type, field number 0, ...
 let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
 let PB_ERR_UTF8 = 4;        // a proto3 string field that is not valid UTF-8
+let PB_ERR_REQUIRED = 5;    // decoded whole, but a required proto2 field is unset
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
 
 // A decode window: buf[pos..end] is still to be read.

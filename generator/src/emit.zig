@@ -87,7 +87,7 @@ pub fn nestedPath(a: std.mem.Allocator, prefix: []const u8, name: []const u8) ![
 /// Operations and globals generated for every message, as `<path>_<op>`
 /// (decisions 0001 and 0004: codecs, `M_copy`, the `M_Ref` link, the pools).
 pub const message_ops = [_][]const u8{
-    "decode", "decode_from", "encode", "size_of", "clear", "copy", "Ref", "pool", "links",
+    "decode", "decode_from", "encode", "size_of", "clear", "copy", "is_initialized", "Ref", "pool", "links",
 };
 
 /// What a map entry message has besides: its pool of runs (decision 0001) and
@@ -421,7 +421,7 @@ pub const FileEmitter = struct {
         const full = try self.fullName(scope, name);
         const goose_name = try self.claimDecl(path, full, prefix.len > 0);
         try self.decls.put(self.a, full, goose_name);
-        try self.messages.put(self.a, full, .{ .desc = m, .path = path, .goose_name = goose_name });
+        try self.messages.put(self.a, full, .{ .desc = m, .path = path, .goose_name = goose_name, .file = self.file });
         for (m.enum_type.items) |*e| try self.claimEnum(e, path, full);
         for (m.nested_type.items) |*n| try self.claimMessage(n, path, full);
     }
@@ -445,14 +445,31 @@ pub const FileEmitter = struct {
     /// The full name of the message type of `fd`, singular or repeated, if
     /// it is a field this generator stores.
     fn storedMessageType(self: *FileEmitter, fd: *const descriptor.FieldDescriptorProto) ?[]const u8 {
-        if (fd.type != .TYPE_MESSAGE) return null;
-        const stored = if (fd.label == .LABEL_REPEATED)
-            std.mem.eql(u8, self.file.syntax orelse "proto2", "proto3")
-        else
-            isStorable(self.file, fd);
-        if (!stored) return null;
-        const tn = fd.type_name orelse return null;
-        return if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
+        return storedMessageTypeIn(self.file, fd);
+    }
+
+    /// True if a message of type `t` can reach a required field that is
+    /// stored, itself or in what it holds, in any file: it then has
+    /// is_initialized. `seen` guards against cycles. Call it only once the
+    /// imports are written, as looking a type up may mark another.
+    fn holdsRequired(self: *FileEmitter, t: []const u8, seen: *std.StringHashMapUnmanaged(void)) Error!bool {
+        if ((try seen.getOrPut(self.a, t)).found_existing) return false;
+        const info = self.messages.get(t) orelse (try self.foreignMessage(t)) orelse return false;
+        for (info.desc.field.items) |*fd| {
+            const sub = storedMessageTypeIn(info.file, fd);
+            if (fd.label == .LABEL_REQUIRED and (sub != null or scalarOf(info.file, fd) != null)) return true;
+            if (sub) |s| {
+                if (try self.holdsRequired(s, seen)) return true;
+            }
+        }
+        return false;
+    }
+
+    /// True if the message that stored field `f` holds has is_initialized.
+    fn fieldHoldsRequired(self: *FileEmitter, f: Field) Error!bool {
+        const t = self.storedMessageType(f.fd) orelse return false;
+        var seen: std.StringHashMapUnmanaged(void) = .empty;
+        return self.holdsRequired(t, &seen);
     }
 
     /// Message `t` of another file, whose names it claims the first time
@@ -608,15 +625,18 @@ pub const FileEmitter = struct {
         const by_number = try self.a.dupe(Field, fields.items);
         std.mem.sortUnstable(Field, by_number, {}, Field.lessThan);
         self.fn_kw = if (try self.isRecursive(full)) "recursive fn" else "fn";
+        var required_seen: std.StringHashMapUnmanaged(void) = .empty;
+        const checked = try self.holdsRequired(full, &required_seen);
 
         try self.emitOneofTypes(oneofs.items, fields.items);
         try self.emitRecord(goose_name, fields.items, oneofs.items, has_words);
         try self.emitPools(goose_name, path);
-        try self.emitDecode(goose_name, path, fields.items);
+        try self.emitDecode(goose_name, path, fields.items, checked);
         try self.emitEncode(goose_name, path, by_number);
         try self.emitSizeOf(goose_name, path, by_number);
         try self.emitClear(goose_name, path, fields.items, oneofs.items, has_words);
         try self.emitCopy(goose_name, path, fields.items, oneofs.items, has_words);
+        if (checked) try self.emitIsInitialized(goose_name, path, fields.items, has_words);
         for (oneofs.items) |o| try self.emitOneofClear(goose_name, o, fields.items);
         for (fields.items) |f| try self.emitAccessors(goose_name, path, f);
         if (is_entry) try self.emitMapEntryHelpers(goose_name, path, fields.items);
@@ -691,7 +711,7 @@ pub const FileEmitter = struct {
         , .{ goose_name, pool, ref, goose_name, pool, pool, goose_name, try generatedName(self.a, path, "links"), ref });
     }
 
-    fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field) Error!void {
+    fn emitDecode(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, checked: bool) Error!void {
         const decode = try generatedName(self.a, path, "decode");
         const decode_from = try generatedName(self.a, path, "decode_from");
         try self.w.print(
@@ -765,10 +785,17 @@ pub const FileEmitter = struct {
             \\fn {s}(buf: const u8[:], m: {s}&) -> i32 {{
             \\    var r = pb_reader(buf);
             \\    {s}(r, m);
-            \\    return r.err;
-            \\}}
             \\
         , .{ decode, goose_name, decode_from });
+        if (checked) {
+            // On the whole message: a later occurrence may set what an
+            // earlier one of a sub-message lacks.
+            try self.w.print(
+                \\    if r.err == PB_OK && !{s}(m) {{ return PB_ERR_REQUIRED; }}
+                \\
+            , .{try generatedName(self.a, path, "is_initialized")});
+        }
+        try self.w.writeAll("    return r.err;\n}\n");
     }
 
     /// The two branches of decode_from for a repeated scalar, the value on
@@ -1143,6 +1170,69 @@ pub const FileEmitter = struct {
         for (oneofs) |o| try self.w.print("    {s}(m);\n", .{o.clear});
         for (0..has_words) |i| try self.w.print("    m.pb_has{d} = 0;\n", .{i});
         try self.w.writeAll("    m.pb_unknown = pb_bytes_free(m.pb_unknown);\n}\n");
+    }
+
+    /// is_initialized: every required field is set, in m and in what it holds.
+    fn emitIsInitialized(self: *FileEmitter, goose_name: []const u8, path: []const u8, fields: []const Field, has_words: u32) Error!void {
+        try self.w.print(
+            \\
+            \\// True if every required field is set, in m and in the messages it holds.
+            \\{s} {s}(m: {s}&) -> bool {{
+            \\
+        , .{ self.fn_kw, try generatedName(self.a, path, "is_initialized"), goose_name });
+        const masks = try self.a.alloc(u32, has_words);
+        @memset(masks, 0);
+        for (fields) |f| {
+            if (f.fd.label != .LABEL_REQUIRED) continue;
+            if (f.bit) |b| masks[b / 32] |= bitMask(b);
+        }
+        for (masks, 0..) |mask, i| {
+            if (mask != 0) try self.w.print("    if (m.pb_has{d} & 0x{x:0>8}) != 0x{x:0>8} {{ return false; }}\n", .{ i, mask, mask });
+        }
+        for (fields) |f| {
+            if (f.fd.label == .LABEL_REQUIRED and f.sub != null) {
+                try self.w.print("    if m.{s}.m == null {{ return false; }}\n", .{f.name});
+            }
+            if (!try self.fieldHoldsRequired(f)) continue;
+            if (f.map) |entry| {
+                try self.w.print(
+                    \\    for pb_i in m.{s}.len {{
+                    \\        if !{s}(pb_run({s}, m.{s})[pb_i]) {{ return false; }}
+                    \\    }}
+                    \\
+                , .{ f.name, try self.subName(entry, "is_initialized"), try self.runPool(f), f.name });
+                continue;
+            }
+            const check = try self.subName(f.sub.?, "is_initialized");
+            if (f.repeated) {
+                try self.w.print(
+                    \\    for pb_ref in pb_run({s}, m.{s}) {{
+                    \\        let pb_l = pb_ref.m;
+                    \\        guard pb_l else {{ continue; }}
+                    \\        if !{s}(pb_l) {{ return false; }}
+                    \\    }}
+                    \\
+                , .{ try self.runPool(f), f.name, check });
+            } else if (f.oneof) |o| {
+                try self.w.print(
+                    \\    match m.{s} {{
+                    \\        {s} pb_p => {{
+                    \\            let pb_l = pb_p.v.m;
+                    \\            if pb_l {{ if !{s}(pb_l) {{ return false; }} }}
+                    \\        }},
+                    \\        _ => {{}},
+                    \\    }}
+                    \\
+                , .{ o.name, f.name, check });
+            } else {
+                try self.w.print(
+                    \\    let pb_f{d} = m.{s}.m;
+                    \\    if pb_f{d} {{ if !{s}(pb_f{d}) {{ return false; }} }}
+                    \\
+                , .{ f.number(), f.name, f.number(), check, f.number() });
+            }
+        }
+        try self.w.writeAll("    return true;\n}\n");
     }
 
     /// Decision 0001: copying a record shares what its spans and links
@@ -1869,7 +1959,10 @@ const api_comment =
     \\//   M_encode(m, out)             appends M_size_of(m) bytes to out
     \\//   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     \\//                                PB_ERR_* code and a partial m
-    \\//                                (PB_ERR_UTF8: a bad proto3 string)
+    \\//                                (PB_ERR_UTF8: a bad proto3 string;
+    \\//                                PB_ERR_REQUIRED: a required field is
+    \\//                                unset, which M_is_initialized(m) checks
+    \\//                                in a message that can hold one)
     \\//   M_clear(m)                   frees what m owns, empties it
     \\//   M_copy(dst, src)             makes dst a deep copy of src
     \\// Enum values are i32 constants E_VALUE. Variable-size parts (unknown
@@ -1893,6 +1986,8 @@ const MessageInfo = struct {
     ns: []const u8 = "",
     /// How the file being generated imports it, if it is in another file.
     import_path: []const u8 = "",
+    /// The file that declares it, whose syntax says what it stores.
+    file: *const descriptor.FileDescriptorProto,
 };
 
 fn stringLess(_: void, a: []const u8, b: []const u8) bool {
@@ -1959,6 +2054,16 @@ const Oneof = struct {
     /// The name of its clear_ accessor.
     clear: []const u8,
 };
+
+/// The full name of the message type of `fd` of `file`, singular or repeated,
+/// if it is a field this generator stores.
+fn storedMessageTypeIn(file: *const descriptor.FileDescriptorProto, fd: *const descriptor.FieldDescriptorProto) ?[]const u8 {
+    if (fd.type != .TYPE_MESSAGE) return null;
+    const stored = if (fd.label == .LABEL_REPEATED) isProto3(file) else isStorable(file, fd);
+    if (!stored) return null;
+    const tn = fd.type_name orelse return null;
+    return if (std.mem.startsWith(u8, tn, ".")) tn[1..] else tn;
+}
 
 /// The field numbered `number` of a map entry.
 fn mapField(fields: []const Field, number: u32) Field {

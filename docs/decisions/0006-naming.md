@@ -128,7 +128,8 @@ the reserved list, in `generator/src/emit.zig`:
   fields `pb_has<k>: u32`, which no proto field can take because `pb_`
   names are escaped.
 - A singular proto2 field (gpb-6xy.1) has the same accessors, and `required`
-  is stored the same way. A field is unset until set, read as 0 until
+  is stored the same way, with `<M>_is_initialized` (gpb-6xy.4) on any message
+  that can reach one. The name is claimed for every message. A field is unset until set, read as 0 until
   gpb-6xy.2 brings declared defaults.
 - A singular message field (gpb-8qn.2) has `<M>_<f>`, which returns the
   sub-message or null; `<M>_mutable_<f>`, which first sets an empty one
