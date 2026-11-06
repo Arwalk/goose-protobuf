@@ -21,5 +21,9 @@ case_ 1 'rm wkt/duration.goose' '^FAIL a path to a checkout' "a well-known type 
 case_ 1 'rm -r wkt' '^FAIL the plugin builds' "no well-known types"
 case_ 1 "git config -f .gitmodules --unset submodule.third_party/protobuf.update" \
   '^FAIL a git source at a tag' "a package that would fetch its submodule"
+case_ 1 'head -c 30000000 /dev/urandom > tests/big' \
+  '^FAIL the fetched package stays small' "a package grown too large"
+case_ 1 'echo "import .tests.consumer_planted;" >> pb_wire.goose' \
+  '^FAIL a path to a checkout' "a package that compiles a broken file"
 case_ 1 'rm scripts/install_plugin.sh' '^FAIL the plugin builds' "no install script"
 exit $bad

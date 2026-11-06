@@ -30,6 +30,9 @@ mkdir "$pub"
     mkdir -p "$pub/$(dirname "$f")"; cp -P "$root/$f" "$pub/$f"
   done
 submodule="$(git -C "$root" rev-parse HEAD:third_party/protobuf)"
+# A package's unimported files must cost nothing, even a broken one (decision 0015).
+printf 'extern fn consumer_no_such_symbol(x: i32) -> i32;\nfn broken( {\n' \
+  > "$pub/tests/consumer_planted.goose"
 if [ -n "${CONSUMER_MUTATE:-}" ]; then (cd "$pub" && eval "$CONSUMER_MUTATE"); fi
 if ! ( cd "$pub" && git init -q -b main . && "${git_c[@]}" add -A \
     && git update-index --add --cacheinfo "160000,$submodule,third_party/protobuf" \
@@ -109,6 +112,11 @@ builds vendored "a vendored copy"
 git_source="file://$tmp/goose-protobuf.git"
 consumer tag "import pb_wire from \"$git_source@v1.2.3\";"
 builds tag "a git source at a tag"
+if (cd "$tmp/tag" && goose run app.goose) >"$tmp/log" 2>&1 && [ "$(tail -n 1 "$tmp/log")" = "tea 7" ]; then
+  pass "goose run on a git source"
+else
+  fail "goose run on a git source" "$tmp/log"
+fi
 
 consumer commit "import pb_wire from \"$git_source@$commit\";"
 builds commit "a git source at a commit"
@@ -145,6 +153,13 @@ if [ -f "${fetched[0]}/pb_wire.goose" ] && [ -z "$(ls -A "${fetched[0]}/third_pa
   pass "the package leaves the protobuf submodule out"
 else
   fail "the package leaves the protobuf submodule out"
+fi
+max_fetch_kb=20480
+fetch_kb="$(du -sk "${fetched[0]}" | cut -f1)"
+if [ "$fetch_kb" -le "$max_fetch_kb" ]; then
+  pass "the fetched package stays small ($fetch_kb KB)"
+else
+  fail "the fetched package stays small: $fetch_kb KB, over $max_fetch_kb KB (decision 0015)"
 fi
 
 # A runtime of another version: as this one, with its version name changed.

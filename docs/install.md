@@ -90,4 +90,8 @@ build otherwise.
 | A git source | `import pb_wire from "owner/repo@vX.Y.Z";` | You want Goose to fetch it. Pin a commit if the build must be reproducible, since a tag can move |
 | A copy | `import pb_wire;` | You want no network and no other directory. `scripts/vendor_runtime.sh <dir>` makes the copy, next to your root file |
 
+A git source fetches this whole repository once per version, about 5 MB into Goose's
+cache, tests included. Goose compiles only what your program imports, so the rest adds
+nothing to your build time.
+
 [The quickstart](quickstart.md) tries them on a small program.
