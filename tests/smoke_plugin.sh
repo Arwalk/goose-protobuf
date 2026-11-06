@@ -11,8 +11,8 @@ if [[ -d "$root/.tools/bin" ]]; then
   export PATH="$root/.tools/bin:$PATH"
 fi
 
-(cd "$root/generator" && zig build)
-plugin="$root/generator/zig-out/bin/protoc-gen-goose"
+"$root/scripts/build_plugin.sh"
+plugin="$root/build/protoc-gen-goose"
 
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT

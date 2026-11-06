@@ -1,31 +1,21 @@
 #!/usr/bin/env bash
 # Unit tests of generator-goose/. Each tests/selfhost/*_unit.goose is a program
-# built with --debug next to the generator's files, its generated bindings, the
-# runtime, unit_support.goose and edition_defaults.binpb, and run; it passes iff it
-# exits 0. They are not *_test.goose, which scripts/goose_tests.sh builds where they
+# built with --debug next to the generator's files, its bindings, the runtime and
+# unit_support.goose, and run; it passes iff it exits 0. They are not *_test.goose, which scripts/goose_tests.sh builds where they
 # are. Then the plugin is built, for what only a process shows.
 # Usage: scripts/selfhost_tests.sh
-# Env: PLUGIN, PROTOC, GOOSE (default: zig build; protoc, goose; .tools/bin first),
+# Env: GOOSE (default goose; .tools/bin first),
 #      GENERATOR_SRC (default generator-goose/; scripts/test_selfhost_tests.sh
 #      points it at changed copies)
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 [ -d "$root/.tools/bin" ] && export PATH="$root/.tools/bin:$PATH"
-protoc="${PROTOC:-protoc}"
 goose="${GOOSE:-goose}"
 src="${GENERATOR_SRC:-$root/generator-goose}"
-include="$(cd "$(dirname "$(readlink -f "$(command -v "$protoc")")")/../include" && pwd)"
-if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
-fi
-
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-"$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$tmp" -I "$include" \
-  google/protobuf/compiler/plugin.proto google/protobuf/descriptor.proto || exit 1
-cp "$src"/*.goose "$tmp/"
-cp "$root/tests/selfhost/unit_support.goose" "$root/generator/src/edition_defaults.binpb" "$tmp/"
+cp -R "$src"/. "$tmp/"
+cp "$root/tests/selfhost/unit_support.goose" "$tmp/"
 "$root/scripts/vendor_runtime.sh" "$tmp"
 
 failed=0 count=0

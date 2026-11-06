@@ -19,7 +19,8 @@ scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_t
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
 scripts/fuzz.sh [seconds]                       # libFuzzer on generated decoders (needs clang)
-scripts/build_selfhost.sh                       # the generator in Goose (generator-goose/)
+scripts/build_plugin.sh                         # the generator in Goose (generator-goose/)
+scripts/regen_bindings.sh [--update]            # it writes its own bindings unchanged
 scripts/selfhost_diff.sh [names]                # it writes what the Zig generator writes
 scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)

@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 # The feature defaults of the editions the plugin takes, as protoc computes them,
-# against the committed copy that generator/src/features.zig and
-# generator-goose/features.goose are tested with.
+# against the committed copy that generator-goose/features.goose is tested with.
 # Usage: scripts/edition_defaults.sh [--update]
 # Env: PROTOC (default protoc; .tools/bin first)
 set -euo pipefail
@@ -9,7 +8,7 @@ set -euo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 [ -d "$root/.tools/bin" ] && export PATH="$root/.tools/bin:$PATH"
 protoc="${PROTOC:-protoc}"
-committed="$root/generator/src/edition_defaults.binpb"
+committed="$root/generator-goose/edition_defaults.binpb"
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 "$protoc" --edition_defaults_out="$tmp/defaults" \

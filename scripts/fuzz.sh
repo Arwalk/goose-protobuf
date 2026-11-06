@@ -33,7 +33,7 @@ command -v "$cc" >/dev/null || die "$cc not found; set CC_FUZZ"
 
 mkdir -p "$out/corpus"
 if [ "${FUZZ_REBUILD:-1}" != 0 ] || [ ! -x "$out/fuzz" ]; then
-  (cd "$root/generator" && zig build) || die "zig build failed"
+  "$root/scripts/build_plugin.sh" || die "scripts/build_plugin.sh failed"
   rm -rf "$stage"; mkdir -p "$stage"
   closure=()
   while IFS= read -r i; do closure+=("$i"); done \
@@ -43,7 +43,7 @@ if [ "${FUZZ_REBUILD:-1}" != 0 ] || [ ! -x "$out/fuzz" ]; then
           editions/golden/test_messages_proto3_editions.proto \
           editions/golden/test_messages_proto2_editions.proto \
           conformance/test_protos/test_messages_edition2023.proto | sort -u)
-  "$protoc" --plugin=protoc-gen-goose="$root/generator/zig-out/bin/protoc-gen-goose" \
+  "$protoc" --plugin=protoc-gen-goose="$root/build/protoc-gen-goose" \
     --goose_out="$stage" -I "$src" -I "$root/third_party/protobuf" "${closure[@]}"
   cp "$target" "$stage/fuzz_target.goose"
   cp "$root/tests/fuzz/fuzz_entry.c" "$stage/"

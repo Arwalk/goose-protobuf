@@ -2,7 +2,7 @@
 # Build the conformance testee from generated bindings.
 # Usage: scripts/build_testee.sh [out]   (default build/testee)
 #
-#   1. build the plugin (zig build);
+#   1. build the plugin (scripts/build_plugin.sh);
 #   2. generate the test messages of the protobuf submodule (third_party/protobuf),
 #      proto3, proto2 and editions, and what they import with them, and the
 #      envelope conformance/conformance.proto, into build/testee-src/;
@@ -27,8 +27,8 @@ die() { echo "error: $*" >&2; exit 1; }
   die "no $src/google/protobuf/test_messages_proto3.proto; git submodule update --init --checkout"
 command -v "$goose" >/dev/null || die "goose not found; see TOOLCHAIN.md"
 
-(cd "$root/generator" && zig build) || die "zig build failed"
-plugin="$root/generator/zig-out/bin/protoc-gen-goose"
+"$root/scripts/build_plugin.sh" || die "scripts/build_plugin.sh failed"
+plugin="$root/build/protoc-gen-goose"
 
 rm -rf "$stage"; mkdir -p "$stage"
 closure=()

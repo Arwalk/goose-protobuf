@@ -25,13 +25,12 @@ if [ "${1:-}" = "--no-check" ]; then check=0; shift; fi
 names=("$@")
 
 if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
+  "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
+  PLUGIN="$root/build/protoc-gen-goose"
 fi
 if [ -z "${SELF:-}" ]; then
-  PLUGIN="$PLUGIN" "$root/scripts/build_selfhost.sh" >/dev/null 2>"$root/build/selfhost.log" ||
-    { cat "$root/build/selfhost.log"; echo "error: scripts/build_selfhost.sh failed" >&2; exit 1; }
-  SELF="$root/build/protoc-gen-goose-self"
+  "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
+  SELF="$root/build/protoc-gen-goose"
 fi
 
 includes=(-I "$proto_dir")

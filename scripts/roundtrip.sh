@@ -14,7 +14,7 @@
 #      It passes iff it exits 0. Tests embed the .bin files (embed_file).
 # Exits nonzero if any step fails for any name.
 #
-# Env: PLUGIN     plugin binary (default: zig build, generator/zig-out/bin)
+# Env: PLUGIN     plugin binary (default: scripts/build_plugin.sh)
 #      PROTO_DIR     protos     (default tests/protos)
 #      ROUNDTRIP_DIR test cases (default tests/roundtrip)
 #      PROTOC, GOOSE (default protoc, goose; .tools/bin first)
@@ -30,8 +30,8 @@ proto_dir="${PROTO_DIR:-$root/tests/protos}"
 rt_dir="${ROUNDTRIP_DIR:-$root/tests/roundtrip}"
 
 if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
+  "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
+  PLUGIN="$root/build/protoc-gen-goose"
 fi
 
 names=()

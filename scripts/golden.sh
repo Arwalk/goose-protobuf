@@ -14,7 +14,7 @@
 #      runtime/pb_wire.goose (`import pb_wire;`).
 # Exits nonzero if any proto fails any step; all failures are reported.
 #
-# Env: PLUGIN     plugin binary (default: zig build, generator/zig-out/bin)
+# Env: PLUGIN     plugin binary (default: scripts/build_plugin.sh)
 #      PROTO_DIR  input protos   (default tests/protos)
 #      GOLDEN_DIR golden tree    (default tests/golden)
 #      PROTOC, GOOSE             (default protoc, goose; .tools/bin first)
@@ -35,8 +35,8 @@ case "${1:-}" in
 esac
 
 if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
+  "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
+  PLUGIN="$root/build/protoc-gen-goose"
 fi
 [ -x "$PLUGIN" ] || { echo "error: plugin $PLUGIN not executable" >&2; exit 1; }
 

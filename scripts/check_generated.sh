@@ -9,7 +9,7 @@
 # What the protos import is generated and checked too. Imports resolve from
 # the root file's directory, so each output file is checked through a small
 # root file at the output root, next to a copy of the pb_wire package.
-# Env: PLUGIN (default: zig build, generator/zig-out/bin), PROTOC, GOOSE
+# Env: PLUGIN (default: scripts/build_plugin.sh), PROTOC, GOOSE
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -30,8 +30,8 @@ wkt="$(ls -d "$root"/.tools/protoc-*/include 2>/dev/null | head -1)"
 [ -n "$wkt" ] && includes+=(-I "$wkt")
 
 if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
+  "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
+  PLUGIN="$root/build/protoc-gen-goose"
 fi
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT

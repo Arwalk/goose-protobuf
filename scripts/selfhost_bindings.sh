@@ -1,27 +1,19 @@
 #!/usr/bin/env bash
-# Phase 6 groundwork: generate Goose bindings for descriptor.proto and plugin.proto
-# with the Zig generator, and check them on real requests. For each proto of
+# The plugin's bindings of descriptor.proto and plugin.proto, on real requests. For each proto of
 # tests/protos, and for the conformance suite's when the submodule is checked out,
 # it captures the CodeGeneratorRequest protoc sends a plugin, and decodes and
 # encodes it through the bindings: the bytes must come back the same. A truncated
 # request must fail.
 # Usage: scripts/selfhost_bindings.sh
-# Env: PLUGIN, PROTOC, GOOSE (default: zig build; protoc, goose; .tools/bin first)
+# Env: PROTOC, GOOSE (default protoc, goose; .tools/bin first)
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
 [ -d "$root/.tools/bin" ] && export PATH="$root/.tools/bin:$PATH"
 protoc="${PROTOC:-protoc}"
 goose="${GOOSE:-goose}"
-include="$(cd "$(dirname "$(readlink -f "$(command -v "$protoc")")")/../include" && pwd)"
-if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
-fi
-
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
-"$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$tmp" -I "$include" \
-  google/protobuf/compiler/plugin.proto google/protobuf/descriptor.proto || exit 1
+cp -R "$root/generator-goose/google" "$tmp/"
 cp "$root/tests/selfhost/request_echo.goose" "$tmp/"
 "$root/scripts/vendor_runtime.sh" "$tmp"
 (cd "$tmp" && "$goose" build request_echo.goose --debug -o echo) >"$tmp/log" 2>&1 ||

@@ -3,7 +3,7 @@
 
 Usage: scripts/bench_generator.py [--check] [shape[=size]...]
 Prints: shape size seconds peak_mb. With --check, exits 1 if a run passes its limit.
-Env: PLUGIN (default build/protoc-gen-goose-self, from scripts/build_selfhost.sh),
+Env: PLUGIN (default build/protoc-gen-goose, from scripts/build_plugin.sh),
      PROTOC (default protoc; .tools/bin first)
 Shapes are what made the generator quadratic: a closure walked per message, a name
 looked up per field, a oneof counted per member.
@@ -105,9 +105,10 @@ def main():
     args = [a for a in args if a != "--check"]
     tools = os.path.join(ROOT, ".tools", "bin")
     protoc = os.environ.get("PROTOC") or (os.path.join(tools, "protoc") if os.path.isdir(tools) else "protoc")
-    plugin = os.environ.get("PLUGIN", os.path.join(ROOT, "build", "protoc-gen-goose-self"))
-    if not os.path.exists(plugin):
-        sys.exit(f"error: no {plugin}: scripts/build_selfhost.sh")
+    plugin = os.environ.get("PLUGIN")
+    if not plugin:
+        subprocess.run([os.path.join(ROOT, "scripts", "build_plugin.sh")], check=True)
+        plugin = os.path.join(ROOT, "build", "protoc-gen-goose")
     bad = 0
     for arg in args or list(SHAPES):
         name, _, size = arg.partition("=")

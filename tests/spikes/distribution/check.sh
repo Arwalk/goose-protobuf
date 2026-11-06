@@ -9,8 +9,8 @@ set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../../.." && pwd)"
 [ -d "$root/.tools/bin" ] && export PATH="$root/.tools/bin:$PATH"
-(cd "$root/generator" && zig build)
-plugin="$root/generator/zig-out/bin/protoc-gen-goose"
+"$root/scripts/build_plugin.sh"
+plugin="$root/build/protoc-gen-goose"
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 export GOOSE_HOME="$tmp/goose_home"

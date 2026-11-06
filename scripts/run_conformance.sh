@@ -23,7 +23,7 @@ die() { echo "error: $*" >&2; exit 1; }
 
 # Build the default testee from freshly generated bindings. The build
 # depends on the generator, the runtime and the protobuf sources, so it is
-# always redone (zig build and goose build are quick when nothing changed).
+# always redone (scripts/build_plugin.sh and goose build are quick when nothing changed).
 build_default_testee() {
   testee="$root/build/testee"
   echo "building default testee: $testee" >&2

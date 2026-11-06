@@ -5,10 +5,6 @@
 # Env: as scripts/selfhost_tests.sh
 set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
-[ -z "${PLUGIN:-}" ] && {
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  export PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
-}
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 bad=0
 
@@ -17,7 +13,7 @@ out="$("$root/scripts/selfhost_tests.sh" 2>&1)" || { echo "FAIL the unchanged ge
 check_change() {  # check_change <constant> <from> <to>
   local changed
   rm -rf "$tmp/src"; mkdir "$tmp/src"
-  cp "$root"/generator-goose/*.goose "$tmp/src/"
+  cp -R "$root"/generator-goose/. "$tmp/src/"
   changed="$(python3 -c '
 import sys
 constant, old, new, path = sys.argv[1:]

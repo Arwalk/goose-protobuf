@@ -4,7 +4,7 @@
 # generates now, and `goose check`s each file, failing on warnings too.
 # Usage: scripts/wkt.sh [--update]
 # Run --update after an intended generator change, and review the diff.
-# Env: PLUGIN (default: zig build, generator/zig-out/bin), PROTOC, GOOSE
+# Env: PLUGIN (default: scripts/build_plugin.sh), PROTOC, GOOSE
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -20,8 +20,8 @@ case "${1:-}" in
 esac
 
 if [ -z "${PLUGIN:-}" ]; then
-  (cd "$root/generator" && zig build) || { echo "error: zig build failed" >&2; exit 1; }
-  PLUGIN="$root/generator/zig-out/bin/protoc-gen-goose"
+  "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
+  PLUGIN="$root/build/protoc-gen-goose"
 fi
 
 includes=()
