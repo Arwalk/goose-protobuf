@@ -6,7 +6,7 @@ message from a `.proto` file to a running program.
 
 ## What you need
 
-- Goose v2026.3 and protoc 36.2. Other versions are untested.
+- Goose v2026.3 and protoc 27.0 to 36.2. Other versions are untested.
 - A C compiler, which `goose build` uses, as for any Goose program.
 - A checkout of this repository. The examples expect it next to your project,
   as `../goose-protobuf`.

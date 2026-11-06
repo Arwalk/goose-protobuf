@@ -22,7 +22,9 @@ golden files and the conformance failure list. That commit also:
 - reruns `scripts/edition_defaults.sh --update`;
 - for a Goose pin, compares the keywords and builtins of its reference with
   `reference_names` in `tests/selfhost/names_unit.goose`;
-- for a protoc pin, runs `scripts/regen_bindings.sh --update`, as the table says;
+- for a protoc pin, runs `scripts/regen_bindings.sh --update`, as the table says, and
+  adds the new release to `scripts/protoc_versions.sh`
+  ([decision 0014](docs/decisions/0014-protoc-range.md));
 - updates the versions quoted in [docs/install.md](docs/install.md),
   [docs/usage.md](docs/usage.md) and the top entry of [CHANGELOG.md](CHANGELOG.md).
   `scripts/check_docs.py` runs the first, and fails on an old version.

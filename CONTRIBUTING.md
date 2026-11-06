@@ -79,6 +79,7 @@ scripts/check_troubleshooting.py                # the messages in docs/troublesh
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
 scripts/edition_defaults.sh                     # feature defaults match protoc (--update to accept)
+scripts/protoc_versions.sh [versions]           # goldens and round trips on each supported protoc
 scripts/bench_maps.sh [sizes]                   # map decode timings (decision 0008)
 scripts/bench_generator.py [--check] [shapes]   # the plugin's time and memory on large requests
 ```
@@ -106,6 +107,7 @@ scripts/test_check_generated.sh
 scripts/test_install_plugin.sh
 scripts/test_selfhost_tests.sh
 scripts/test_run_conformance.sh
+scripts/test_protoc_versions.sh
 ```
 
 ### Golden tests

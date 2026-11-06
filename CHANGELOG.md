@@ -7,7 +7,7 @@ kind of bump promises.
 
 ## 0.1.0 (unreleased)
 
-The first version. Built and tested with protoc v36.2 and Goose v2026.3, and its
+The first version. Built and tested with protoc 27.0 to 36.2 and Goose v2026.3, and its
 generated code needs a runtime of the same version (`abi 1`, as
 `protoc-gen-goose --version` prints).
 

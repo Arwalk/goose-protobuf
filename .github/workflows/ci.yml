@@ -84,6 +84,27 @@ jobs:
           scripts/test_check_generated.sh
           scripts/test_install_plugin.sh
           scripts/test_selfhost_tests.sh
+          scripts/test_protoc_versions.sh
+
+  # The supported protoc range (decision 0014), which needs one platform.
+  protoc-versions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache protoc releases, pinned protoc and Goose
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-versions-${{ runner.os }}-${{ hashFiles('scripts/install_toolchain.sh', 'scripts/protoc_versions.sh') }}
+
+      - name: Install pinned protoc and Goose
+        run: |
+          scripts/install_toolchain.sh
+          echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - name: Goldens and round trips on each protoc
+        run: scripts/protoc_versions.sh
 
   conformance:
     strategy:

@@ -3,6 +3,8 @@
 - Status: accepted by the project owner, who made a raised tool pin a major after
   1.0. gpb-ky7.15 gave repeated string, bytes and message fields and maps the
   accessors in this record's public table, without a plain getter.
+  [Decision 0014](0014-protoc-range.md) proposes how a raised pin applies to protoc,
+  which now has a range.
 - Date: 2026-11-06
 - Bead: gpb-ky7.1
 - Builds on: [0005](0005-runtime-distribution.md) (one tag for everything),

@@ -4,7 +4,8 @@
 # generates now, and `goose check`s each file, failing on warnings too.
 # Usage: scripts/wkt.sh [--update]
 # Run --update after an intended generator change, and review the diff.
-# Env: PLUGIN (default: scripts/build_plugin.sh), PROTOC, GOOSE
+# Env: PLUGIN (default: scripts/build_plugin.sh), PROTOC, GOOSE,
+#      PROTOC_INCLUDE (default: the pinned protoc's include directory)
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -25,7 +26,7 @@ if [ -z "${PLUGIN:-}" ]; then
 fi
 
 includes=()
-inc="$(ls -d "$root"/.tools/protoc-*/include 2>/dev/null | head -1)"
+inc="${PROTOC_INCLUDE:-$(ls -d "$root"/.tools/protoc-*/include 2>/dev/null | head -1)}"
 [ -n "$inc" ] && includes+=(-I "$inc")
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT

@@ -7,10 +7,12 @@ What you need to generate Goose code from `.proto` files and to build it.
 | Tool | Version | Why |
 |---|---|---|
 | Goose | v2026.3 | Builds your program and the plugin |
-| `protoc` | 36.2 | Runs the plugin on your `.proto` files |
+| `protoc` | 27.0 to 36.2 | Runs the plugin on your `.proto` files |
 | C compiler (gcc or clang) | any | `goose build` uses it |
 
-Each release is tested with these versions, and other versions may not work.
+Each release is tested with these versions, and other versions may not work. The
+script below installs protoc 36.2, but one you already have is fine if it is in this
+range.
 
 On Linux, Goose needs glibc 2.35 or later and `libc6-dev`.
 

@@ -18,6 +18,7 @@
 #      PROTO_DIR  input protos   (default tests/protos)
 #      GOLDEN_DIR golden tree    (default tests/golden)
 #      PROTOC, GOOSE             (default protoc, goose; .tools/bin first)
+#      PROTOC_INCLUDE            well-known types (default: the pinned protoc's)
 set -uo pipefail
 
 root="$(cd "$(dirname "$0")/.." && pwd)"
@@ -41,7 +42,7 @@ fi
 [ -x "$PLUGIN" ] || { echo "error: plugin $PLUGIN not executable" >&2; exit 1; }
 
 includes=(-I "$proto_dir")
-wkt="$(ls -d "$root"/.tools/protoc-*/include 2>/dev/null | head -1)"
+wkt="${PROTOC_INCLUDE:-$(ls -d "$root"/.tools/protoc-*/include 2>/dev/null | head -1)}"
 [ -n "$wkt" ] && includes+=(-I "$wkt")
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
