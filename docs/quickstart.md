@@ -118,6 +118,6 @@ with an error naming `pb_plugin_and_runtime_versions_differ`.
 
 ## Next
 
-[The usage guide](usage.md) takes a full message through every kind of field:
+[The usage guide](usage.md) takes a full message through every kind of proto3 field:
 optional fields, sub-messages, repeated fields, maps, oneofs and decode errors.
 [The documentation map](README.md) lists everything else.

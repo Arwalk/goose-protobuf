@@ -56,6 +56,9 @@ message Person {
     Address office = 10;
   }
   google.protobuf.Duration tenure = 11;
+  bytes avatar = 12;
+  repeated Address moves = 13;
+  map<string, Address> places = 14;
 }
 ```
 
@@ -118,6 +121,7 @@ fn build(p: people::Person&) {
     p.role = people::Role_ROLE_ADMIN;
 
     people::Person_set_height(p, 170);       // `optional` has set_, has_, clear_
+    people::Person_set_avatar(p, "\x89PNG");
 
     let home .= people::Person_mutable_home(p);  // creates the sub-message
     people::Address_set_city(home, "London");
@@ -126,7 +130,15 @@ fn build(p: people::Person&) {
     people::Person_add_scores(p, 10);
     people::Person_add_scores(p, 20);
 
+    let paris .= people::Person_add_moves(p);    // adds a message and returns it
+    people::Address_set_city(paris, "Paris");
+    let rome .= people::Person_add_moves(p);
+    people::Address_set_city(rome, "Rome");
+
     people::Person_counts_put(p, "visits", 3);
+
+    let work .= people::Person_places_put(p, "work");  // the value, added empty if new
+    people::Address_set_city(work, "Oslo");
 
     people::Person_set_phone(p, "555-0100");     // sets this member of the oneof
 
@@ -135,9 +147,11 @@ fn build(p: people::Person&) {
 }
 ```
 
-**Bind a sub-message with `.=`, not `=`.** `let home = ...` makes a copy of the
-record. Goose accepts it without a warning, and what you set on the copy never
-reaches the message.
+**Bind a message with `.=`, not `=`.** This goes for whatever returns one to fill
+in: `_mutable_`, `_add_` of a repeated message and `_put` of a map with message
+values, and also for `_at`, `_value_at` and the getter if you will change what they
+return. `let paris = ...` makes a copy of the record. Goose accepts it without a
+warning, and what you set on the copy never reaches the message.
 
 ## Encode
 
@@ -188,6 +202,11 @@ fn show(p: people::Person&) {
     for s in people::Person_scores(p) { total += s; }
     print("total ", total);
 
+    // Repeated messages: _at gives a message, which you read like any other.
+    for i in people::Person_moves_len(p) {
+        print("moved to ", people::Address_city(people::Person_moves_at(p, i)));
+    }
+
     // Maps: _get gives the value and whether it was found. Entries keep their
     // insertion order; the same key on the wire keeps the place of the first
     // and the value of the last. _len, _key_at and _value_at go through them.
@@ -195,6 +214,10 @@ fn show(p: people::Person&) {
     if found { print("visits ", visits); }
     for i in people::Person_counts_len(p) {
         print(people::Person_counts_key_at(p, i), " = ", people::Person_counts_value_at(p, i));
+    }
+    for i in people::Person_places_len(p) {
+        let place .= people::Person_places_value_at(p, i);
+        print(people::Person_places_key_at(p, i), " is in ", people::Address_city(place));
     }
 
     // A oneof is an ADT in the record field of its name.
@@ -259,12 +282,18 @@ height 170
 city London
 email ada@example.org
 total 30
+moved to Paris
+moved to Rome
 visits 3
 visits = 3
+work is in Oslo
 phone 555-0100
 Ada
 true
 ```
+
+This guide uses every kind of field proto3 has. proto2 and editions add `required`,
+which `M_is_initialized(m)` checks, `[default]` and groups, all read in the same way.
 
 ## Limitations
 

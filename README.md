@@ -87,7 +87,7 @@ This project is before version 1.0. Its
 
 1. [Install](docs/install.md) the tools and the plugin.
 2. Follow the [quickstart](docs/quickstart.md), from an empty directory to a round trip.
-3. Read the [usage guide](docs/usage.md) for every kind of field.
+3. Read the [usage guide](docs/usage.md) for every kind of proto3 field.
 
 The [documentation map](docs/README.md) lists everything else. To work on the project
 itself, see [CONTRIBUTING.md](CONTRIBUTING.md).
