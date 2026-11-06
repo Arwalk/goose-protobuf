@@ -295,5 +295,7 @@ which `M_is_initialized(m)` checks, `[default]` and groups, all read in the same
 ## Next
 
 - [The generated code reference](generated-code.md) lists every function.
+- [Troubleshooting](troubleshooting.md) lists error messages and silent mistakes,
+  with their fixes.
 - [Limitations](limitations.md) lists what is unsupported or slow, and the workarounds.
 - [The documentation map](README.md) lists everything else.

@@ -66,6 +66,7 @@ jobs:
         run: |
           python3 scripts/check_docs.py
           python3 scripts/check_reference.py
+          python3 scripts/check_troubleshooting.py
 
       - name: Consumer test
         run: scripts/consumer_test.sh
@@ -78,6 +79,7 @@ jobs:
           scripts/test_interop.sh
           scripts/test_check_docs.sh
           scripts/test_check_reference.sh
+          scripts/test_check_troubleshooting.sh
           scripts/test_consumer_test.sh
           scripts/test_check_generated.sh
           scripts/test_install_plugin.sh
