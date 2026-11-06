@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -171,6 +173,17 @@ fn Struct_fields_get(m: Struct&, k: const u8[:]) -> Value&? {
 // The value with key k, added empty if there is none.
 fn Struct_fields_put(m: Struct&, k: const u8[:]) -> Value& {
     return Struct_FieldsEntry_mutable_value(Struct_FieldsEntry_slot(m.fields_, k));
+}
+
+// Adds an entry without looking for key k, much faster than Struct_fields_put for many.
+// Call Struct_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Struct_fields_append(m: Struct&, k: const u8[:]) -> Value& {
+    let pb_i: i64 = m.fields_.len;
+    m.fields_ = pb_resize(Struct_FieldsEntry_entries, m.fields_, pb_i + 1);
+    let pb_e .= pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i];
+    Struct_FieldsEntry_set_key(pb_e, k);
+    return Struct_FieldsEntry_mutable_value(pb_e);
 }
 
 // Removes the entry with key k and frees what it owns. False if there is

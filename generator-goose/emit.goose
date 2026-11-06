@@ -154,6 +154,7 @@ const add_acc = Accessor { prefix: "add_", suffix: "" };
 const map_get_acc = Accessor { prefix: "", suffix: "_get" };
 const map_put_acc = Accessor { prefix: "", suffix: "_put" };
 const map_remove_acc = Accessor { prefix: "", suffix: "_remove" };
+const map_append_acc = Accessor { prefix: "", suffix: "_append" };
 // The global holding a string or bytes field's [default], which is not empty.
 const default_acc = Accessor { prefix: "", suffix: "_default" };
 
@@ -163,7 +164,7 @@ const accessors_string: Accessor[2] = [get_acc, set_acc];
 const accessors_message: Accessor[4] = [get_acc, mutable_acc, has_acc, clear_acc];
 const accessors_repeated: Accessor[5] = [get_acc, at_acc, add_acc, set_acc, clear_acc];
 const accessors_repeated_message: Accessor[4] = [get_acc, at_acc, add_acc, clear_acc];
-const accessors_map: Accessor[5] = [get_acc, map_get_acc, map_put_acc, map_remove_acc, clear_acc];
+const accessors_map: Accessor[6] = [get_acc, map_get_acc, map_put_acc, map_remove_acc, clear_acc, map_append_acc];
 
 // The accessors generated for a field. This table is the one source of
 // truth for accessor names: the emitters of each field kind use it, and
@@ -2442,6 +2443,10 @@ fn emit_map_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
             "fn ", put, "(m: ", goose_name, "&, k: ", key_type, ") -> ", sub.goose_name, "& {\n",
             "    return ", accessor_name(entry.path, "value", mutable_acc), "(", slot, "(m.", f.name, ", k));\n",
             "}\n");
+        emit_map_append_start(goose_name, path, fname, f, key_fd, key_type, keep(str(" -> ", sub.goose_name, "&")), "", pool, entry);
+        format(w,
+            "    return ", accessor_name(entry.path, "value", mutable_acc), "(pb_e);\n",
+            "}\n");
     } else {
         let value_sc .= scalar_of_type_req(value_fd);
         let is_bytes = value_sc.size == SZ_BYTES;
@@ -2470,6 +2475,13 @@ fn emit_map_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
             format(w, "    ", slot, "(m.", f.name, ", k).value = v;\n");
         }
         format(w, "}\n");
+        emit_map_append_start(goose_name, path, fname, f, key_fd, key_type, "", keep(str(", v: ", scalar_set_type(value_sc))), pool, entry);
+        if is_bytes {
+            format(w, "    ", accessor_name(entry.path, "value", set_acc), "(pb_e, v);\n");
+        } else {
+            format(w, "    pb_e.value = v;\n");
+        }
+        format(w, "}\n");
     }
     let clear_entry = sub_name(entry, "clear");
     format(w,
@@ -2493,6 +2505,27 @@ fn emit_map_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
         "    for pb_i in m.", f.name, ".len { ", clear_entry, "(pb_run(", pool, ", m.", f.name, ")[pb_i]); }\n",
         "    m.", f.name, " = pb_resize(", pool, ", m.", f.name, ", 0);\n",
         "}\n");
+}
+
+// The start of <field>_append, up to its new entry pb_e with its key set. It looks
+// nothing up, so that building a map is linear: fold_maps settles repeated keys once,
+// as decoding does (decision 0010).
+fn emit_map_append_start(goose_name: const u8[:], path: const u8[:], fname: const u8[:], f: Field&, key_fd: FieldDesc&, key_type: const u8[:], result: const u8[:], value_param: const u8[:], pool: const u8[:], entry: MessageInfo&) {
+    let key_is_bytes = scalar_of_type_req(key_fd).size == SZ_BYTES;
+    format(w,
+        "\n",
+        "// Adds an entry without looking for key k, much faster than ", accessor_name(path, fname, map_put_acc), " for many.\n",
+        "// Call ", generated_name(path, "fold_maps"), "(m) before reading the map: until then, a repeated key is\n",
+        "// there twice. There, the last value wins, in the place of the first occurrence.\n",
+        "fn ", accessor_name(path, fname, map_append_acc), "(m: ", goose_name, "&, k: ", key_type, value_param, ")", result, " {\n",
+        "    let pb_i: i64 = m.", f.name, ".len;\n",
+        "    m.", f.name, " = pb_resize(", pool, ", m.", f.name, ", pb_i + 1);\n",
+        "    let pb_e .= pb_run(", pool, ", m.", f.name, ")[pb_i];\n");
+    if key_is_bytes {
+        format(w, "    ", accessor_name(entry.path, "key", set_acc), "(pb_e, k);\n");
+    } else {
+        format(w, "    pb_e.key = k;\n");
+    }
 }
 
 // clear_<oneof>: frees what the member that is set owns. It is in the
@@ -2787,6 +2820,8 @@ const api_comment = """
     //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
     //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
     //   M_clear_f(m)                 S&?), put of a message returns it
+    //   M_f_append(m...)             map fields, many entries: put with no key
+    //                                check, then M_fold_maps(m) before reading
     //   M_encode(m, out)             appends M_size_of(m) bytes to out
     //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
     //                                PB_ERR_* code and a partial m

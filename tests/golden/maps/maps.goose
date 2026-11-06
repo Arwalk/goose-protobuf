@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -963,6 +965,17 @@ fn Maps_ss_put(m: Maps&, k: const u8[:], v: const u8[:]) {
     Maps_SsEntry_set_value(Maps_SsEntry_slot(m.ss, k), v);
 }
 
+// Adds an entry without looking for key k, much faster than Maps_ss_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_ss_append(m: Maps&, k: const u8[:], v: const u8[:]) {
+    let pb_i: i64 = m.ss.len;
+    m.ss = pb_resize(Maps_SsEntry_entries, m.ss, pb_i + 1);
+    let pb_e .= pb_run(Maps_SsEntry_entries, m.ss)[pb_i];
+    Maps_SsEntry_set_key(pb_e, k);
+    Maps_SsEntry_set_value(pb_e, v);
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_ss_remove(m: Maps&, k: const u8[:]) -> bool {
@@ -1001,6 +1014,17 @@ fn Maps_sb_put(m: Maps&, k: const u8[:], v: const u8[:]) {
     Maps_SbEntry_set_value(Maps_SbEntry_slot(m.sb, k), v);
 }
 
+// Adds an entry without looking for key k, much faster than Maps_sb_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_sb_append(m: Maps&, k: const u8[:], v: const u8[:]) {
+    let pb_i: i64 = m.sb.len;
+    m.sb = pb_resize(Maps_SbEntry_entries, m.sb, pb_i + 1);
+    let pb_e .= pb_run(Maps_SbEntry_entries, m.sb)[pb_i];
+    Maps_SbEntry_set_key(pb_e, k);
+    Maps_SbEntry_set_value(pb_e, v);
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_sb_remove(m: Maps&, k: const u8[:]) -> bool {
@@ -1036,6 +1060,17 @@ fn Maps_si_get(m: Maps&, k: const u8[:]) -> i32, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_si_put(m: Maps&, k: const u8[:], v: i32) {
     Maps_SiEntry_slot(m.si, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_si_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_si_append(m: Maps&, k: const u8[:], v: i32) {
+    let pb_i: i64 = m.si.len;
+    m.si = pb_resize(Maps_SiEntry_entries, m.si, pb_i + 1);
+    let pb_e .= pb_run(Maps_SiEntry_entries, m.si)[pb_i];
+    Maps_SiEntry_set_key(pb_e, k);
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1076,6 +1111,17 @@ fn Maps_is_put(m: Maps&, k: i32, v: const u8[:]) {
     Maps_IsEntry_set_value(Maps_IsEntry_slot(m.is, k), v);
 }
 
+// Adds an entry without looking for key k, much faster than Maps_is_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_is_append(m: Maps&, k: i32, v: const u8[:]) {
+    let pb_i: i64 = m.is.len;
+    m.is = pb_resize(Maps_IsEntry_entries, m.is, pb_i + 1);
+    let pb_e .= pb_run(Maps_IsEntry_entries, m.is)[pb_i];
+    pb_e.key = k;
+    Maps_IsEntry_set_value(pb_e, v);
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_is_remove(m: Maps&, k: i32) -> bool {
@@ -1111,6 +1157,17 @@ fn Maps_ll_get(m: Maps&, k: i64) -> i64, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_ll_put(m: Maps&, k: i64, v: i64) {
     Maps_LlEntry_slot(m.ll, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_ll_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_ll_append(m: Maps&, k: i64, v: i64) {
+    let pb_i: i64 = m.ll.len;
+    m.ll = pb_resize(Maps_LlEntry_entries, m.ll, pb_i + 1);
+    let pb_e .= pb_run(Maps_LlEntry_entries, m.ll)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1150,6 +1207,17 @@ fn Maps_uu_put(m: Maps&, k: u32, v: u32) {
     Maps_UuEntry_slot(m.uu, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Maps_uu_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_uu_append(m: Maps&, k: u32, v: u32) {
+    let pb_i: i64 = m.uu.len;
+    m.uu = pb_resize(Maps_UuEntry_entries, m.uu, pb_i + 1);
+    let pb_e .= pb_run(Maps_UuEntry_entries, m.uu)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_uu_remove(m: Maps&, k: u32) -> bool {
@@ -1185,6 +1253,17 @@ fn Maps_vv_get(m: Maps&, k: u64) -> u64, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_vv_put(m: Maps&, k: u64, v: u64) {
     Maps_VvEntry_slot(m.vv, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_vv_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_vv_append(m: Maps&, k: u64, v: u64) {
+    let pb_i: i64 = m.vv.len;
+    m.vv = pb_resize(Maps_VvEntry_entries, m.vv, pb_i + 1);
+    let pb_e .= pb_run(Maps_VvEntry_entries, m.vv)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1224,6 +1303,17 @@ fn Maps_zz_put(m: Maps&, k: i32, v: i32) {
     Maps_ZzEntry_slot(m.zz, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Maps_zz_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_zz_append(m: Maps&, k: i32, v: i32) {
+    let pb_i: i64 = m.zz.len;
+    m.zz = pb_resize(Maps_ZzEntry_entries, m.zz, pb_i + 1);
+    let pb_e .= pb_run(Maps_ZzEntry_entries, m.zz)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_zz_remove(m: Maps&, k: i32) -> bool {
@@ -1259,6 +1349,17 @@ fn Maps_yy_get(m: Maps&, k: i64) -> i64, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_yy_put(m: Maps&, k: i64, v: i64) {
     Maps_YyEntry_slot(m.yy, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_yy_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_yy_append(m: Maps&, k: i64, v: i64) {
+    let pb_i: i64 = m.yy.len;
+    m.yy = pb_resize(Maps_YyEntry_entries, m.yy, pb_i + 1);
+    let pb_e .= pb_run(Maps_YyEntry_entries, m.yy)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1298,6 +1399,17 @@ fn Maps_ff_put(m: Maps&, k: u32, v: u32) {
     Maps_FfEntry_slot(m.ff, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Maps_ff_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_ff_append(m: Maps&, k: u32, v: u32) {
+    let pb_i: i64 = m.ff.len;
+    m.ff = pb_resize(Maps_FfEntry_entries, m.ff, pb_i + 1);
+    let pb_e .= pb_run(Maps_FfEntry_entries, m.ff)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_ff_remove(m: Maps&, k: u32) -> bool {
@@ -1333,6 +1445,17 @@ fn Maps_gg_get(m: Maps&, k: u64) -> u64, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_gg_put(m: Maps&, k: u64, v: u64) {
     Maps_GgEntry_slot(m.gg, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_gg_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_gg_append(m: Maps&, k: u64, v: u64) {
+    let pb_i: i64 = m.gg.len;
+    m.gg = pb_resize(Maps_GgEntry_entries, m.gg, pb_i + 1);
+    let pb_e .= pb_run(Maps_GgEntry_entries, m.gg)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1372,6 +1495,17 @@ fn Maps_hh_put(m: Maps&, k: i32, v: i32) {
     Maps_HhEntry_slot(m.hh, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Maps_hh_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_hh_append(m: Maps&, k: i32, v: i32) {
+    let pb_i: i64 = m.hh.len;
+    m.hh = pb_resize(Maps_HhEntry_entries, m.hh, pb_i + 1);
+    let pb_e .= pb_run(Maps_HhEntry_entries, m.hh)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_hh_remove(m: Maps&, k: i32) -> bool {
@@ -1407,6 +1541,17 @@ fn Maps_jj_get(m: Maps&, k: i64) -> i64, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_jj_put(m: Maps&, k: i64, v: i64) {
     Maps_JjEntry_slot(m.jj, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_jj_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_jj_append(m: Maps&, k: i64, v: i64) {
+    let pb_i: i64 = m.jj.len;
+    m.jj = pb_resize(Maps_JjEntry_entries, m.jj, pb_i + 1);
+    let pb_e .= pb_run(Maps_JjEntry_entries, m.jj)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1446,6 +1591,17 @@ fn Maps_bb_put(m: Maps&, k: bool, v: bool) {
     Maps_BbEntry_slot(m.bb, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Maps_bb_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_bb_append(m: Maps&, k: bool, v: bool) {
+    let pb_i: i64 = m.bb.len;
+    m.bb = pb_resize(Maps_BbEntry_entries, m.bb, pb_i + 1);
+    let pb_e .= pb_run(Maps_BbEntry_entries, m.bb)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_bb_remove(m: Maps&, k: bool) -> bool {
@@ -1481,6 +1637,17 @@ fn Maps_sf_get(m: Maps&, k: const u8[:]) -> f32, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_sf_put(m: Maps&, k: const u8[:], v: f32) {
     Maps_SfEntry_slot(m.sf, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_sf_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_sf_append(m: Maps&, k: const u8[:], v: f32) {
+    let pb_i: i64 = m.sf.len;
+    m.sf = pb_resize(Maps_SfEntry_entries, m.sf, pb_i + 1);
+    let pb_e .= pb_run(Maps_SfEntry_entries, m.sf)[pb_i];
+    Maps_SfEntry_set_key(pb_e, k);
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1520,6 +1687,17 @@ fn Maps_sd_put(m: Maps&, k: const u8[:], v: f64) {
     Maps_SdEntry_slot(m.sd, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Maps_sd_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_sd_append(m: Maps&, k: const u8[:], v: f64) {
+    let pb_i: i64 = m.sd.len;
+    m.sd = pb_resize(Maps_SdEntry_entries, m.sd, pb_i + 1);
+    let pb_e .= pb_run(Maps_SdEntry_entries, m.sd)[pb_i];
+    Maps_SdEntry_set_key(pb_e, k);
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_sd_remove(m: Maps&, k: const u8[:]) -> bool {
@@ -1555,6 +1733,17 @@ fn Maps_se_get(m: Maps&, k: const u8[:]) -> i32, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Maps_se_put(m: Maps&, k: const u8[:], v: i32) {
     Maps_SeEntry_slot(m.se, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Maps_se_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_se_append(m: Maps&, k: const u8[:], v: i32) {
+    let pb_i: i64 = m.se.len;
+    m.se = pb_resize(Maps_SeEntry_entries, m.se, pb_i + 1);
+    let pb_e .= pb_run(Maps_SeEntry_entries, m.se)[pb_i];
+    Maps_SeEntry_set_key(pb_e, k);
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1595,6 +1784,17 @@ fn Maps_sm_put(m: Maps&, k: const u8[:]) -> Sub& {
     return Maps_SmEntry_mutable_value(Maps_SmEntry_slot(m.sm, k));
 }
 
+// Adds an entry without looking for key k, much faster than Maps_sm_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_sm_append(m: Maps&, k: const u8[:]) -> Sub& {
+    let pb_i: i64 = m.sm.len;
+    m.sm = pb_resize(Maps_SmEntry_entries, m.sm, pb_i + 1);
+    let pb_e .= pb_run(Maps_SmEntry_entries, m.sm)[pb_i];
+    Maps_SmEntry_set_key(pb_e, k);
+    return Maps_SmEntry_mutable_value(pb_e);
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_sm_remove(m: Maps&, k: const u8[:]) -> bool {
@@ -1633,6 +1833,17 @@ fn Maps_dur_put(m: Maps&, k: i32) -> google_protobuf::Duration& {
     return Maps_DurEntry_mutable_value(Maps_DurEntry_slot(m.dur, k));
 }
 
+// Adds an entry without looking for key k, much faster than Maps_dur_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_dur_append(m: Maps&, k: i32) -> google_protobuf::Duration& {
+    let pb_i: i64 = m.dur.len;
+    m.dur = pb_resize(Maps_DurEntry_entries, m.dur, pb_i + 1);
+    let pb_e .= pb_run(Maps_DurEntry_entries, m.dur)[pb_i];
+    pb_e.key = k;
+    return Maps_DurEntry_mutable_value(pb_e);
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Maps_dur_remove(m: Maps&, k: i32) -> bool {
@@ -1669,6 +1880,17 @@ fn Maps_self_get(m: Maps&, k: const u8[:]) -> Maps&? {
 // The value with key k, added empty if there is none.
 fn Maps_self_put(m: Maps&, k: const u8[:]) -> Maps& {
     return Maps_SelfEntry_mutable_value(Maps_SelfEntry_slot(m.self_, k));
+}
+
+// Adds an entry without looking for key k, much faster than Maps_self_put for many.
+// Call Maps_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Maps_self_append(m: Maps&, k: const u8[:]) -> Maps& {
+    let pb_i: i64 = m.self_.len;
+    m.self_ = pb_resize(Maps_SelfEntry_entries, m.self_, pb_i + 1);
+    let pb_e .= pb_run(Maps_SelfEntry_entries, m.self_)[pb_i];
+    Maps_SelfEntry_set_key(pb_e, k);
+    return Maps_SelfEntry_mutable_value(pb_e);
 }
 
 // Removes the entry with key k and frees what it owns. False if there is

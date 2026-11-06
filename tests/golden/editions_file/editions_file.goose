@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -811,6 +813,17 @@ fn All_subs_get(m: All&, k: i32) -> Sub&? {
 // The value with key k, added empty if there is none.
 fn All_subs_put(m: All&, k: i32) -> Sub& {
     return All_SubsEntry_mutable_value(All_SubsEntry_slot(m.subs, k));
+}
+
+// Adds an entry without looking for key k, much faster than All_subs_put for many.
+// Call All_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn All_subs_append(m: All&, k: i32) -> Sub& {
+    let pb_i: i64 = m.subs.len;
+    m.subs = pb_resize(All_SubsEntry_entries, m.subs, pb_i + 1);
+    let pb_e .= pb_run(All_SubsEntry_entries, m.subs)[pb_i];
+    pb_e.key = k;
+    return All_SubsEntry_mutable_value(pb_e);
 }
 
 // Removes the entry with key k and frees what it owns. False if there is

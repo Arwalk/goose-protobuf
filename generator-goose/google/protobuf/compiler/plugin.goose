@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m

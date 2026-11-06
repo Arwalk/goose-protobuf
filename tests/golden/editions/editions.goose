@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -956,6 +958,17 @@ fn Enums_closed_map_put(m: Enums&, k: i32, v: i32) {
     Enums_ClosedMapEntry_slot(m.closed_map, k).value = v;
 }
 
+// Adds an entry without looking for key k, much faster than Enums_closed_map_put for many.
+// Call Enums_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Enums_closed_map_append(m: Enums&, k: i32, v: i32) {
+    let pb_i: i64 = m.closed_map.len;
+    m.closed_map = pb_resize(Enums_ClosedMapEntry_entries, m.closed_map, pb_i + 1);
+    let pb_e .= pb_run(Enums_ClosedMapEntry_entries, m.closed_map)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Enums_closed_map_remove(m: Enums&, k: i32) -> bool {
@@ -991,6 +1004,17 @@ fn Enums_open_map_get(m: Enums&, k: i32) -> i32, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Enums_open_map_put(m: Enums&, k: i32, v: i32) {
     Enums_OpenMapEntry_slot(m.open_map, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Enums_open_map_put for many.
+// Call Enums_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Enums_open_map_append(m: Enums&, k: i32, v: i32) {
+    let pb_i: i64 = m.open_map.len;
+    m.open_map = pb_resize(Enums_OpenMapEntry_entries, m.open_map, pb_i + 1);
+    let pb_e .= pb_run(Enums_OpenMapEntry_entries, m.open_map)[pb_i];
+    pb_e.key = k;
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is
@@ -1811,6 +1835,17 @@ fn Utf8_map_verified_put(m: Utf8&, k: const u8[:], v: const u8[:]) {
     Utf8_MapVerifiedEntry_set_value(Utf8_MapVerifiedEntry_slot(m.map_verified, k), v);
 }
 
+// Adds an entry without looking for key k, much faster than Utf8_map_verified_put for many.
+// Call Utf8_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Utf8_map_verified_append(m: Utf8&, k: const u8[:], v: const u8[:]) {
+    let pb_i: i64 = m.map_verified.len;
+    m.map_verified = pb_resize(Utf8_MapVerifiedEntry_entries, m.map_verified, pb_i + 1);
+    let pb_e .= pb_run(Utf8_MapVerifiedEntry_entries, m.map_verified)[pb_i];
+    Utf8_MapVerifiedEntry_set_key(pb_e, k);
+    Utf8_MapVerifiedEntry_set_value(pb_e, v);
+}
+
 // Removes the entry with key k and frees what it owns. False if there is
 // none. Later entries keep their order.
 fn Utf8_map_verified_remove(m: Utf8&, k: const u8[:]) -> bool {
@@ -1847,6 +1882,17 @@ fn Utf8_map_unchecked_get(m: Utf8&, k: const u8[:]) -> u8[:], bool {
 // Sets the value with key k to a copy of v, adding an entry if there is none.
 fn Utf8_map_unchecked_put(m: Utf8&, k: const u8[:], v: const u8[:]) {
     Utf8_MapUncheckedEntry_set_value(Utf8_MapUncheckedEntry_slot(m.map_unchecked, k), v);
+}
+
+// Adds an entry without looking for key k, much faster than Utf8_map_unchecked_put for many.
+// Call Utf8_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Utf8_map_unchecked_append(m: Utf8&, k: const u8[:], v: const u8[:]) {
+    let pb_i: i64 = m.map_unchecked.len;
+    m.map_unchecked = pb_resize(Utf8_MapUncheckedEntry_entries, m.map_unchecked, pb_i + 1);
+    let pb_e .= pb_run(Utf8_MapUncheckedEntry_entries, m.map_unchecked)[pb_i];
+    Utf8_MapUncheckedEntry_set_key(pb_e, k);
+    Utf8_MapUncheckedEntry_set_value(pb_e, v);
 }
 
 // Removes the entry with key k and frees what it owns. False if there is

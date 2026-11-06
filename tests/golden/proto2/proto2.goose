@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -1103,6 +1105,17 @@ fn Later_counts_get(m: Later&, k: const u8[:]) -> i32, bool {
 // Sets the value with key k to v, adding an entry if there is none.
 fn Later_counts_put(m: Later&, k: const u8[:], v: i32) {
     Later_CountsEntry_slot(m.counts, k).value = v;
+}
+
+// Adds an entry without looking for key k, much faster than Later_counts_put for many.
+// Call Later_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Later_counts_append(m: Later&, k: const u8[:], v: i32) {
+    let pb_i: i64 = m.counts.len;
+    m.counts = pb_resize(Later_CountsEntry_entries, m.counts, pb_i + 1);
+    let pb_e .= pb_run(Later_CountsEntry_entries, m.counts)[pb_i];
+    Later_CountsEntry_set_key(pb_e, k);
+    pb_e.value = v;
 }
 
 // Removes the entry with key k and frees what it owns. False if there is

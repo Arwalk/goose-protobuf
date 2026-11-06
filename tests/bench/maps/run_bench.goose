@@ -24,6 +24,16 @@
 //                each: a caller's code, not one input. decode_seconds is the puts,
 //                and the gets follow as a sixth figure
 //   put_str      the same with short string keys
+//   append_int   builds the same map with _append, then folds it once. decode_seconds
+//                is the appends and the fold, and the fold alone follows as a sixth
+//                figure
+//   append_str   the same with short string keys
+//   append_two   two maps of one pool taking turns, so that their runs keep moving:
+//                the costliest case of an append, <entries> in all
+//   index_int    a map of <entries> int32 keys and a lazily built seeded hash index
+//                beside it: a prototype of a lookup index. decode_seconds is
+//                building the index, and one lookup of each key follows
+//   index_str    the same with short string keys
 //   small_maps   <entries> messages, each with a map of 4 entries: the common
 //                case, which must not get slower
 // Prints: shape entries input_bytes unique_entries decode_seconds
@@ -58,6 +68,30 @@ fn put_str_entry(buf: u8[>..]&, prefix: const u8[:], key: u32, value: u64) {
     buf.append(e);
 }
 
+// FNV-1a from a seed, with a final mix: the cost of a seeded hash on short keys.
+let INDEX_SEED: u64 = 0x9e3779b97f4a7c15;
+
+fn index_mix(h: u64) -> u64 {
+    var x = h ^ (h >> 32);
+    x = x * 0xff51afd7ed558ccd;
+    return x ^ (x >> 29);
+}
+
+fn index_hash_int(k: i32) -> u64 { return index_mix((INDEX_SEED ^ (k as! u32)) * 1099511628211); }
+
+fn index_hash_str(k: const u8[:]) -> u64 {
+    var h = INDEX_SEED;
+    for c in k { h = (h ^ c) * 1099511628211; }
+    return index_mix(h);
+}
+
+// An open-addressed table of entry position + 1, at most half full.
+fn index_size(n: i64) -> i64 {
+    var size: i64 = 8;
+    while size < n * 2 { size *= 2; }
+    return size;
+}
+
 fn main() {
     let a = args();
     if a.len != 3 { abort("usage: bench_maps <shape> <entries>"); }
@@ -70,7 +104,7 @@ fn main() {
     for i in prefix_len { prefix.push(120); }
     var buf: u8[>..] = [];
     for i in n {
-        if shape == "small_maps" || shape == "int_merge" || shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "wrap_mixed" || shape == "two_maps" || shape == "two_lists" || shape == "two_unknown" || shape == "put_int" || shape == "put_str" { break; }
+        if shape == "append_int" || shape == "append_str" || shape == "append_two" || shape == "index_int" || shape == "index_str" || shape == "small_maps" || shape == "int_merge" || shape == "wrap_map" || shape == "wrap_list" || shape == "wrap_unknown" || shape == "wrap_mixed" || shape == "two_maps" || shape == "two_lists" || shape == "two_unknown" || shape == "put_int" || shape == "put_str" { break; }
         if shape == "int_random" { put_int_entry(buf, scramble(i), 1); }
         else if shape == "str_random" { put_str_entry(buf, "", scramble(i), 1); }
         else if shape == "str_prefix" || shape == "str_long" { put_str_entry(buf, prefix, scramble(i), 1); }
@@ -164,6 +198,92 @@ fn main() {
         }
         let p2 = clock();
         print(shape, " ", n, " 0 ", hits, " ", p1 - p0, " ", p2 - p1);
+        return;
+    }
+
+    if shape == "append_int" || shape == "append_str" {
+        var am = bench::B { .. };
+        let a0 = clock();
+        for i in n {
+            if shape == "append_int" { bench::B_ints_append(am, scramble(i) as! i32, 1); }
+            else { bench::B_strs_append(am, str(scramble(i)), 1); }
+        }
+        let a1 = clock();
+        bench::B_fold_maps(am);
+        let a2 = clock();
+        print(shape, " ", n, " 0 ", bench::B_ints(am).len + bench::B_strs(am).len, " ", a2 - a0, " ", a2 - a1);
+        return;
+    }
+
+    if shape == "append_two" {
+        var w2 = bench::Wrap { .. };
+        let b1 .= bench::Wrap_mutable_b(w2);
+        let b2 .= bench::Wrap_mutable_other(w2);
+        let a0 = clock();
+        for i in n {
+            if i % 2 == 0 { bench::B_ints_append(b1, scramble(i) as! i32, 1); }
+            else { bench::B_ints_append(b2, scramble(i) as! i32, 1); }
+        }
+        let a1 = clock();
+        bench::B_fold_maps(b1);
+        bench::B_fold_maps(b2);
+        let a2 = clock();
+        print(shape, " ", n, " 0 ", bench::B_ints(b1).len + bench::B_ints(b2).len, " ", a2 - a0, " ", a2 - a1);
+        return;
+    }
+
+    if shape == "index_int" || shape == "index_str" {
+        var im = bench::B { .. };
+        for i in n {
+            if shape == "index_int" { bench::B_ints_append(im, scramble(i) as! i32, 1); }
+            else { bench::B_strs_append(im, str(scramble(i)), 1); }
+        }
+        var table: u32[>..] = [];
+        for i in index_size(n) { table.push(0); }
+        let mask = (table.len - 1) as! u64;
+        let i0 = clock();
+        if shape == "index_int" {
+            let run = bench::B_ints(im);
+            for i in n {
+                var at = index_hash_int(run[i].key) & mask;
+                while table[at as! i64] != 0 { at = (at + 1) & mask; }
+                table[at as! i64] = (i + 1) as! u32;
+            }
+        } else {
+            let run = bench::B_strs(im);
+            for i in n {
+                var at = index_hash_str(pb_run(pb_bytes, run[i].key)) & mask;
+                while table[at as! i64] != 0 { at = (at + 1) & mask; }
+                table[at as! i64] = (i + 1) as! u32;
+            }
+        }
+        let i1 = clock();
+        var hits: i64 = 0;
+        if shape == "index_int" {
+            let run = bench::B_ints(im);
+            for i in n {
+                let k = scramble(i) as! i32;
+                var at = index_hash_int(k) & mask;
+                while table[at as! i64] != 0 {
+                    let e .= run[table[at as! i64] as i64 - 1];
+                    if e.key == k { hits += e.value as i64; break; }
+                    at = (at + 1) & mask;
+                }
+            }
+        } else {
+            let run = bench::B_strs(im);
+            for i in n {
+                let k = str(scramble(i));
+                var at = index_hash_str(k) & mask;
+                while table[at as! i64] != 0 {
+                    let e .= run[table[at as! i64] as i64 - 1];
+                    if pb_run(pb_bytes, e.key) == k { hits += e.value as i64; break; }
+                    at = (at + 1) & mask;
+                }
+            }
+        }
+        let i2 = clock();
+        print(shape, " ", n, " 0 ", hits, " ", i1 - i0, " ", i2 - i1);
         return;
     }
 

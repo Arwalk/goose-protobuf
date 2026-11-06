@@ -1,8 +1,8 @@
-# 0010: maps get no index
+# 0010: maps get no index, and a bulk append
 
 - Status: accepted. A workload that needs one reopens it.
-- Date: 2026-11-04
-- Bead: gpb-dx9.9
+- Date: 2026-11-04, and 2026-11-06 for the append and the second look at an index
+- Bead: gpb-dx9.9, gpb-811
 - Toolchain: Goose v2026.3, gcc 15.2.0, linux-x64
 - Builds on: [0008](0008-map-decode.md), which made one decode near-linear
 
@@ -61,8 +61,38 @@ short strings, and a map of 10,000 about 2 µs and 10 µs.
 - `docs/usage.md` states the limit, with these figures, and both ways around it:
   decode once rather than calling `_put` or `M_decode` in a loop, or keep your own
   index beside the map.
-- gpb-811 looks at this again once the rest of the backlog is done, starting with a
-  bulk append that decision did not weigh.
 - A workload with larger maps built from code reopens this sooner, with its figures. It
   would likely want a seeded hash, built lazily on the first lookup, so that the
   decode path and small maps pay nothing but the span.
+
+## Second look: gpb-811
+
+The decision above weighed only a full index. gpb-811 measured the two options it
+named, with `scripts/bench_maps.sh`, build at -O2, one run each, in seconds. `append`
+is `_append` per entry and one `M_fold_maps`, against `_put` per entry. `index` is a
+prototype in the benchmark: an open-addressed table built once beside the map, with
+FNV-1a from a seed and a final mix, against a `_get` that scans.
+
+| Entries | int `_put` | int `append` | str `_put` | str `append` | int `_get` | int build, get | str `_get` | str build, get |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 10,000 | 0.022 | 0.0004 | 0.098 | 0.0015 | 0.022 | 0.00004, 0.00005 | 0.096 | 0.0001, 0.0003 |
+| 40,000 | 0.36 | 0.0016 | 1.6 | 0.0075 | 0.36 | 0.0002, 0.0002 | 1.6 | 0.0005, 0.0013 |
+| 160,000 | 5.9 | 0.0070 | 26 | 0.033 | 5.9 | 0.0009, 0.0010 | 25 | 0.0025, 0.0056 |
+| 1,000,000 | - | 0.049 | - | 0.35 | - | 0.012, 0.024 | - | 0.029, 0.12 |
+
+`append_two`, two maps of one pool taking turns so that their runs keep moving, takes
+what one map takes: 0.0071 at 160,000, and 0.049 at 1,000,000.
+
+**The append is in: `M_f_append`.** It costs nothing in the record, nothing on the
+decode path and nothing when unused, and the fold it relies on is the one decoding
+has. It leaves a repeated key in the map until `M_fold_maps`, which its comment says.
+It claims a new name per map field, so a map `x` and a field whose accessor is
+`M_x_append` now collide, and the generator says so.
+
+**The index stays out**, though it is some 5,000 times faster at 160,000 keys. Its
+cost has not moved: a span in every message with a map, a seed that needs a hash
+stronger than this prototype's and a source of randomness, and keys that a program
+can change through the view with nothing to notice. It would also make `_put` linear,
+which the append now covers for building. What is left is many `_get` or `_put` on a
+map past 10,000 entries, from code, and what those programs need is the same table in
+their own code, which this prototype shows is about 30 lines.

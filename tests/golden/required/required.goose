@@ -29,6 +29,8 @@
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
 //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_append(m...)             map fields, many entries: put with no key
+//                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
 //   M_decode(buf, m) -> i32      merges buf into m: PB_OK, or a
 //                                PB_ERR_* code and a partial m
@@ -384,6 +386,17 @@ fn Uses_by_name_get(m: Uses&, k: const u8[:]) -> req::Inner&? {
 // The value with key k, added empty if there is none.
 fn Uses_by_name_put(m: Uses&, k: const u8[:]) -> req::Inner& {
     return Uses_ByNameEntry_mutable_value(Uses_ByNameEntry_slot(m.by_name, k));
+}
+
+// Adds an entry without looking for key k, much faster than Uses_by_name_put for many.
+// Call Uses_fold_maps(m) before reading the map: until then, a repeated key is
+// there twice. There, the last value wins, in the place of the first occurrence.
+fn Uses_by_name_append(m: Uses&, k: const u8[:]) -> req::Inner& {
+    let pb_i: i64 = m.by_name.len;
+    m.by_name = pb_resize(Uses_ByNameEntry_entries, m.by_name, pb_i + 1);
+    let pb_e .= pb_run(Uses_ByNameEntry_entries, m.by_name)[pb_i];
+    Uses_ByNameEntry_set_key(pb_e, k);
+    return Uses_ByNameEntry_mutable_value(pb_e);
 }
 
 // Removes the entry with key k and frees what it owns. False if there is

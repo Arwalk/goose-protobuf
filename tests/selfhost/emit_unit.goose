@@ -76,6 +76,18 @@ fn two_record_fields_with_one_name_collide() {
     expect_str(collision_of(file), "t.proto: two fields of A map to the Goose record field type_");
 }
 
+fn a_field_named_as_a_map_append_collides() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let m .= add_message(file, "M");
+    let entry .= add_map_entry(m, "XEntry");
+    add_field(entry, "key", 1, LABEL_OPTIONAL, TYPE_INT32);
+    add_field(entry, "value", 2, LABEL_OPTIONAL, TYPE_INT32);
+    add_message_field(m, "x", 1, LABEL_REPEATED, ".M.XEntry");
+    add_field(m, "x_append", 2, LABEL_OPTIONAL, TYPE_STRING);
+    expect_str(collision_of(file), "t.proto: accessor x_append of M and accessor x_append of M both map to the Goose name M_x_append");
+}
+
 fn an_imported_file_that_collides_is_reported() {
     reset_generator();
     let bad .= add_file("imported_bad.proto", "", "proto3");
@@ -337,6 +349,7 @@ fn repeated_messages_cycle_and_maps_store_a_run() {
     expect_has(out, "fn Node_add_children(m: Node&) -> Node& {");
     expect_has(out, "    a: pb_Span,\n");
     expect_has(out, "fn M_a_put(m: M&, k: i32, v: i32) {");
+    expect_has(out, "fn M_a_append(m: M&, k: i32, v: i32) {");
     expect_has(out, "reusable[] var M_AEntry_entries: M_AEntry[>..] = [];");
 }
 
@@ -406,6 +419,7 @@ fn main() {
     an_escaped_name_still_taken_collides();
     an_enum_value_collides();
     two_record_fields_with_one_name_collide();
+    a_field_named_as_a_map_append_collides();
     an_imported_file_that_collides_is_reported();
     field_kinds_and_presence();
     proto3_optional_has_a_bit_and_a_real_oneof_an_adt();

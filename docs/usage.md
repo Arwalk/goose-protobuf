@@ -272,10 +272,11 @@ true
 - Map `_get`, `_put` and `_remove` scan the map: about 2 µs per int key and 10 µs
   per short string at 10,000 entries, in proportion to the size. Building a map with
   `_put` is therefore quadratic, and so is calling `M_decode` in a loop to add a few
-  entries to a large map. Decoding a large map in one call is not, and concatenated
-  encodings decode as a merge, so join the buffers and decode once. Otherwise keep
-  your own index beside the map
-  ([decision 0010](decisions/0010-no-map-index.md)).
+  entries to a large map. To build one, call `M_f_append` for each entry and
+  `M_fold_maps(m)` once, before reading it: 160,000 entries take 7 ms, not 6 s. To
+  add to one by decoding, concatenated encodings decode as a merge, so join the
+  buffers and decode once. For many `_get` on a large map, keep your own index beside
+  it ([decision 0010](decisions/0010-no-map-index.md)).
 - One run of values is limited to 2^32 elements.
 
 ## Working on this repository
