@@ -69,6 +69,11 @@ This writes `people.goose`. Output your generated files next to your program's
 root file: Goose resolves imports from there, including the ones between
 generated files.
 
+To keep them in a directory of their own, make it a package, whose imports resolve
+from its own root. Write `gen/gen.goose`, holding `import .people;` and a line like it
+for each file your program uses, and declare it in your root file with
+`import gen from "./gen";`, in place of `import people;`.
+
 ## Import the runtime
 
 Generated code uses a small runtime package, `pb_wire`. Only the root file of a

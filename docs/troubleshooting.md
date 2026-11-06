@@ -75,8 +75,10 @@ error: cannot find the module b, looked for
 ```
 
 Goose resolves every import from the directory of your root file, including those
-between generated files. Generate next to your root file: `protoc --goose_out=.` run
-from there. If this names one of your own protos, generate that file too.
+between generated files, so `--goose_out=gen` with `import gen.a;` fails. Generate next
+to your root file with `protoc --goose_out=.`, or make the directory a package
+([the usage guide](usage.md#generate-the-code) shows how). If this names one of your
+own protos, generate that file too.
 
 ### `pb_wire` is both a file and a package
 
@@ -86,6 +88,10 @@ error: pb_wire is both a file of this package (pb_wire.goose) and the declared p
 
 You have a copy of the runtime next to your root file, and an `import ... from` line
 too. Use one. Delete the copy, or write `import pb_wire;`.
+
+The same message for your own directory, `gen/a is both a file of this package`, means
+the root file imports `gen.a` as well as declaring the package `gen`. Remove that line,
+and import `.a` from the package's entry, `gen/gen.goose`.
 
 ### The plugin and runtime versions differ
 

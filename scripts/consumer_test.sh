@@ -113,6 +113,32 @@ builds tag "a git source at a tag"
 consumer commit "import pb_wire from \"$git_source@$commit\";"
 builds commit "a git source at a commit"
 
+# Generated code in a directory of its own is a package (decision 0013).
+to_gen_package() {  # to_gen_package <name>: moves its generated files to gen/, with an entry
+  mkdir "$tmp/$1/gen"
+  (cd "$tmp/$1" && for f in *.goose; do [ "$f" = app.goose ] || mv "$f" gen/; done)
+  printf 'import .order;\n' > "$tmp/$1/gen/gen.goose"
+  sed 's/^import order;$/import gen from ".\/gen";/' "$tmp/$1/app.goose" > "$tmp/$1/app.new"
+  mv "$tmp/$1/app.new" "$tmp/$1/app.goose"
+}
+consumer gen_path 'import pb_wire from "../goose-protobuf";'
+to_gen_package gen_path
+builds gen_path "generated code in a package of its own, with a path to a checkout"
+
+consumer gen_git "import pb_wire from \"$git_source@v1.2.3\";"
+to_gen_package gen_git
+builds gen_git "generated code in a package of its own, with a git source"
+
+consumer gen_vendored ''
+to_gen_package gen_vendored
+: >"$tmp/log"; vendor gen_vendored/gen
+builds gen_vendored "generated code in a package of its own, with the runtime vendored into it"
+
+consumer gen_beside 'import pb_wire;'
+to_gen_package gen_beside
+: >"$tmp/log"; vendor gen_beside
+rejects gen_beside 'cannot find the module pb_wire' "a runtime vendored beside the root does not reach a package"
+
 # What a git source fetched: the package, without the protobuf submodule.
 fetched=("$GOOSE_HOME"/pkg/goose-protobuf-*/v1.2.3)
 if [ -f "${fetched[0]}/pb_wire.goose" ] && [ -z "$(ls -A "${fetched[0]}/third_party/protobuf" 2>/dev/null)" ]; then
