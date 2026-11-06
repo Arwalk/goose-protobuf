@@ -1,7 +1,7 @@
 # 0014: which protoc versions are supported
 
-- Status: proposed for the project owner. The range is measured and in the docs. How
-  it changes decision 0012's rule on raised pins needs the owner's review.
+- Status: accepted by the project owner, including how it changes decision 0012's rule
+  on raised pins (gpb-ky7.18).
 - Date: 2026-11-06
 - Bead: gpb-ky7.8
 - Toolchain: Goose v2026.3, linux-x64
@@ -43,8 +43,8 @@ the goldens are what would notice if that stopped being true.
 
 ## What this does to decision 0012
 
-Decision 0012 makes a raised tool pin a major, as it can force users to upgrade. This
-record proposes that for protoc, the range changes which change does that:
+Decision 0012 makes a raised tool pin a major, as it can force users to upgrade. For
+protoc, the range changes which change does that:
 
 - **Raising the pin widens the range.** Nobody has to upgrade, so it is not breaking,
   and takes a minor if it adds a capability such as a new edition.

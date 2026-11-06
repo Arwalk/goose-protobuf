@@ -1,11 +1,11 @@
 # 0012: what is public, and how versions move
 
-- Status: accepted by the project owner, who made a raised tool pin a major after
-  1.0. gpb-ky7.15 gave repeated string, bytes and message fields and maps the
-  accessors in this record's public table, without a plain getter.
-  [Decision 0014](0014-protoc-range.md) proposes how a raised pin applies to protoc,
-  which now has a range. [docs/versions.md](../versions.md) now states these rules for
-  users, and this record says why.
+- Status: accepted, amended. The project owner made a raised tool pin a major after
+  1.0, and then accepted [decision 0014](0014-protoc-range.md), so for protoc, which now
+  has a range, the major is a raised floor. gpb-ky7.15 gave repeated string, bytes and
+  message fields and maps the accessors in this record's public table, without a plain
+  getter. [docs/versions.md](../versions.md) now states these rules for users, and this
+  record says why.
 - Date: 2026-11-06
 - Bead: gpb-ky7.1
 - Builds on: [0005](0005-runtime-distribution.md) (one tag for everything),
@@ -79,7 +79,9 @@ generated files working with a new runtime.
   addition is a minor, and the changelog names the suffix. Use a package.
 - **A raised pin is a major**, and so a minor before 1.0, as it can force users to
   upgrade their toolchain. Each release is tested with the versions in
-  `TOOLCHAIN.md`, and others are not promised to work.
+  `TOOLCHAIN.md`, and others are not promised to work. (Since superseded: for protoc,
+  by [decision 0014](0014-protoc-range.md), where raising the floor is the major and
+  raising the pin is not. A raised Goose pin stays a major.)
 
 ## Enforced by
 
