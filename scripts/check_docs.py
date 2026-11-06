@@ -11,7 +11,7 @@ repository, so a guide's paths work as they read. Each guide has a new home with
 Goose packages. A block with no such label is a failure, and so is a guide with
 snippets and no command, so none goes unchecked.
 
-Usage: scripts/check_docs.py [file.md...]   (default the guides in docs/)
+Usage: scripts/check_docs.py [file.md...]   (default GUIDES below)
 """
 import os
 import re
@@ -22,7 +22,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FENCE = re.compile(r"^```(.*)$")
-GUIDES = ["quickstart", "install", "usage"]
+GUIDES = ["README.md", "docs/quickstart.md", "docs/install.md", "docs/usage.md"]
 
 
 def blocks(text):
@@ -85,7 +85,7 @@ def check(path):
 
 
 def main():
-    files = [Path(a) for a in sys.argv[1:]] or [ROOT / f"docs/{g}.md" for g in GUIDES]
+    files = [Path(a) for a in sys.argv[1:]] or [ROOT / g for g in GUIDES]
     bad = 0
     for path in files:
         problems = check(path)
