@@ -1,5 +1,11 @@
 # goose-protobuf
 
+## Note
+
+This was entirely vibe coded to see how a protobuf library would look like on goose. Use at your own risk.
+
+## Introduction
+
 Read and write [Protocol Buffers](https://protobuf.dev) from
 [Goose](https://aardappel.github.io/goose/). `protoc-gen-goose` is a `protoc` plugin
 that turns your `.proto` files into Goose code for the protobuf binary wire format, so
