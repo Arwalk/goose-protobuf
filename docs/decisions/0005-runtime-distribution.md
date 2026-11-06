@@ -77,6 +77,8 @@ three.
 
 ## Release procedure
 
+(Since superseded: [RELEASING.md](../../RELEASING.md) now holds the procedure, gpb-ky7.7.)
+
 For the project owner, once there is a remote, for version `X.Y.Z`:
 
 1. On `main`, with every gate green (the commands in AGENTS.md).

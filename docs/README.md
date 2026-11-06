@@ -20,7 +20,7 @@ text goes. A document marked *planned* does not exist yet.
 | `docs/build-systems.md` *(planned)* | Regenerate code from Make or buf |
 | `docs/benchmarks.md` *(planned)* | See how fast encoding and decoding are |
 | [examples/](../examples/) | Start from a complete program |
-| `CHANGELOG.md` *(planned)* | See what changed between versions |
+| [CHANGELOG.md](../CHANGELOG.md) | See what changed between versions |
 | `SECURITY.md` *(planned)* | Report a problem, or decode untrusted input safely |
 
 ### Working on the project
@@ -30,7 +30,7 @@ text goes. A document marked *planned* does not exist yet.
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Build and test the project, find your way around it, and commit |
 | [TOOLCHAIN.md](../TOOLCHAIN.md) | See which version of each tool is pinned, why, and how to change a pin |
 | [docs/decisions/](decisions/) | Understand why a design is the way it is |
-| `RELEASING.md` *(planned)* | Cut a release (project owner) |
+| [RELEASING.md](../RELEASING.md) | Cut a release (project owner) |
 
 ### Agents
 

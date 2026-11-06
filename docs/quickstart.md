@@ -90,10 +90,8 @@ that changes.
 **A checkout**, as above, is the quickest way to start:
 `import pb_wire from "../goose-protobuf";`.
 
-**A git source** needs no checkout at build time, as Goose fetches it. Name the
-repository you got this project from, and a release:
-`import pb_wire from "owner/repo@vX.Y.Z";`. Pin a commit if the build must be
-reproducible, since a tag can move.
+**A git source** needs no checkout at build time, as Goose fetches it. The
+[install guide](install.md#get-the-runtime) has the line to write.
 
 **A copy** next to your program needs no network and no other directory. Copy the
 package in, and name it with no source:

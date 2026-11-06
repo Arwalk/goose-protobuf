@@ -86,8 +86,8 @@ import people;
 
 There are two other ways to provide it:
 
-- A git source: `import pb_wire from "owner/repo@vX.Y.Z";`. Pin a commit if the
-  build must be reproducible, since a tag can move.
+- A git source, with the line to write in the
+  [install guide](install.md#get-the-runtime).
 - A copy next to your root file: run `scripts/vendor_runtime.sh <dir>` from this
   repository and leave out the `from` line, writing `import pb_wire;`.
 
