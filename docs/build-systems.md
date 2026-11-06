@@ -78,6 +78,7 @@ Changing a `.proto` file regenerates and rebuilds, and otherwise nothing happens
 
 ```sh run
 make -q && echo "nothing to do"
+sleep 1   # the make on macOS may not see a change within the same second
 touch proto/acme/library/author.proto
 make -q || echo "out of date"
 ```
