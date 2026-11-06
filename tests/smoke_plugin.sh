@@ -42,39 +42,48 @@ if [[ ! -s "$tmp/stderr" ]]; then
 fi
 echo "PASS: malformed request exits $status: $(cat "$tmp/stderr")"
 
-# Runs the plugin with a stdin that never ends, so that reading it would hang.
-# check_option <what> <want status> <want on stdout, or nothing to check> <same for stderr> [args...]
-check_option() {
-  local what="$1" want_status="$2" want_out="$3" want_err="$4"; shift 4
-  local status=0
-  timeout 10 "$plugin" "$@" < <(sleep 30) >"$tmp/stdout" 2>"$tmp/stderr" || status=$?
-  if [[ $status -ne $want_status ]] || { [[ -n $want_out ]] && ! grep -q -e "$want_out" "$tmp/stdout"; } \
-      || { [[ -n $want_err ]] && ! grep -q -e "$want_err" "$tmp/stderr"; }; then
-    echo "FAIL: $what: exit $status, stdout: $(cat "$tmp/stdout"), stderr: $(cat "$tmp/stderr")" >&2
-    exit 1
-  fi
-  echo "PASS: $what"
-}
-check_option "--version prints the version" 0 '^protoc-gen-goose [0-9][0-9.]*.* (runtime abi [0-9][0-9]*)$' '' --version
-check_option "--help prints usage" 0 '^Usage:' '' --help
-check_option "-h prints usage" 0 '^Usage:' '' -h
-check_option "an unknown argument is refused" 2 '' 'unknown argument: --nope' --nope
+python3 - "$plugin" <<'PY'
+import os, pty, re, select, subprocess, sys, time
+
+plugin = sys.argv[1]
+
+
+def check_option(what, want_status, want_out, want_err, *args):
+    """Runs the plugin with a stdin that stays open, so that reading it would hang."""
+    p = subprocess.Popen([plugin, *args], stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+                         stderr=subprocess.PIPE, text=True)
+    try:
+        # Not communicate(), which would close stdin.
+        deadline = time.time() + 10
+        while p.poll() is None and time.time() < deadline:
+            time.sleep(0.01)
+        if p.poll() is None:
+            p.kill()
+            sys.exit(f"FAIL: {what}: still waiting for input")
+        out, err = p.stdout.read(), p.stderr.read()
+    finally:
+        p.stdin.close()
+    if p.returncode != want_status or not re.search(want_out, out, re.M) or not re.search(want_err, err, re.M):
+        sys.exit(f"FAIL: {what}: exit {p.returncode}, stdout: {out!r}, stderr: {err!r}")
+    print(f"PASS: {what}")
+
+
+check_option("--version prints the version", 0, r"^protoc-gen-goose \d[\d.]*\S* \(runtime abi \d+\)$", "", "--version")
+check_option("--help prints usage", 0, "^Usage:", "", "--help")
+check_option("-h prints usage", 0, "^Usage:", "", "-h")
+check_option("an unknown argument is refused", 2, "", "unknown argument: --nope", "--nope")
 
 # On a terminal, usage on stderr, and it does not wait for a request.
-python3 - "$plugin" <<'PY'
-import os, pty, select, sys, time
 pid, fd = pty.fork()
 if pid == 0:
-    os.execv(sys.argv[1], [sys.argv[1]])
-out, deadline = b"", time.time() + 10
-status = None
+    os.execv(plugin, [plugin])
+out, deadline, status = b"", time.time() + 10, None
 while time.time() < deadline:
     if select.select([fd], [], [], 0.1)[0]:
         try:
-            data = os.read(fd, 4096)
+            out += os.read(fd, 4096)
         except OSError:
-            data = b""
-        out += data
+            pass
     done, st = os.waitpid(pid, os.WNOHANG)
     if done:
         status = os.waitstatus_to_exitcode(st)
