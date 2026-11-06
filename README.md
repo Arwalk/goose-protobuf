@@ -81,7 +81,7 @@ Messages live in global pools, so they are single-threaded. The
 [limitations](docs/limitations.md) list the rest, with their workarounds.
 
 This project is before version 1.0. Its
-[version rules](docs/decisions/0012-public-api.md) say what you can rely on.
+[version rules](docs/versions.md) say what you can rely on.
 
 ## Get started
 

@@ -4,7 +4,8 @@
   1.0. gpb-ky7.15 gave repeated string, bytes and message fields and maps the
   accessors in this record's public table, without a plain getter.
   [Decision 0014](0014-protoc-range.md) proposes how a raised pin applies to protoc,
-  which now has a range.
+  which now has a range. [docs/versions.md](../versions.md) now states these rules for
+  users, and this record says why.
 - Date: 2026-11-06
 - Bead: gpb-ky7.1
 - Builds on: [0005](0005-runtime-distribution.md) (one tag for everything),

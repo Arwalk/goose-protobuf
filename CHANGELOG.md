@@ -2,7 +2,7 @@
 
 What changed between versions, for people using the plugin. A version names the
 plugin, the runtime and the well-known types together, and upgrading means generating
-your code again. The [version rules](docs/decisions/0012-public-api.md) say what each
+your code again. The [version rules](docs/versions.md) say what each
 kind of bump promises.
 
 ## 0.1.0 (unreleased)

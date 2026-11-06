@@ -2,7 +2,7 @@
 
 How the project owner cuts version `X.Y.Z`. Only the owner tags and pushes. To decide
 which number comes next, see the bump table in
-[decision 0012](docs/decisions/0012-public-api.md).
+[docs/versions.md](docs/versions.md).
 
 One tag, `vX.Y.Z`, names the plugin, the runtime and the well-known types.
 
@@ -98,4 +98,4 @@ goose build app.goose -o app
 3. Commit and push, as `chore: Open version X.Y.(Z+1)`.
 
 The version in the heading can change as the work does: a breaking change or a new
-public name raises it, by decision 0012's table.
+public name raises it, by that same table.

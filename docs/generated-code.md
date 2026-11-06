@@ -2,8 +2,7 @@
 
 What `protoc-gen-goose` generates for a `.proto` file, and how long what it returns
 stays valid. [The usage guide](usage.md) shows the same names in a running program.
-Everything here is public, as [decision 0012](decisions/0012-public-api.md) defines
-it: anything in a generated file that this page does not list may change in any
+Everything here is public, as [the version rules](versions.md) define it: anything in a generated file that this page does not list may change in any
 release.
 
 In the tables, `M` is a message, `f` a field and `o` a oneof. `S` is a sub-message's

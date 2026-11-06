@@ -17,6 +17,7 @@ text goes. A document marked *planned* does not exist yet.
 | [docs/generated-code.md](generated-code.md) | Look up an accessor, a naming rule or a view's lifetime |
 | [docs/limitations.md](limitations.md) | Check what is unsupported or slow, and the workaround |
 | [docs/troubleshooting.md](troubleshooting.md) | Fix a compiler or `protoc` error you have in front of you |
+| [docs/versions.md](versions.md) | Check what you can rely on, and what a version bump means |
 | `docs/build-systems.md` *(planned)* | Regenerate code from Make or buf |
 | `docs/benchmarks.md` *(planned)* | See how fast encoding and decoding are |
 | [examples/](../examples/) | Start from a complete program |
@@ -52,7 +53,7 @@ text goes. A document marked *planned* does not exist yet.
 | Each limitation, its cost and workaround | `docs/limitations.md` |
 | Error messages and their fixes, including `=` against `.=` | `docs/troubleshooting.md` |
 | Generator and runtime versions of each release | `CHANGELOG.md` |
-| What is public, and the version rules | [Decision 0012](decisions/0012-public-api.md) |
+| What is public, and the version rules | `docs/versions.md` ([decision 0012](decisions/0012-public-api.md) records why) |
 | Reporting a vulnerability; depth and memory limits | `SECURITY.md` |
 | Measured performance | `docs/benchmarks.md` |
 | Build, test, golden, round-trip, interop, conformance and fuzz commands | `CONTRIBUTING.md` |
