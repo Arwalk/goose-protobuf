@@ -1,0 +1,17 @@
+# proto-message: ed26.Book
+title: "Emma"
+explicit_field: 0
+implicit_field: 3
+color: COLOR_RED
+closed: CLOSED_ONE
+packed_values: 1
+packed_values: 2
+expanded_values: 3
+expanded_values: 4
+counts { key: "a" value: 5 }
+shared { a: 6 }
+hidden { v: 7 }
+inner { i: 9 }
+delimited_inner { i: 10 }
+unchecked: "u"
+word: "w"

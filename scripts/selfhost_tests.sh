@@ -46,7 +46,7 @@ check_plugin() {  # check_plugin <what> <want status> <want stdout, hex> <want o
 }
 if (cd "$tmp" && "$goose" build main.goose -o plugin) >"$tmp/log" 2>&1; then
   : >"$tmp/empty.bin"
-  check_plugin "an empty request" 0 100318e60720e907 '' "$tmp/empty.bin"
+  check_plugin "an empty request" 0 100318e60720ea07 '' "$tmp/empty.bin"
   printf '\012\005a' >"$tmp/cut.bin"
   check_plugin "a truncated request" 1 "" 'failed to decode CodeGeneratorRequest: truncated input' "$tmp/cut.bin"
 else

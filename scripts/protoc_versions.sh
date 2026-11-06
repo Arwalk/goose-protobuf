@@ -12,8 +12,10 @@ set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 [ -d "$root/.tools/bin" ] && export PATH="$root/.tools/bin:$PATH"
 
-# The first release that takes edition 2024, whose tests are left out before it.
+# The first releases that take editions 2024 and 2026, whose tests are left out
+# before them.
 first_2024=32
+first_2026=36
 
 versions="27.0 27.5 28.3 29.6 30.2 31.1 32.1 33.6 34.2 35.1 36.2"
 
@@ -58,18 +60,19 @@ if [ -z "${PLUGIN:-}" ]; then
   export PLUGIN="$root/build/protoc-gen-goose"
 fi
 
-# without_2024: points the tests at copies of their inputs with no edition 2024 file.
+# without_editions <pattern>: points the tests at copies of their inputs with no file
+# that matches.
 all_protos="${PROTO_DIR:-$root/tests/protos}"
 all_roundtrips="${ROUNDTRIP_DIR:-$root/tests/roundtrip}"
 restore_dirs() { export PROTO_DIR="$all_protos" ROUNDTRIP_DIR="$all_roundtrips"; }
-without_2024() {
+without_editions() {
   rm -rf "$tmp/protos" "$tmp/roundtrips"
   mkdir "$tmp/protos" "$tmp/roundtrips"
   for f in "$all_protos"/*; do
-    case "$(basename "$f")" in editions_2024*) ;; *) ln -s "$f" "$tmp/protos/" ;; esac
+    case "$(basename "$f")" in $1) ;; *) ln -s "$f" "$tmp/protos/" ;; esac
   done
   for f in "$all_roundtrips"/*; do
-    case "$(basename "$f")" in editions_2024*) ;; *) ln -s "$f" "$tmp/roundtrips/" ;; esac
+    case "$(basename "$f")" in $1) ;; *) ln -s "$f" "$tmp/roundtrips/" ;; esac
   done
   export PROTO_DIR="$tmp/protos" ROUNDTRIP_DIR="$tmp/roundtrips"
 }
@@ -78,7 +81,10 @@ failed=()
 for v in ${*:-$versions}; do
   if ! dir="$(unpack "$v")"; then failed+=("$v"); continue; fi
   export PROTOC="$dir/bin/protoc" PROTOC_INCLUDE="$dir/include"
-  if [ "${v%%.*}" -lt "$first_2024" ]; then without_2024; else restore_dirs; fi
+  major="${v%%.*}"
+  if [ "$major" -lt "$first_2024" ]; then without_editions 'editions_202[46]*'
+  elif [ "$major" -lt "$first_2026" ]; then without_editions 'editions_2026*'
+  else restore_dirs; fi
   bad=""
   for t in golden wkt roundtrip; do
     if ! "$root/scripts/$t.sh" >"$tmp/log" 2>&1; then

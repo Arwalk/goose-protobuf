@@ -226,13 +226,13 @@ jobs:
 
       # Fails if any result does not match conformance/failure_list_goose.txt.
       - name: Conformance suite
-        run: scripts/run_conformance.sh --maximum_edition 2024
+        run: scripts/run_conformance.sh --maximum_edition 2026
 
       # Fails if any result does not match conformance/failure_list_recommended.txt.
       - name: Conformance suite, recommended tests too
         run: >-
           FAILURE_LIST=conformance/failure_list_recommended.txt
-          scripts/run_conformance.sh build/testee --maximum_edition 2024 --enforce_recommended
+          scripts/run_conformance.sh build/testee --maximum_edition 2026 --enforce_recommended
 
       # Keeps the script working. The figures in docs/benchmarks.md come from a full run.
       - name: Benchmark script

@@ -169,10 +169,10 @@ says `# interop-decode-as: pkg.Msg`. A mismatch prints a hex diff.
 git submodule update --init --checkout
 scripts/build_runner.sh                            # once: builds the runner
 scripts/run_conformance.sh                         # builds + runs build/testee
-scripts/run_conformance.sh --maximum_edition 2024  # runner flags pass through
+scripts/run_conformance.sh --maximum_edition 2026  # runner flags pass through
 scripts/run_conformance.sh path/to/testee --test <name> --enforce_recommended
 FAILURE_LIST=conformance/failure_list_recommended.txt scripts/run_conformance.sh \
-  build/testee --maximum_edition 2024 --enforce_recommended   # recommended tests too
+  build/testee --maximum_edition 2026 --enforce_recommended   # recommended tests too
 scripts/test_run_conformance.sh                    # checks the exit-code contract
 ```
 

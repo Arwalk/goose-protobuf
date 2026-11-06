@@ -31,7 +31,8 @@ the last release of each major and the pin. Linux only: the plugin sees the same
 on every platform.
 
 (Since then, [decision 0016](0016-edition-2024.md) added edition 2024, which needs protoc
-32.0, so a file of that edition needs more than this floor.)
+32.0, and [decision 0019](0019-edition-2026.md) edition 2026, which needs 36.0, so a
+file of either edition needs more than this floor.)
 
 Older releases are not supported, although proto2 and proto3 happen to work on the two
 measured. Newer ones are untested until the pin moves.

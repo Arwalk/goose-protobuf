@@ -4,7 +4,7 @@ What `protoc-gen-goose` does not do, or does slowly, and what to do about it.
 
 - Binary wire format only. There is no JSON or text format, no reflection, and
   no services or RPC.
-- proto2, proto3 and editions up to 2024.
+- proto2, proto3 and editions up to 2026.
 - Messages are single-threaded: they live in global pools, and Goose threads
   share only flat values.
 - Extensions are kept as unknown fields, with no accessors. A string extension's

@@ -13,7 +13,7 @@ generated code needs a runtime of the same version (`abi 1`, as
 
 ### Added
 
-- Generated code for the binary wire format: proto2, proto3 and editions up to 2024 (which needs protoc 32.0 or later),
+- Generated code for the binary wire format: proto2, proto3 and editions up to 2026 (2024 needs protoc 32.0 or later, and 2026 needs 36.0),
   with everything in the [README's table](README.md#what-it-covers).
 - The runtime package `pb_wire`, and the well-known types under `pb_wire.wkt`.
 - `pb_error_text`, which gives a decode error code as text.

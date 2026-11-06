@@ -190,13 +190,16 @@ if there is no `-I`. Add the directory that holds the file. The well-known types
 ### A newer edition is refused
 
 ```text
-is a file using edition 2026, which isn't supported by code generator protoc-gen-goose.
+which is later than the protoc maximum supported edition 2026.
 ```
 
-Editions up to 2024 are supported ([limitations](limitations.md)).
+Editions up to 2026 are supported ([limitations](limitations.md)), and `protoc` itself
+refuses what it does not know. An older one says the same with a lower maximum: edition
+2024 needs `protoc` 32.0 or later, and edition 2026 needs 36.0. `protoc` 36.2 gives this
+message for `edition = "UNSTABLE"`, which is not a released edition.
 
-If `protoc` itself says that edition 2024 is later than its maximum, your `protoc` is
-older than 32.0, which edition 2024 files need.
+A `protoc` newer than the [tested range](install.md) may take a newer edition, and
+then the plugin refuses it, with `isn't supported by code generator protoc-gen-goose`.
 
 ### Two names map to one
 

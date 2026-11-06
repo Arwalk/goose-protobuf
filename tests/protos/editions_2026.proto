@@ -1,0 +1,56 @@
+// Golden and round-trip: what edition 2026 adds, which is stricter names, visibility and
+// limits that protoc enforces, with the wire behaviour of edition 2023.
+edition = "2026";
+
+package ed26;
+
+import "editions_2026_dep.proto";
+
+export enum Color {
+  COLOR_UNSPECIFIED = 0;
+  COLOR_RED = 1;
+}
+
+enum Closed {
+  option features.enum_type = CLOSED;
+
+  CLOSED_ONE = 1;
+}
+
+message Hidden {
+  int32 v = 1;
+}
+
+export message Book {
+  // A nested type can only be local in this edition.
+  message Inner {
+    int32 i = 1;
+  }
+
+  string title = 1;
+  int32 explicit_field = 2;
+  int32 implicit_field = 3 [features.field_presence = IMPLICIT];
+  Color color = 4;
+  Closed closed = 5;
+  repeated int32 packed_values = 6;
+  repeated int32 expanded_values = 7 [features.repeated_field_encoding = EXPANDED];
+  map<string, int32> counts = 8;
+  ed26dep.Shared shared = 9;
+  Hidden hidden = 10;
+  Inner inner = 11;
+  Inner delimited_inner = 12 [features.message_encoding = DELIMITED];
+  string unchecked = 13 [features.utf8_validation = NONE];
+
+  oneof choice {
+    int32 number = 14;
+    string word = 15;
+  }
+}
+
+// A name that STYLE2026 would refuse, and a message that opts out of the limits.
+message legacy_name {
+  option features.enforce_naming_style = STYLE_LEGACY;
+  option features.enforce_proto_limits = LEGACY_NO_EXPLICIT_LIMITS;
+
+  int32 Odd_Name = 1;
+}

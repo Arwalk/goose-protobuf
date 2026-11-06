@@ -29,3 +29,4 @@ change, and *proposed* is waiting for the project owner's review.
 | [0016](0016-edition-2024.md) | Edition 2024 is supported, as nothing it changes reaches the wire format | Accepted |
 | [0017](0017-windows.md) | Windows is supported for the plugin and the runtime, as measured under Wine | Accepted |
 | [0018](0018-decode-limit.md) | One decode may allocate a set budget, and past it fails with an error code | Accepted |
+| [0019](0019-edition-2026.md) | Edition 2026 is supported, as nothing it changes reaches the wire format | Accepted |

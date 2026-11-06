@@ -64,8 +64,8 @@ fn nothing_to_generate() {
     var out: u8[>..] = [];
     let empty: u8[0] = [];
     expect(run_plugin(empty[..], out) == PB_OK, "an empty request decodes");
-    // supported_features 3, minimum_edition 998, maximum_edition 1000.
-    let want: u8[8] = [0x10, 0x03, 0x18, 0xe6, 0x07, 0x20, 0xe9, 0x07];
+    // supported_features 3, minimum_edition 998, maximum_edition 1002.
+    let want: u8[8] = [0x10, 0x03, 0x18, 0xe6, 0x07, 0x20, 0xea, 0x07];
     expect(out == want[..], "the exact bytes of an empty response");
 }
 

@@ -12,7 +12,7 @@ committed="$root/generator-goose/edition_defaults.binpb"
 
 tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 "$protoc" --edition_defaults_out="$tmp/defaults" \
-  --edition_defaults_minimum=PROTO2 --edition_defaults_maximum=2024 \
+  --edition_defaults_minimum=PROTO2 --edition_defaults_maximum=2026 \
   -I "$root/third_party/protobuf/src" google/protobuf/descriptor.proto
 
 if [ "${1:-}" = "--update" ]; then

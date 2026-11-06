@@ -1,0 +1,17 @@
+// Imported by editions_2026.proto: everything is local by default in this edition, so
+// only what says export is reachable from there.
+edition = "2026";
+
+package ed26dep;
+
+export message Shared {
+  int32 a = 1;
+}
+
+message OnlyHere {
+  int32 b = 1;
+}
+
+export message UsesLocal {
+  OnlyHere inner = 1;
+}
