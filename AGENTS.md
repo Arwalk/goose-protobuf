@@ -69,6 +69,8 @@ hex diff.
 
 ## Conventions
 
+- **Docs**: [docs/README.md](docs/README.md) says which document each fact belongs
+  in. Put new text in that home, and add a new document to the map.
 - **Commits**: Conventional Commits. The subject is 50 characters or fewer,
   capitalised after the type, imperative, with no trailing period, e.g.
   `feat: Emit packed repeated fields`. Wrap the body at 72 columns; it

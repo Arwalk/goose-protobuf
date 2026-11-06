@@ -57,6 +57,7 @@ Pinned versions are listed in [TOOLCHAIN.md](TOOLCHAIN.md).
 ## Usage
 
 [docs/usage.md](docs/usage.md) goes from a `.proto` file to a running program.
+[docs/README.md](docs/README.md) lists every document and who it is for.
 
 Conformance:
 
