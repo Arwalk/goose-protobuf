@@ -68,6 +68,7 @@ scripts/build_plugin.sh                         # the generator, to build/protoc
 scripts/install_plugin.sh [prefix]              # build it and copy it to <prefix>/bin (default ~/.local)
 tests/smoke_plugin.sh                           # protoc runs the plugin; bad input is refused
 scripts/golden.sh                               # golden tests (--update to accept)
+scripts/buf_golden.sh                           # buf generates the same files as the goldens
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
@@ -75,7 +76,7 @@ scripts/regen_bindings.sh [--update]            # the plugin writes its own bind
 scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
 scripts/consumer_test.sh                        # consume this repo from outside: vendored, path, git
-scripts/install_buf.sh                          # once: the pinned buf, which the next line needs
+scripts/install_buf.sh                          # once: the pinned buf, for buf_golden.sh and the next line
 scripts/check_docs.py                           # run README and the guides: snippets, commands and output
 scripts/check_links.py                          # relative links in tracked Markdown reach a file and heading
 scripts/check_reference.py                      # docs/generated-code.md matches tests/golden/
@@ -100,6 +101,7 @@ These self-test the harnesses, by checking that each one catches a failure:
 
 ```sh
 scripts/test_golden.sh
+scripts/test_buf_golden.sh
 scripts/test_goose_tests.sh
 scripts/test_roundtrip.sh
 scripts/test_interop.sh

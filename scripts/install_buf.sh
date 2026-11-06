@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Install the pinned buf (see TOOLCHAIN.md) into a prefix, for scripts/check_docs.py,
-# which runs docs/build-systems.md. Nothing else here needs it, so it is apart from
-# scripts/install_toolchain.sh, which users run.
+# which runs docs/build-systems.md, and scripts/buf_golden.sh. Nothing else here needs
+# it, so it is apart from scripts/install_toolchain.sh, which users run.
 # Usage: scripts/install_buf.sh [prefix]   (default: .tools)
 # Afterwards: <prefix>/bin/buf. Idempotent. The download is checked against the sha256
 # recorded below; a mismatch aborts.

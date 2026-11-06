@@ -66,6 +66,7 @@ jobs:
       - name: Guides
         run: |
           scripts/install_buf.sh
+          scripts/buf_golden.sh
           python3 scripts/check_docs.py
           python3 scripts/check_links.py
           python3 scripts/check_reference.py
@@ -77,6 +78,7 @@ jobs:
       - name: Harness self-tests
         run: |
           scripts/test_golden.sh
+          scripts/test_buf_golden.sh
           scripts/test_goose_tests.sh
           scripts/test_roundtrip.sh
           scripts/test_interop.sh
