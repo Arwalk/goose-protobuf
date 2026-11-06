@@ -67,6 +67,11 @@ This installs into the clone's `.tools/`. To put them elsewhere, give the script
 prefix: `install_toolchain.sh /opt/goose-tools`. `goose version` prints its runtime's
 commit, not the release's tag.
 
+Goose's own documentation comes with it, in `.tools/goose-v2026.3/docs`, and is also
+[online](https://aardappel.github.io/goose/). Look there for the language and for what
+this project's guides leave to Goose: `stdlib.md` has `read_file` and `write_file`, and
+`packages.md` has the forms a git source can take.
+
 The script also installs Python protobuf. Only this project's own tests use it, so you
 do not need it, or Python, to use the plugin.
 
