@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Runs a guide: every code block in the Markdown files named must say what it is.
 
-  ```proto file=x  or  ```goose file=x   appended to file x
+  ```proto file=x, ```goose file=x, ```make file=x or ```yaml file=x   appended to file x
   ```sh run                              run with bash, in order
   ```text output                         what the last `sh run` block must print
 
@@ -27,7 +27,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 FENCE = re.compile(r"^```(.*)$")
-GUIDES = ["README.md", "docs/quickstart.md", "docs/install.md", "docs/usage.md"]
+GUIDES = ["README.md", "docs/quickstart.md", "docs/install.md", "docs/usage.md", "docs/build-systems.md"]
 EXAMPLES = "examples/*/README.md"
 
 
@@ -82,7 +82,7 @@ def check(path):
         last = None
         for line, info, body in blocks(path.read_text()):
             where = f"{path}:{line}"
-            m = re.fullmatch(r"(proto|goose) file=(\S+)", info)
+            m = re.fullmatch(r"(proto|goose|make|yaml) file=(\S+)", info)
             if m:
                 written[m.group(2)] = written.get(m.group(2), "") + body
                 (app / m.group(2)).write_text(written[m.group(2)])

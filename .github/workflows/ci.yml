@@ -64,6 +64,7 @@ jobs:
 
       - name: Guides
         run: |
+          scripts/install_buf.sh
           python3 scripts/check_docs.py
           python3 scripts/check_links.py
           python3 scripts/check_reference.py

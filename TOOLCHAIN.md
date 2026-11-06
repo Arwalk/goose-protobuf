@@ -11,6 +11,7 @@ Checked 2026-11-03.
 | Python protobuf | 7.36.2 | - | The release of protobuf v36.2, for `scripts/interop.sh`. The pure-Python wheel, so one sha256 on every platform |
 | Goose | v2026.3 | `8511ae34bdc9` | Latest release. `goose version` prints `goose runtime 4d3da949e563`, not the tag |
 | clang | 21.1.8 | - | For `scripts/fuzz.sh` only, with `libclang-rt-dev` for libFuzzer and ASan. Ubuntu 26.04's package, so not installed by `scripts/install_toolchain.sh` or CI |
+| buf | 1.75.0 | - | For `scripts/check_docs.py`, which runs `docs/build-systems.md`. Installed by `scripts/install_buf.sh`, not by `scripts/install_toolchain.sh`, as users do not need it |
 | beads (`bd`) | 1.3.2 | - | The version that created `.beads/` |
 
 ## Changing a pin

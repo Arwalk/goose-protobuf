@@ -18,7 +18,7 @@ text goes. A document marked *planned* does not exist yet.
 | [docs/limitations.md](limitations.md) | Check what is unsupported or slow, and the workaround |
 | [docs/troubleshooting.md](troubleshooting.md) | Fix a compiler or `protoc` error you have in front of you |
 | [docs/versions.md](versions.md) | Check what you can rely on, and what a version bump means |
-| `docs/build-systems.md` *(planned)* | Regenerate code from Make or buf |
+| [docs/build-systems.md](build-systems.md) | Regenerate code from Make or buf |
 | `docs/benchmarks.md` *(planned)* | See how fast encoding and decoding are |
 | [examples/](../examples/) | Start from a complete program |
 | [CHANGELOG.md](../CHANGELOG.md) | See what changed between versions |
@@ -49,6 +49,7 @@ text goes. A document marked *planned* does not exist yet.
 | Tested tool versions for users, platforms, C compiler | `docs/install.md` |
 | Installing the plugin; the three ways to get the runtime | `docs/install.md` |
 | Importing and using generated code, step by step | `docs/usage.md` |
+| Regenerating from Make or buf; committing generated code | `docs/build-systems.md` |
 | Accessors, naming rules, pools, view lifetimes | `docs/generated-code.md` |
 | Each limitation, its cost and workaround | `docs/limitations.md` |
 | Error messages and their fixes, including `=` against `.=` | `docs/troubleshooting.md` |
