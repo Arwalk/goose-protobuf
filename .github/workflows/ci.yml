@@ -234,6 +234,11 @@ jobs:
           FAILURE_LIST=conformance/failure_list_recommended.txt
           scripts/run_conformance.sh build/testee --maximum_edition 2024 --enforce_recommended
 
+      # Keeps the script working. The figures in docs/benchmarks.md come from a full run.
+      - name: Benchmark script
+        if: runner.os == 'Linux'
+        run: python3 scripts/bench_codec.py --check
+
       - name: Testee and harness checks
         run: |
           python3 conformance/check_testee.py build/testee

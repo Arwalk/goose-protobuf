@@ -86,6 +86,7 @@ scripts/edition_defaults.sh                     # feature defaults match protoc 
 scripts/protoc_versions.sh [versions]           # goldens and round trips on each supported protoc
 scripts/bench_maps.sh [sizes]                   # map decode timings (decision 0008)
 scripts/bench_generator.py [--check] [shapes]   # the plugin's time and memory on large requests
+scripts/bench_codec.py [--check] [messages]     # encode and decode times, against protobuf C++
 ```
 
 Helpers these use, which you can also run alone:

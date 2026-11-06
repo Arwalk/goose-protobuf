@@ -1,0 +1,49 @@
+// Messages for scripts/bench_codec.py: a shape that programs commonly send, or that
+// stresses one part of a decoder. The script makes the values.
+syntax = "proto3";
+package codec;
+
+// A small record, as an RPC request might be.
+message Small {
+  string name = 1;
+  int32 id = 2;
+  string email = 3;
+  bool active = 4;
+}
+
+message Label {
+  string key = 1;
+  string value = 2;
+}
+
+// A log line, with a few of every kind of field.
+message Record {
+  fixed64 timestamp = 1;
+  int32 level = 2;
+  string service = 3;
+  string message = 4;
+  double duration = 5;
+  repeated Label labels = 6;
+  optional int64 trace = 7;
+}
+
+// Many records in one message, as a batch sent to a server might be.
+message Batch {
+  repeated Record records = 1;
+}
+
+message Ints {
+  repeated int64 values = 1;
+}
+
+message Strings {
+  repeated string values = 1;
+}
+
+message Blob {
+  bytes data = 1;
+}
+
+message Table {
+  map<string, int32> counts = 1;
+}
