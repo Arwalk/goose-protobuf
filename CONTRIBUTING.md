@@ -74,6 +74,7 @@ scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGe
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
 scripts/consumer_test.sh                        # consume this repo from outside: vendored, path, git
 scripts/check_docs.py                           # run README and the guides: snippets, commands and output
+scripts/check_links.py                          # relative links in tracked Markdown reach a file and heading
 scripts/check_reference.py                      # docs/generated-code.md matches tests/golden/
 scripts/check_troubleshooting.py                # the messages in docs/troubleshooting.md are real
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
@@ -100,6 +101,7 @@ scripts/test_roundtrip.sh
 scripts/test_interop.sh
 scripts/test_fuzz.sh
 scripts/test_check_docs.sh
+scripts/test_check_links.sh
 scripts/test_check_reference.sh
 scripts/test_check_troubleshooting.sh
 scripts/test_consumer_test.sh
