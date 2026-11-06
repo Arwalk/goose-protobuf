@@ -48,6 +48,11 @@ with `--debug` and run; it passes iff it exits 0 (fail with `abort(...)`).
 Import the runtime as a directory package, since a plain `import` cannot
 reach above the test's directory: `import pb_wire from "../../runtime";`.
 
+Generator unit tests: a `tests/selfhost/*_unit.goose` file is such a program too,
+built by `scripts/selfhost_tests.sh` next to the files of `generator-goose/`, its
+generated bindings and `unit_support.goose`, so it calls the generator's functions
+directly. `*_unit.goose`, not `*_test.goose`, as they cannot build where they are.
+
 Round-trip tests: `tests/roundtrip/<name>/` holds `<case>.txtpb` files,
 each with a `# proto-message: pkg.Msg` line, and a
 `<name>_roundtrip.goose` program. The harness generates

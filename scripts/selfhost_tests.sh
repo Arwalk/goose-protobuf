@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Unit tests of generator-goose/. Each tests/selfhost/*_unit.goose is a program
 # built with --debug next to the generator's files, its generated bindings, the
-# runtime and edition_defaults.binpb, and run; it passes iff it exits 0. They are
-# not *_test.goose, which scripts/goose_tests.sh builds where they are.
+# runtime, unit_support.goose and edition_defaults.binpb, and run; it passes iff it
+# exits 0. They are not *_test.goose, which scripts/goose_tests.sh builds where they
+# are. Then the plugin is built, for what only a process shows.
 # Usage: scripts/selfhost_tests.sh
 # Env: PLUGIN, PROTOC, GOOSE (default: zig build; protoc, goose; .tools/bin first),
 #      GENERATOR_SRC (default generator-goose/; scripts/test_selfhost_tests.sh
@@ -24,8 +25,7 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
 "$protoc" --plugin=protoc-gen-goose="$PLUGIN" --goose_out="$tmp" -I "$include" \
   google/protobuf/compiler/plugin.proto google/protobuf/descriptor.proto || exit 1
 cp "$src"/*.goose "$tmp/"
-rm "$tmp/main.goose"  # each test has its own main
-cp "$root/generator/src/edition_defaults.binpb" "$tmp/"
+cp "$root/tests/selfhost/unit_support.goose" "$root/generator/src/edition_defaults.binpb" "$tmp/"
 "$root/scripts/vendor_runtime.sh" "$tmp"
 
 failed=0 count=0
@@ -42,6 +42,26 @@ for t in "$root"/tests/selfhost/*_unit.goose; do
   fi
   rm -f "$tmp/$name" "$tmp/test"
 done
+
+# What only the built plugin shows: its exit status, stdout and stderr.
+check_plugin() {  # check_plugin <what> <want status> <want stdout, hex> <want on stderr> <input file>
+  local status=0
+  "$tmp/plugin" <"$5" >"$tmp/out" 2>"$tmp/err" || status=$?
+  local hex; hex="$(od -An -tx1 "$tmp/out" | tr -d ' \n')"
+  if [ "$status" != "$2" ] || [ "$hex" != "$3" ] || { [ -n "$4" ] && ! grep -q "$4" "$tmp/err"; }; then
+    echo "FAIL plugin: $1: exit $status, stdout $hex, stderr: $(cat "$tmp/err")"; failed=$((failed + 1))
+  else
+    echo "PASS plugin: $1"; count=$((count + 1))
+  fi
+}
+if (cd "$tmp" && "$goose" build main.goose -o plugin) >"$tmp/log" 2>&1; then
+  : >"$tmp/empty.bin"
+  check_plugin "an empty request" 0 100318e60720e807 '' "$tmp/empty.bin"
+  printf '\012\005a' >"$tmp/cut.bin"
+  check_plugin "a truncated request" 1 "" 'failed to decode CodeGeneratorRequest: truncated input' "$tmp/cut.bin"
+else
+  echo "FAIL the plugin does not build"; cat "$tmp/log"; failed=$((failed + 1))
+fi
 
 echo "selfhost_tests: $count passed, $failed failed"
 [ "$failed" -eq 0 ] && [ "$count" -gt 0 ]
