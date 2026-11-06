@@ -23,8 +23,9 @@ const usage = """
 
     """;
 
-// The C library's, as Goose's os module has none.
-extern "isatty" fn c_isatty(fd: i32) -> i32;
+// In plugin_stdio.c, as Goose's os module has neither.
+extern fn plugin_stdio_binary();
+extern fn plugin_stdin_is_terminal() -> i32;
 
 fn print_version() {
     write_stdout(str("protoc-gen-goose ", plugin_version, " (runtime abi ", runtime_abi, ")\n"));
@@ -51,7 +52,7 @@ fn handle_command_line() {
         flush_stdout();
         exit(0);
     }
-    if c_isatty(0) != 0 {
+    if plugin_stdin_is_terminal() != 0 {
         write_stderr(usage);
         exit(2);
     }
@@ -59,6 +60,7 @@ fn handle_command_line() {
 
 fn main() {
     handle_command_line();
+    plugin_stdio_binary();
     var input: u8[>..] = [];
     read_stdin(input);
     var out: u8[>..] = [];

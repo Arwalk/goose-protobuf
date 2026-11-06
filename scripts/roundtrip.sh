@@ -33,6 +33,12 @@ if [ -z "${PLUGIN:-}" ]; then
   "$root/scripts/build_plugin.sh" || { echo "error: scripts/build_plugin.sh failed" >&2; exit 1; }
   PLUGIN="$root/build/protoc-gen-goose"
 fi
+# Under Git Bash: it cannot convert a path after a second =, as in --plugin=NAME=PATH,
+# and protoc does not add .exe to a plugin's path as a shell does.
+if command -v cygpath >/dev/null; then
+  PLUGIN="$(cygpath -m "$PLUGIN")"
+  case "$PLUGIN" in *.exe) ;; *) PLUGIN="$PLUGIN.exe" ;; esac
+fi
 
 names=()
 if [ $# -gt 0 ]; then

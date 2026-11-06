@@ -27,3 +27,4 @@ change, and *proposed* is waiting for the project owner's review.
 | [0014](0014-protoc-range.md) | protoc 27.0 up to the pin is supported, and what that does to decision 0012 | Proposed |
 | [0015](0015-package-fetch-size.md) | What a git source costs a consumer, and that nothing needs trimming | Accepted |
 | [0016](0016-edition-2024.md) | Edition 2024 is supported, as nothing it changes reaches the wire format | Accepted |
+| [0017](0017-windows.md) | Windows is supported for the plugin and the runtime, as measured under Wine | Accepted |

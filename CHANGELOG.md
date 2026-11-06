@@ -18,6 +18,7 @@ generated code needs a runtime of the same version (`abi 1`, as
 - The runtime package `pb_wire`, and the well-known types under `pb_wire.wkt`.
 - `pb_error_text`, which gives a decode error code as text.
 - `--version` and `--help` on the plugin.
+- Windows x64, for the plugin and the runtime, with [some limits](docs/install.md#windows).
 - `M_f_len` and `M_f_at` for repeated fields, and `M_f_len`, `M_f_key_at` and
   `M_f_value_at` for maps, to go through them by index.
 

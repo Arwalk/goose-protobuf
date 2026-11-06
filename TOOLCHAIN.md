@@ -74,4 +74,5 @@ path on stdout and sends the build log to stderr. To reconfigure, delete
 `build/pb`.
 
 The macOS build is untested locally, and CI checks it. The conformance suite does
-not support Windows, so CI runs on Linux and macOS only.
+not support Windows, so it runs on Linux and macOS only. CI's `windows` job runs the
+Goose checks, goldens and round trips.

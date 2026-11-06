@@ -4,7 +4,8 @@
 # Usage: scripts/install_toolchain.sh [prefix]   (default: .tools)
 # Afterwards: <prefix>/bin/goose, <prefix>/bin/protoc, and <prefix>/python, a
 # directory for PYTHONPATH (the pure-Python wheel, so one sha256 for all).
-# Platforms: linux-x64, macos-arm64, macos-x64. Idempotent: a component
+# Platforms: linux-x64, macos-arm64, macos-x64, and windows-x64 under Git Bash.
+# Idempotent: a component
 # whose pinned version is already unpacked is skipped. Every download is
 # checked against the sha256 recorded below; a mismatch aborts.
 set -euo pipefail
@@ -20,7 +21,14 @@ prefix="${1:-$root/.tools}"
 mkdir -p "$prefix"
 prefix="$(cd "$prefix" && pwd)"
 
+exe=""
+goose_archive="tar.gz"
 case "$(uname -s)-$(uname -m)" in
+  MINGW64*-x86_64|MSYS*-x86_64)
+    goose_plat="windows-x64"; protoc_plat="win64"
+    goose_sha="e30cfa398c0362cef4b8f311cf5496743920b6d3a6c4a6d818fc47ee1e56be7d"
+    protoc_sha="f0c128dc0d8492eceece83bb459a4c0e316764b929ffbf1aa416357fd644edd3"
+    exe=".exe"; goose_archive="zip" ;;
   Linux-x86_64)
     goose_plat="linux-x64"; protoc_plat="linux-x86_64"
     goose_sha="06ac30284338269d3996d457412bf4f2b47c1f9a5601de65b6317187fe78d5c9"
@@ -67,13 +75,27 @@ mkdir -p "$prefix/bin"
 
 # Goose: the release directory holds the binary next to its stdlib, so
 # bin/goose is a symlink into it (goose finds its stdlib through the link).
+# Git Bash's ln would copy the file instead, so there each link is a small script.
+link_tool() {
+  if [ -n "$exe" ]; then
+    printf '#!/bin/sh\nexec "$(dirname "$0")/%s" "$@"\n' "$1$exe" >"$2"
+    chmod +x "$2"
+  else
+    ln -sfn "$1" "$2"
+  fi
+}
+
 goose_dir="$prefix/goose-$GOOSE_VERSION"
-if [ ! -x "$goose_dir/goose" ]; then
+if [ ! -x "$goose_dir/goose$exe" ]; then
   name="goose-$GOOSE_VERSION-$goose_plat"
   echo "installing Goose $GOOSE_VERSION ($goose_plat)"
-  fetch "https://github.com/aardappel/goose/releases/download/$GOOSE_VERSION/$name.tar.gz" \
-    "$goose_sha" "$tmp/goose.tar.gz"
-  tar -xzf "$tmp/goose.tar.gz" -C "$tmp"
+  fetch "https://github.com/aardappel/goose/releases/download/$GOOSE_VERSION/$name.$goose_archive" \
+    "$goose_sha" "$tmp/goose.$goose_archive"
+  if [ "$goose_archive" = zip ]; then
+    unzip -q "$tmp/goose.zip" -d "$tmp"
+  else
+    tar -xzf "$tmp/goose.tar.gz" -C "$tmp"
+  fi
   rm -rf "$goose_dir"
   mv "$tmp/$name" "$goose_dir"
   if [ "$(uname -s)" = Darwin ]; then
@@ -82,11 +104,11 @@ if [ ! -x "$goose_dir/goose" ]; then
 else
   echo "Goose $GOOSE_VERSION already installed"
 fi
-ln -sfn "../goose-$GOOSE_VERSION/goose" "$prefix/bin/goose"
+link_tool "../goose-$GOOSE_VERSION/goose" "$prefix/bin/goose"
 
 # protoc: bin/protoc plus include/ (the well-known types).
 protoc_dir="$prefix/protoc-$PROTOC_VERSION"
-if [ ! -x "$protoc_dir/bin/protoc" ]; then
+if [ ! -x "$protoc_dir/bin/protoc$exe" ]; then
   echo "installing protoc $PROTOC_VERSION ($protoc_plat)"
   fetch "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/protoc-$PROTOC_VERSION-$protoc_plat.zip" \
     "$protoc_sha" "$tmp/protoc.zip"
@@ -97,7 +119,7 @@ if [ ! -x "$protoc_dir/bin/protoc" ]; then
 else
   echo "protoc $PROTOC_VERSION already installed"
 fi
-ln -sfn "../protoc-$PROTOC_VERSION/bin/protoc" "$prefix/bin/protoc"
+link_tool "../protoc-$PROTOC_VERSION/bin/protoc" "$prefix/bin/protoc"
 
 # Python protobuf: a wheel is a zip, unpacked as is, with no pip or venv.
 py_dir="$prefix/python"

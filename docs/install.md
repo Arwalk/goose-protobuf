@@ -21,7 +21,27 @@ On Linux, Goose needs glibc 2.35 or later and `libc6-dev`.
 | Linux x64 | Tested |
 | macOS arm64 | Tested by CI |
 | macOS x64 | The tools install, but CI does not run on it |
-| Windows x64 | Goose has a release (`goose-v2026.3-windows-x64.zip`), but this project is not yet tested on it, and the scripts below need a Unix shell |
+| Windows x64 | Goose checks and round trips run in CI. [Its limits are below](#windows) |
+
+### Windows
+
+The scripts on this page are bash, so run them in [Git Bash](https://git-scm.com/downloads/win),
+and have Visual Studio with C++ or clang for `goose build`. Everything else on this
+page then works, with two differences:
+
+- Outside a script, `protoc` needs the plugin's path with its `.exe`:
+  `protoc --plugin=protoc-gen-goose=C:/tools/protoc-gen-goose.exe --goose_out=. person.proto`.
+- `.tools/bin` holds small bash scripts, which Git Bash can run and `cmd.exe` cannot.
+  From `cmd.exe` or PowerShell, put `.tools/goose-v2026.3` and `.tools/protoc-36.2/bin`
+  on your `PATH` instead.
+
+Generated code, `read_file` and `write_file` work on bytes as they are. Windows starts
+stdin in text mode, however, so a program of yours that reads encoded messages with
+`read_stdin` loses bytes, stopping at the first `0x1A`. Call `_setmode` from a small C
+file first, as [the plugin does](../generator-goose/plugin_stdio.c).
+
+The conformance suite, the fuzzer and the rest of the project's checks do not run on
+Windows.
 
 ## Install Goose and protoc
 
@@ -49,8 +69,8 @@ commit, not the release's tag.
 
 To install Goose yourself, its
 [release](https://github.com/aardappel/goose/releases/tag/v2026.3) has
-`goose-v2026.3-linux-x64.tar.gz`, `goose-v2026.3-macos-arm64.tar.gz` and
-`goose-v2026.3-macos-x64.tar.gz`. On macOS, run `xattr -dr com.apple.quarantine` on
+`goose-v2026.3-linux-x64.tar.gz`, `goose-v2026.3-macos-arm64.tar.gz`,
+`goose-v2026.3-macos-x64.tar.gz` and `goose-v2026.3-windows-x64.zip`. On macOS, run `xattr -dr com.apple.quarantine` on
 the unpacked directory.
 
 ## Install the plugin

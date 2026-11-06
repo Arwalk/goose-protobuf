@@ -1,5 +1,6 @@
 # CI: generator build and tests, golden tests and Goose unit tests on Linux
-# and macOS. Every step runs a script that also runs locally (CONTRIBUTING.md).
+# and macOS, with a smaller job on Windows. Every step runs a script that also
+# runs locally (CONTRIBUTING.md).
 # Pins live in TOOLCHAIN.md; the conformance job is gpb-iip.9.
 name: ci
 
@@ -88,6 +89,46 @@ jobs:
           scripts/test_install_plugin.sh
           scripts/test_selfhost_tests.sh
           scripts/test_protoc_versions.sh
+
+  # Git Bash, with what users need there: the rest is bash and Python tooling that
+  # has no Windows user, and the conformance suite does not support Windows.
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache pinned protoc and Goose
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install_toolchain.sh') }}
+
+      - name: Install pinned protoc and Goose
+        run: scripts/install_toolchain.sh
+
+      - name: Toolchain versions
+        run: |
+          .tools/bin/protoc --version
+          .tools/bin/goose version
+          .tools/bin/goose toolchain
+
+      - name: Generator build
+        run: scripts/build_plugin.sh
+
+      - name: Runtime typecheck
+        run: .tools/bin/goose check runtime/pb_wire.goose
+
+      - name: Golden tests
+        run: scripts/golden.sh
+
+      - name: Goose unit tests
+        run: scripts/goose_tests.sh
+
+      - name: Round-trip tests
+        run: scripts/roundtrip.sh
 
   # The supported protoc range (decision 0014), which needs one platform.
   protoc-versions:

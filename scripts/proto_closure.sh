@@ -17,4 +17,5 @@ tmp="$(mktemp -d)"; trap 'rm -rf "$tmp"' EXIT
   { cat "$tmp/log" >&2; exit 1; }
 "$protoc" --decode=google.protobuf.FileDescriptorSet \
   google/protobuf/descriptor.proto <"$tmp/set" |
+  tr -d '\r' | # protoc's text ends its lines with CRLF on Windows
   sed -n 's/^  name: "\(.*\)"$/\1/p'
