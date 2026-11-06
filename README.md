@@ -78,7 +78,7 @@ Ada, 36, ada@example.org
 | Not planned for now | JSON and text formats, reflection, services and RPC |
 
 Messages live in global pools, so they are single-threaded. The
-[limitations](docs/usage.md#limitations) list the rest, with their workarounds.
+[limitations](docs/limitations.md) list the rest, with their workarounds.
 
 This project is before version 1.0. Its
 [version rules](docs/decisions/0012-public-api.md) say what you can rely on.

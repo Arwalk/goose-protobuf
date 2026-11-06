@@ -15,7 +15,7 @@ text goes. A document marked *planned* does not exist yet.
 | [docs/quickstart.md](quickstart.md) | Get from an empty directory to a round trip in five minutes |
 | [docs/usage.md](usage.md) | Learn the whole path on a real message: build, encode, decode, read |
 | `docs/generated-code.md` *(planned)* | Look up an accessor, a naming rule or a view's lifetime |
-| `docs/limitations.md` *(planned)* | Check what is unsupported or slow, and the workaround |
+| [docs/limitations.md](limitations.md) | Check what is unsupported or slow, and the workaround |
 | `docs/troubleshooting.md` *(planned)* | Fix a compiler or `protoc` error you have in front of you |
 | `docs/build-systems.md` *(planned)* | Regenerate code from Make or buf |
 | `docs/benchmarks.md` *(planned)* | See how fast encoding and decoding are |

@@ -4,10 +4,6 @@
 that reads and writes the protobuf binary wire format. This guide takes one
 message from a `.proto` file to a running program.
 
-`scripts/check_docs.py` runs this guide: it builds the program below from the
-blocks in this file, runs the commands, and compares the output, so what you
-read here works. CI does this on every push.
-
 ## What you need
 
 - Goose v2026.3 and protoc 36.2. Other versions are untested.
@@ -18,10 +14,11 @@ read here works. CI does this on every push.
 `scripts/install_toolchain.sh` installs the pinned protoc and Goose into
 `.tools/`. [The install guide](install.md) has the details.
 
-Build the plugin from your project's directory:
+Install the plugin from your project's directory. This copies it to `~/.local/bin`,
+which must be on your `PATH`:
 
 ```sh run
-../goose-protobuf/scripts/build_plugin.sh
+../goose-protobuf/scripts/install_plugin.sh
 ```
 
 ## Write a proto
@@ -65,8 +62,7 @@ message Person {
 ## Generate the code
 
 ```sh run
-protoc --plugin=protoc-gen-goose=../goose-protobuf/build/protoc-gen-goose \
-       --goose_out=. -I . people.proto
+protoc --goose_out=. people.proto
 ```
 
 This writes `people.goose`. Output your generated files next to your program's
@@ -295,28 +291,7 @@ true
 This guide uses every kind of field proto3 has. proto2 and editions add `required`,
 which `M_is_initialized(m)` checks, `[default]` and groups, all read in the same way.
 
-## Limitations
+## Next
 
-- Binary wire format only. There is no JSON or text format, no reflection, and
-  no services or RPC.
-- proto2, proto3 and editions up to 2023.
-- Messages are single-threaded: they live in global pools, and Goose threads
-  share only flat values.
-- Extensions are kept as unknown fields, with no accessors. A string extension's
-  UTF-8 is therefore not checked.
-- Unknown fields stay in the order they were read, so they do not keep their
-  place between known fields.
-- Map `_get`, `_put` and `_remove` scan the map: about 2 µs per int key and 10 µs
-  per short string at 10,000 entries, in proportion to the size. Building a map with
-  `_put` is therefore quadratic, and so is calling `M_decode` in a loop to add a few
-  entries to a large map. To build one, call `M_f_append` for each entry and
-  `M_fold_maps(m)` once, before reading it: 160,000 entries take 7 ms, not 6 s. To
-  add to one by decoding, concatenated encodings decode as a merge, so join the
-  buffers and decode once. For many `_get` on a large map, keep your own index beside
-  it ([decision 0010](decisions/0010-no-map-index.md)).
-- One run of values is limited to 2^32 elements.
-
-## Working on this repository
-
-[CONTRIBUTING.md](../CONTRIBUTING.md) has the build and test commands, and the
-design decisions are in [docs/decisions/](decisions/).
+- [Limitations](limitations.md) lists what is unsupported or slow, and the workarounds.
+- [The documentation map](README.md) lists everything else.
