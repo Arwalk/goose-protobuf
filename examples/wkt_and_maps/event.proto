@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package event;
+
+import "google/protobuf/duration.proto";
+import "google/protobuf/struct.proto";
+import "google/protobuf/timestamp.proto";
+
+message Venue {
+  string city = 1;
+}
+
+message Event {
+  google.protobuf.Timestamp starts = 1;
+  google.protobuf.Duration length = 2;
+  google.protobuf.Struct extra = 3;
+  map<string, int32> seats = 4;
+  map<string, Venue> venues = 5;
+}

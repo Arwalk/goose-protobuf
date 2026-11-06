@@ -1,0 +1,4 @@
+# What the commands in each README write.
+*.goose
+!main.goose
+main

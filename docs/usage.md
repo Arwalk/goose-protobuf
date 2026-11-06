@@ -295,6 +295,7 @@ which `M_is_initialized(m)` checks, `[default]` and groups, all read in the same
 ## Next
 
 - [The generated code reference](generated-code.md) lists every function.
+- [The examples](../examples/) are complete programs to copy.
 - [Troubleshooting](troubleshooting.md) lists error messages and silent mistakes,
   with their fixes.
 - [Limitations](limitations.md) lists what is unsupported or slow, and the workarounds.

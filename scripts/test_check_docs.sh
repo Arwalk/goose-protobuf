@@ -19,5 +19,7 @@ case_ good.md       0 '^ok '                 "a good guide passes"
 case_ badcode.md    1 'nosuchfunction'       "a snippet that does not compile fails"
 case_ badoutput.md  1 'output differs'       "wrong output fails"
 case_ unlabelled.md 1 'needs a label'        "a block with no label fails"
+case_ examples/ok/README.md  0 '^ok '            "an example runs in its own directory, with ../.. as the repository"
+case_ examples/bad/README.md 1 'output differs'  "an example's wrong output fails"
 case_ notrun.md     1 'no command ran'       "blocks no command uses fail"
 exit $bad

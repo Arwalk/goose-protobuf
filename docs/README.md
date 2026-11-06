@@ -19,7 +19,7 @@ text goes. A document marked *planned* does not exist yet.
 | [docs/troubleshooting.md](troubleshooting.md) | Fix a compiler or `protoc` error you have in front of you |
 | `docs/build-systems.md` *(planned)* | Regenerate code from Make or buf |
 | `docs/benchmarks.md` *(planned)* | See how fast encoding and decoding are |
-| `examples/` *(planned)* | Start from a complete program |
+| [examples/](../examples/) | Start from a complete program |
 | `CHANGELOG.md` *(planned)* | See what changed between versions |
 | `SECURITY.md` *(planned)* | Report a problem, or decode untrusted input safely |
 

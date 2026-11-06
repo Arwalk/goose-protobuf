@@ -37,6 +37,7 @@ conformance/    Goose testee + failure lists (may only shrink)
 tests/          golden/, protos/, roundtrip/ (also the scripts/interop.sh corpus),
                 runtime/, selfhost/, fuzz/ (scripts/fuzz.sh), bench/, spikes/
 third_party/    protobuf (submodule, pinned; conformance runner source)
+examples/       programs for users; scripts/check_docs.py runs each README
 scripts/        build, test and check scripts, listed below
 docs/decisions/ spike conclusions and design decisions
 ```

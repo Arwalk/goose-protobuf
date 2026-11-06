@@ -1,0 +1,10 @@
+syntax = "proto3";
+
+package api.books;
+
+import "api/person.proto";
+
+message Book {
+  string title = 1;
+  repeated api.people.Person people = 2;
+}

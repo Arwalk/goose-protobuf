@@ -11,10 +11,15 @@ repository, so a guide's paths work as they read. Each guide has a new home with
 Goose packages. A block with no such label is a failure, and so is a guide with
 snippets and no command, so none goes unchecked.
 
+An example's README, examples/<name>/README.md, runs in a copy of its directory at
+that same place in a copy of this repository, so its `../..` works as it reads and
+its generated files go nowhere.
+
 Usage: scripts/check_docs.py [file.md...]   (default GUIDES below)
 """
 import os
 import re
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -23,6 +28,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 FENCE = re.compile(r"^```(.*)$")
 GUIDES = ["README.md", "docs/quickstart.md", "docs/install.md", "docs/usage.md"]
+EXAMPLES = "examples/*/README.md"
 
 
 def blocks(text):
@@ -44,6 +50,16 @@ def blocks(text):
         yield start, m.group(1).strip(), "\n".join(body) + "\n"
 
 
+def example_dir(tmp, path):
+    """A copy of the directory of the example at path, in a copy of this repository."""
+    repo = Path(tmp) / "repo"
+    (repo / "examples").mkdir(parents=True)
+    for entry in ROOT.iterdir():
+        if entry.name != "examples":
+            (repo / entry.name).symlink_to(entry)
+    return shutil.copytree(path.parent, repo / "examples" / path.parent.name)
+
+
 def check(path):
     """Returns a list of problems."""
     env = dict(os.environ)
@@ -57,8 +73,11 @@ def check(path):
         env.pop("GOOSE_HOME", None)
         env["PATH"] = f"{home}/.local/bin{os.pathsep}{env['PATH']}"
         (Path(tmp) / "goose-protobuf").symlink_to(ROOT)
-        app = Path(tmp) / "app"
-        app.mkdir()
+        if path.parent.parent.name == "examples":
+            app = example_dir(tmp, path)
+        else:
+            app = Path(tmp) / "app"
+            app.mkdir()
         written = {}
         last = None
         for line, info, body in blocks(path.read_text()):
@@ -85,7 +104,7 @@ def check(path):
 
 
 def main():
-    files = [Path(a) for a in sys.argv[1:]] or [ROOT / g for g in GUIDES]
+    files = [Path(a).resolve() for a in sys.argv[1:]] or [ROOT / g for g in GUIDES] + sorted(ROOT.glob(EXAMPLES))
     bad = 0
     for path in files:
         problems = check(path)
