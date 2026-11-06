@@ -52,7 +52,7 @@ text goes. A document marked *planned* does not exist yet.
 | Each limitation, its cost and workaround | `docs/limitations.md` |
 | Error messages and their fixes, including `=` against `.=` | `docs/troubleshooting.md` |
 | Generator and runtime versions of each release | `CHANGELOG.md` |
-| What is public, and the version rules | Decision 0012 |
+| What is public, and the version rules | [Decision 0012](decisions/0012-public-api.md) |
 | Reporting a vulnerability; depth and memory limits | `SECURITY.md` |
 | Measured performance | `docs/benchmarks.md` |
 | Build, test, golden, round-trip, interop, conformance and fuzz commands | `CONTRIBUTING.md` |

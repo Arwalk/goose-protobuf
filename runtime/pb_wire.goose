@@ -11,6 +11,10 @@
 //   - the pb_bytes pool and pb_Span runs (decision 0001), which hold
 //     unknown fields (gpb-41j.6), strings and bytes
 //
+// Public: only the error codes and PB_MAX_DEPTH, in the section below. Everything
+// after them is internal, for generated code, and may change in any release
+// (docs/decisions/0012-public-api.md).
+//
 // Goose `varint` is NOT the protobuf varint; do not use it here.
 // Every message's encode/decode/size_of is generated per message; nothing
 // message-specific belongs in this file.
@@ -22,7 +26,7 @@
 
 import std;
 
-// ------------------------------------------------------------------ errors
+// ----------------------------------------------------------- public: errors
 
 let PB_OK = 0;
 let PB_ERR_TRUNCATED = 1;   // input ends inside a value, or a length overruns its window
@@ -31,6 +35,8 @@ let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
 let PB_ERR_UTF8 = 4;        // a proto3 string field that is not valid UTF-8
 let PB_ERR_REQUIRED = 5;    // decoded whole, but a required proto2 field is unset
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
+
+// ======================================================== internal from here
 
 // A decode window: buf[pos..end] is still to be read.
 struct pb_Reader { buf: const u8[:], pos: i64, end: i64, err: i32, depth: i32 }
