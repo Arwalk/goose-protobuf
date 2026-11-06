@@ -2,10 +2,11 @@
 
 ## Reporting a problem
 
-Please report a vulnerability privately, through
-[a security advisory](https://github.com/Arwalk/goose-protobuf/security/advisories/new),
-and not in a public issue. Say which version you use and give an input that shows the
-problem, if you have one.
+Please report a vulnerability in
+[a GitHub issue](https://github.com/Arwalk/goose-protobuf/issues). The project has no
+private channel, so everyone can read your report before a fix exists. Say which version
+you use and give an input that shows the problem, if you have one and are willing to
+publish it.
 
 This project is before version 1.0, so only the latest version is fixed.
 
