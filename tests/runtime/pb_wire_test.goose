@@ -228,7 +228,28 @@ fn test_bool() {
     if pb_bool_to_u64(true) != 1 || pb_bool_to_u64(false) != 0 { fail_at("bool", "pb_bool_to_u64"); }
 }
 
+// Every length around the eight bytes pb_copy_bytes moves at a time, at an offset into
+// the run, and nothing past what it copies changes.
+fn test_bytes_append_lengths() {
+    var src: u8[>..] = [];
+    for i in 40 { src.push((i + 1) as! u8); }
+    for n in 41 {
+        var s = pb_bytes_append(pb_Span { at: 0, len: 0 }, "ab");
+        s = pb_bytes_append(s, src[..n]);
+        if s.len != n + 2 { fail_at("bytes_append", str("length after ", n)); }
+        let got = pb_run(pb_bytes, s);
+        if !bytes_eq(got[..2], "ab") { fail_at("bytes_append", str("start overwritten by ", n)); }
+        if !bytes_eq(got[2..], src[..n]) { fail_at("bytes_append", str("contents of ", n)); }
+        pb_bytes_free(s);
+    }
+    var dst: u8[12] = [9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9];
+    pb_copy_bytes(dst[1..], src[..9]);
+    if dst[0] != 9 || dst[10] != 9 || dst[11] != 9 { fail_at("copy_bytes", "wrote outside"); }
+    if !bytes_eq(dst[1..10], src[..9]) { fail_at("copy_bytes", "contents"); }
+}
+
 fn main() {
+    test_bytes_append_lengths();
     test_varint();
     test_zigzag();
     test_fixed();

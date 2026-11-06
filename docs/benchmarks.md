@@ -4,18 +4,17 @@ How fast generated code decodes and encodes, next to protobuf C++ on the same by
 
 | Message | Bytes | Decode: Goose | C++ | Encode: Goose | C++ |
 |---|---:|---:|---:|---:|---:|
-| Small | 36 | 0.12 µs (300 MB/s) | 0.07 µs (480 MB/s) | 0.03 µs (1,200 MB/s) | 0.05 µs (750 MB/s) |
-| Record | 186 | 0.56 µs (330 MB/s) | 0.22 µs (849 MB/s) | 0.10 µs (1,938 MB/s) | 0.13 µs (1,442 MB/s) |
-| Batch | 187,837 | 550.37 µs (341 MB/s) | 235.99 µs (796 MB/s) | 115.51 µs (1,626 MB/s) | 153.29 µs (1,225 MB/s) |
-| Ints | 31,806 | 91.53 µs (347 MB/s) | 69.93 µs (455 MB/s) | 109.56 µs (290 MB/s) | 69.00 µs (461 MB/s) |
-| Strings | 19,510 | 59.30 µs (329 MB/s) | 26.54 µs (735 MB/s) | 3.90 µs (5,004 MB/s) | 17.80 µs (1,096 MB/s) |
-| Blob | 1,048,580 | 400.47 µs (2,618 MB/s) | 47.69 µs (21,989 MB/s) | 30.24 µs (34,674 MB/s) | 48.32 µs (21,701 MB/s) |
-| Table | 18,233 | 78.40 µs (233 MB/s) | 73.81 µs (247 MB/s) | 10.88 µs (1,675 MB/s) | 26.88 µs (678 MB/s) |
+| Small | 36 | 0.12 µs (288 MB/s) | 0.07 µs (493 MB/s) | 0.03 µs (1,200 MB/s) | 0.05 µs (766 MB/s) |
+| Record | 186 | 0.55 µs (341 MB/s) | 0.22 µs (845 MB/s) | 0.09 µs (2,044 MB/s) | 0.13 µs (1,420 MB/s) |
+| Batch | 187,837 | 534.82 µs (351 MB/s) | 233.39 µs (805 MB/s) | 114.36 µs (1,642 MB/s) | 152.22 µs (1,234 MB/s) |
+| Ints | 31,806 | 90.73 µs (351 MB/s) | 69.36 µs (459 MB/s) | 108.78 µs (292 MB/s) | 68.73 µs (463 MB/s) |
+| Strings | 19,510 | 57.27 µs (341 MB/s) | 26.74 µs (730 MB/s) | 3.91 µs (4,992 MB/s) | 17.61 µs (1,108 MB/s) |
+| Blob | 1,048,580 | 64.59 µs (16,235 MB/s) | 47.47 µs (22,090 MB/s) | 29.93 µs (35,036 MB/s) | 47.59 µs (22,036 MB/s) |
+| Table | 18,233 | 77.54 µs (235 MB/s) | 72.98 µs (250 MB/s) | 10.79 µs (1,689 MB/s) | 26.73 µs (682 MB/s) |
 
 In short, on these messages:
 
-- **Decoding** takes 1.1 to 2.5 times as long as C++, and 8 times as long for a large
-  `bytes` value, which is copied a byte at a time.
+- **Decoding** takes 1.1 to 2.5 times as long as C++.
 - **Encoding** is faster than C++, except for packed integers, which take 1.6 times as long.
 
 Use these as a rough guide. Your messages, compiler and machine will differ.
