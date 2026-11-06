@@ -2906,8 +2906,9 @@ const api_comment = """
     //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
     //   M_has_f(m), M_clear_f(m)     default if another member is set;
     //   M_mutable_f(m) -> S&         messages have mutable_, not set_.
-    //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
-    //                                or a variant f { v } per member
+    //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none =>,
+    //                                and f => or f x => (its value is x.v)
+    //                                per member
     //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
     //   M_f_remove(m, k),            whether it was found (a message value:
     //   M_clear_f(m)                 S&?), put of a message returns it

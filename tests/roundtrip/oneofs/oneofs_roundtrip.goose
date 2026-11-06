@@ -115,6 +115,12 @@ fn check_accessors() {
     if oneofs::Choice_p_string(m).len != 0 { fail_at("accessors", "default string"); }
     if oneofs::Choice_p_sub(m) != null { fail_at("accessors", "default message"); }
 
+    // What a generated file's header says to match with.
+    oneofs::Choice_set_p_int32(m, 7);
+    let as_header_says = match m.pick { pb_none => -1, p_float => -2, p_int32 x => x.v, _ => -3 };
+    if as_header_says != 7 { fail_at("accessors", "match as the header says"); }
+    oneofs::Choice_clear_p_int32(m);
+
     // Setting a member replaces the other, and match sees it.
     oneofs::Choice_set_p_int32(m, 5);
     if !oneofs::Choice_has_p_int32(m) || oneofs::Choice_p_int32(m) != 5 { fail_at("accessors", "int32"); }
