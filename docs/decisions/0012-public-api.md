@@ -1,6 +1,8 @@
 # 0012: what is public, and how versions move
 
-- Status: accepted, from the bead's criteria; awaiting the project owner's review
+- Status: accepted by the project owner, who made a raised tool pin a major after
+  1.0. The accessors of repeated string, bytes and message fields and of maps are
+  changing as this record's public table says, in gpb-ky7.15.
 - Date: 2026-11-06
 - Bead: gpb-ky7.1
 - Builds on: [0005](0005-runtime-distribution.md) (one tag for everything),
@@ -21,7 +23,7 @@ else is internal, and may change in any release.**
 
 | Surface | What |
 |---|---|
-| Generated names | The rules of decision 0006, and for each message: `_decode`, `_encode`, `_size_of`, `_clear`, `_copy`, `_is_initialized`, `_fold_maps` where a map exists, and the field accessors (`_set_`, `_has_`, `_clear_`, `_mutable_`, `_add_`, `_at`, `_get`, `_put`, `_remove`, `_append` and the plain getter) |
+| Generated names | The rules of decision 0006, and for each message: `_decode`, `_encode`, `_size_of`, `_clear`, `_copy`, `_is_initialized`, `_fold_maps` where a map exists, and the field accessors (`_set_`, `_has_`, `_clear_`, `_mutable_`, `_add_`, `_at`, `_len`, `_key_at`, `_value_at`, `_get`, `_put`, `_remove`, `_append` and the plain getter, which repeated string, bytes and message fields and maps do not have) |
 | Record fields | Those of scalar and enum fields, and a oneof's field with its member names, including `pb_none` |
 | Runtime | `PB_OK`, the `PB_ERR_*` codes with their values, and `PB_MAX_DEPTH` |
 | Packages | The package name `pb_wire`, and the paths `pb_wire.wkt.*` with the names in them |
@@ -57,8 +59,8 @@ generated files working with a new runtime.
 
 | Bump | When |
 |---|---|
-| Major | A public name goes or changes meaning, or a supported input stops being accepted |
-| Minor | A public name or a capability is added, or a tool pin is raised |
+| Major | A public name goes or changes meaning, a supported input stops being accepted, or a tool pin is raised |
+| Minor | A public name or a capability is added |
 | Patch | Fixes and internal changes only |
 
 - **Before 1.0**, a breaking change bumps the minor (`0.Y.0`) and anything else bumps
@@ -71,7 +73,8 @@ generated files working with a new runtime.
   in its suffix, or clash with your own global name if your proto has no package.
   This cannot be excluded without freezing the generator, and is rare, so such an
   addition is a minor, and the changelog names the suffix. Use a package.
-- **A raised pin is a minor.** Each release is tested with the versions in
+- **A raised pin is a major**, and so a minor before 1.0, as it can force users to
+  upgrade their toolchain. Each release is tested with the versions in
   `TOOLCHAIN.md`, and others are not promised to work.
 
 ## Enforced by

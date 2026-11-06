@@ -74,8 +74,8 @@ Ada, 36, ada@example.org
 | Presence | `optional` and `required`, and defaults for unset fields |
 | Well-known types | `Any`, `Duration`, `Empty`, `FieldMask`, `Struct`, `Timestamp` and the wrappers, ready to import |
 | Unknown fields | Kept when decoding, and written back when encoding |
-| Extensions | Kept as unknown fields, with no accessors |
-| Not covered | JSON and text formats, reflection, services and RPC |
+| Extensions | Kept as unknown fields, with no accessors, and none are planned for now |
+| Not planned for now | JSON and text formats, reflection, services and RPC |
 
 Messages live in global pools, so they are single-threaded. The
 [limitations](docs/usage.md#limitations) list the rest, with their workarounds.
