@@ -7,7 +7,8 @@ remote and makes the releases, when the project is ready (gpb-dx9.1).
 - Bead: gpb-wof.5
 - Toolchain: Goose v2026.3 (`goose runtime 4d3da949e563`), linux-x64
 - Evidence: `tests/spikes/distribution/check.sh`, which builds a consumer for
-  each case below with local git repositories and its own `GOOSE_HOME`.
+  each case below with local git repositories and its own `GOOSE_HOME`. CI now
+  checks the cases that matter to users with `scripts/consumer_test.sh`.
 
 ## Question
 
@@ -80,8 +81,8 @@ For the project owner, once there is a remote, for version `X.Y.Z`:
 
 1. On `main`, with every gate green (the commands in AGENTS.md).
 2. `git tag -a vX.Y.Z -m "vX.Y.Z"`, then push the tag.
-3. Run `tests/spikes/distribution/check.sh`, and build a consumer against the
-   pushed tag in a clean `GOOSE_HOME`.
+3. Run `scripts/consumer_test.sh`, and build a consumer against the pushed tag
+   in a clean `GOOSE_HOME`.
 4. Users write `import pb_wire from "owner/repo@vX.Y.Z";` and build the plugin
    from the same tag.
 

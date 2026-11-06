@@ -71,6 +71,7 @@ scripts/interop.sh [names]                      # the same cases through Goose, 
 scripts/regen_bindings.sh [--update]            # the plugin writes its own bindings unchanged
 scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
+scripts/consumer_test.sh                        # consume this repo from outside: vendored, path, git
 scripts/check_docs.py                           # run the guides in docs/: snippets, commands and output
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
@@ -95,6 +96,7 @@ scripts/test_roundtrip.sh
 scripts/test_interop.sh
 scripts/test_fuzz.sh
 scripts/test_check_docs.sh
+scripts/test_consumer_test.sh
 scripts/test_check_generated.sh
 scripts/test_install_plugin.sh
 scripts/test_selfhost_tests.sh
