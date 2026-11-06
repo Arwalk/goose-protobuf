@@ -164,26 +164,35 @@ fn Overrides_decode_from(r: pb_Reader&, m: Overrides&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.inherited, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.inherited, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.inherited, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 16 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.packed_f, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 18 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.packed_f, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.packed_f, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -358,13 +367,17 @@ fn Overrides_Nested_decode_from(r: pb_Reader&, m: Overrides_Nested&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.inherited, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.inherited, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.inherited, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 18 {
@@ -524,18 +537,23 @@ fn All_decode_from(r: pb_Reader&, m: All&) {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 24 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.expanded, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.expanded, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.expanded, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 34 {
             m.unchecked = pb_read_bytes(r, m.unchecked);
         } else if tag == 43 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -550,6 +568,7 @@ fn All_decode_from(r: pb_Reader&, m: All&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else if tag == 50 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -568,6 +587,7 @@ fn All_decode_from(r: pb_Reader&, m: All&) {
             m.explicit_f = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000002;
         } else if tag == 66 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -579,13 +599,17 @@ fn All_decode_from(r: pb_Reader&, m: All&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 72 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.packed_f, pb_len9, pb_had9, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 74 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.packed_f, pb_len9, pb_had9, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.packed_f, pb_len9, pb_had9, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 82 {
@@ -976,6 +1000,7 @@ fn All_SubsEntry_decode_from(r: pb_Reader&, m: All_SubsEntry&) {
         if tag == 8 {
             m.key = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 18 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

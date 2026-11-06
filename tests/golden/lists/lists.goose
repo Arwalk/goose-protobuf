@@ -96,10 +96,13 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.names, pb_len1, pb_had1, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 18 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.blobs, pb_len2, pb_had2, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 26 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -115,6 +118,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 34 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -132,6 +136,7 @@ fn Lists_decode_from(r: pb_Reader&, m: Lists&) {
         } else if tag == 40 {
             m.after = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 50 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -603,6 +608,7 @@ fn Item_decode_from(r: pb_Reader&, m: Item&) {
         } else if tag == 18 {
             m.label = pb_read_string(r, m.label);
         } else if tag == 26 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.tags, pb_len3, pb_had3, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
@@ -717,6 +723,7 @@ recursive fn Tree_decode_from(r: pb_Reader&, m: Tree&) {
         if tag == 10 {
             m.name = pb_read_string(r, m.name);
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -863,6 +870,7 @@ recursive fn Forest_decode_from(r: pb_Reader&, m: Forest&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -991,6 +999,7 @@ recursive fn Grove_decode_from(r: pb_Reader&, m: Grove&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

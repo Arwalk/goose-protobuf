@@ -85,6 +85,7 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 64);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -96,6 +97,7 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -107,6 +109,7 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -120,6 +123,7 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
         } else if tag == 32 {
             m.after = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 16002 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -131,6 +135,7 @@ fn Outer_decode_from(r: pb_Reader&, m: Outer&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -485,6 +490,7 @@ fn Inner_decode_from(r: pb_Reader&, m: Inner&) {
             m.o = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else if tag == 34 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

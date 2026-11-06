@@ -15,6 +15,9 @@ fn main() {
     expect("PB_ERR_DEPTH", PB_ERR_DEPTH, 3);
     expect("PB_ERR_UTF8", PB_ERR_UTF8, 4);
     expect("PB_ERR_REQUIRED", PB_ERR_REQUIRED, 5);
+    expect("PB_ERR_TOO_LARGE", PB_ERR_TOO_LARGE, 6);
     expect("PB_MAX_DEPTH", PB_MAX_DEPTH, 100);
+    expect("PB_DEFAULT_DECODE_LIMIT", PB_DEFAULT_DECODE_LIMIT, 512 << 20);
+    pb_set_decode_limit(PB_DEFAULT_DECODE_LIMIT);
     if pb_error_text(PB_OK).len == 0 { abort("pb_error_text"); }
 }

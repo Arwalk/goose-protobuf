@@ -10,9 +10,8 @@ language.
   official conformance suite, and is checked against `protoc` and Python protobuf.
 - **Plain Goose.** You get records and functions you can read, with one small runtime
   package underneath, and no reflection or descriptors at run time.
-- **Safe on bad input.** Malformed input gives an error code, and the decoders are
-  fuzzed. Large input can use up memory, so
-  [check its size first](SECURITY.md#decoding-untrusted-bytes).
+- **Safe on bad input.** Malformed input, or input that asks for too much memory, gives
+  an error code. The decoders are fuzzed, and [SECURITY.md](SECURITY.md) has the limits.
 - **Goose all the way.** The plugin is itself written in Goose, so building it takes
   nothing beyond what your Goose programs already need.
 

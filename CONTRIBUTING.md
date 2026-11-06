@@ -52,6 +52,8 @@ docs/decisions/ spike conclusions and design decisions
   The only shared code is `runtime/pb_wire.goose`, which holds the wire primitives.
 - Goose has no heap, so message storage uses pools and handles
   ([decision 0001](docs/decisions/0001-message-layout.md)).
+- Anything a decode allocates because the input asks for it first calls `pb_charge`, or
+  input can end the program ([decision 0018](docs/decisions/0018-decode-limit.md)).
 
 [docs/decisions/](docs/decisions/) records why, and
 [docs/README.md](docs/README.md) says where each fact in the docs belongs.

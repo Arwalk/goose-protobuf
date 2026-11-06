@@ -177,6 +177,7 @@ clear it.
 | `PB_ERR_DEPTH` | messages nested deeper than `PB_MAX_DEPTH` (100) |
 | `PB_ERR_UTF8` | a string field that must be UTF-8 and is not |
 | `PB_ERR_REQUIRED` | a proto2 required field is unset |
+| `PB_ERR_TOO_LARGE` | the message needs more memory than the [decode limit](../SECURITY.md#the-decode-limit) |
 
 `pb_error_text(err)` gives the meaning of a code as text, for a message to a person.
 

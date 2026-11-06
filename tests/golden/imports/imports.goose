@@ -92,6 +92,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -103,6 +104,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -114,6 +116,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -125,6 +128,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 34 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -136,6 +140,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -147,6 +152,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 50 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -158,6 +164,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 58 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -475,6 +482,7 @@ fn Holder_Nested_decode_from(r: pb_Reader&, m: Holder_Nested&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

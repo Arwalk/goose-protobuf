@@ -1702,6 +1702,7 @@ fn emit_decode_repeated(f: Field&) {
     if f.sub != null {
         let sub .= field_sub(f);
         let pool = sub_name(sub, "pool");
+        format(w, charge_message(sub));
         format(w, field_sub_open(f));
         format(w,
             "            pb_reserve(", run_pool(f), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ");\n",
@@ -1714,6 +1715,7 @@ fn emit_decode_repeated(f: Field&) {
         return;
     }
     if f.sc.size == SZ_BYTES {
+        format(w, "            pb_charge(r, 8);\n");
         format(w, "            pb_append(pb_spans, m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", subst(f.sc.read, empty_span), ");\n");
         return;
     }
@@ -1725,6 +1727,7 @@ fn emit_decode_repeated(f: Field&) {
             "            let pb_v = ", f.sc.read, ";\n",
             "            if r.err != PB_OK { break; }\n",
             "            if ", known, " {\n",
+            charge_scalar(f.sc, "                "),
             "                pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", pb_v);\n",
             "            } else {\n",
             "                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);\n",
@@ -1739,6 +1742,7 @@ fn emit_decode_repeated(f: Field&) {
             "                let pb_v = ", f.sc.read, ";\n",
             "                if r.err != PB_OK { break; }\n",
             "                if ", known, " {\n",
+            charge_scalar(f.sc, "                    "),
             "                    pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", pb_v);\n",
             "                } else {\n",
             "                    pb_unknown_element(r, ", field_tag(f), ", pb_at, m.pb_unknown, unknown_len, unknown_had);\n",
@@ -1749,13 +1753,17 @@ fn emit_decode_repeated(f: Field&) {
         return;
     }
     format(w,
+        charge_scalar(f.sc, "            "),
         "            pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", f.sc.read, ");\n",
         "        } else if tag == ", field_packed_tag(f), " {\n",
         "            let pb_n = pb_read_len(r);\n",
         "            if r.err != PB_OK { break; }\n",
         "            let pb_outer = r.end;\n",
         "            r.end = r.pos + pb_n;\n",
-        "            while r.pos < r.end { pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", f.sc.read, "); }\n",
+        "            while r.pos < r.end {\n",
+        charge_scalar(f.sc, "                "),
+        "                pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", f.sc.read, ");\n",
+        "            }\n",
         "            if r.err != PB_OK { break; }\n",
         "            r.end = pb_outer;\n");
 }
@@ -1766,6 +1774,7 @@ fn emit_decode_repeated(f: Field&) {
 // entry is freed: only whole ones are in the map.
 fn emit_decode_map_entry(f: Field&, entry: MessageInfo&) {
     let pool = run_pool(f);
+    format(w, charge_message(entry));
     format(w,
         "            let pb_n = pb_read_len(r);\n",
         "            if r.err != PB_OK { break; }\n",
@@ -1807,10 +1816,26 @@ fn emit_packed_size(f: Field&, indent: const u8[:]) {
     }
 }
 
+// The budget a decode spends on one element of a repeated scalar.
+fn charge_scalar(sc: Scalar&, indent: const u8[:]) -> u8[] {
+    var size: i64 = 8;
+    if sc.goose == "bool" { size = 1; }
+    if sc.goose == "i32" || sc.goose == "u32" || sc.goose == "f32" { size = 4; }
+    return str(indent, "pb_charge(r, ", size, ");\n");
+}
+
+// The budget a decode spends on one record of this message, of which each field
+// takes at most 8 bytes, and its links. This counts what the input can ask for: it
+// need not be exact, but it must not be far under.
+fn charge_message(sub: MessageInfo&) -> u8[] {
+    return str("            pb_charge(r, ", 32 + 8 * google_protobuf::DescriptorProto_field_len(sub.desc), ");\n");
+}
+
 // The branch of decode_from for a sub-message: an occurrence merges
 // into the message already there (decision 0004). After a failure
 // r.end is not restored: the caller stops on r.err too.
 fn emit_decode_sub_message(path: const u8[:], f: Field&, sub: MessageInfo&) {
+    format(w, charge_message(sub));
     format(w, field_sub_open(f));
     format(w,
         field_sub_window(f), "            ", sub_name(sub, "decode_from"), "(r, ", accessor_name(path, field_name(f.fd), mutable_acc), "(m));\n",

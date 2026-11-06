@@ -94,6 +94,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -105,6 +106,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -120,6 +122,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -135,6 +138,7 @@ fn Uses_decode_from(r: pb_Reader&, m: Uses&) {
             Uses_ByNameEntry_place(pb_e);
             pb_len3++;
         } else if tag == 34 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -510,6 +514,7 @@ fn Uses_ByNameEntry_decode_from(r: pb_Reader&, m: Uses_ByNameEntry&) {
         if tag == 10 {
             m.key = pb_read_string(r, m.key);
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -713,6 +718,7 @@ recursive fn Plain_decode_from(r: pb_Reader&, m: Plain&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -724,6 +730,7 @@ recursive fn Plain_decode_from(r: pb_Reader&, m: Plain&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

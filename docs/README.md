@@ -55,7 +55,7 @@ text goes. A document marked *planned* does not exist yet.
 | Error messages and their fixes, including `=` against `.=` | `docs/troubleshooting.md` |
 | Generator and runtime versions of each release | `CHANGELOG.md` |
 | What is public, and the version rules | `docs/versions.md` ([decision 0012](decisions/0012-public-api.md) records why) |
-| Reporting a vulnerability; depth and memory limits | `SECURITY.md` |
+| Reporting a vulnerability; depth and memory limits, including the decode limit | `SECURITY.md` |
 | Measured performance | `docs/benchmarks.md` |
 | Build, test, golden, round-trip, interop, conformance and fuzz commands | `CONTRIBUTING.md` |
 | Repository layout, the protobuf submodule | `CONTRIBUTING.md` |

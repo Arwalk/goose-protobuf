@@ -259,11 +259,13 @@ fn CodeGeneratorRequest_decode_from(r: pb_Reader&, m: CodeGeneratorRequest&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.file_to_generate, pb_len1, pb_had1, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 18 {
             m.parameter = pb_read_bytes(r, m.parameter);
             m.pb_has0 |= 0x00000001;
         } else if tag == 122 {
+            pb_charge(r, 144);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -279,6 +281,7 @@ fn CodeGeneratorRequest_decode_from(r: pb_Reader&, m: CodeGeneratorRequest&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 138 {
+            pb_charge(r, 144);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -294,6 +297,7 @@ fn CodeGeneratorRequest_decode_from(r: pb_Reader&, m: CodeGeneratorRequest&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 64);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -590,6 +594,7 @@ fn CodeGeneratorResponse_decode_from(r: pb_Reader&, m: CodeGeneratorResponse&) {
             m.maximum_edition = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000008;
         } else if tag == 122 {
+            pb_charge(r, 64);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -826,6 +831,7 @@ fn CodeGeneratorResponse_File_decode_from(r: pb_Reader&, m: CodeGeneratorRespons
             m.content = pb_read_bytes(r, m.content);
             m.pb_has0 |= 0x00000004;
         } else if tag == 130 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

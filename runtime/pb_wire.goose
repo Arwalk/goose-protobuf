@@ -34,7 +34,18 @@ let PB_ERR_MALFORMED = 2;   // varint over 10 bytes, bad wire type, field number
 let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
 let PB_ERR_UTF8 = 4;        // a proto3 string field that is not valid UTF-8
 let PB_ERR_REQUIRED = 5;    // decoded whole, but a required proto2 field is unset
+let PB_ERR_TOO_LARGE = 6;   // needs more memory than pb_set_decode_limit allows
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
+
+// What one decode may allocate, about, in bytes, unless pb_set_decode_limit says
+// otherwise. A run in a pool takes up to twice its size as it grows, and a data stack
+// holds 2 GB, so a decode within this limit cannot end the program on an empty pool.
+let PB_DEFAULT_DECODE_LIMIT: i64 = 512 << 20;
+
+var pb_decode_limit: i64 = PB_DEFAULT_DECODE_LIMIT;
+
+// Sets the limit for every decode from now on.
+fn pb_set_decode_limit(bytes: i64) { pb_decode_limit = bytes; }
 
 // What an error code means, for a message to a person.
 fn pb_error_text(err: i32) -> const u8[:] {
@@ -44,6 +55,7 @@ fn pb_error_text(err: i32) -> const u8[:] {
     if err == PB_ERR_DEPTH { return "messages nested too deeply"; }
     if err == PB_ERR_UTF8 { return "a string that is not valid UTF-8"; }
     if err == PB_ERR_REQUIRED { return "a required field is not set"; }
+    if err == PB_ERR_TOO_LARGE { return "a message needing more memory than the decode limit"; }
     return "unknown error";
 }
 
@@ -55,16 +67,23 @@ fn pb_error_text(err: i32) -> const u8[:] {
 let pb_plugin_and_runtime_versions_differ_abi_1 = true;
 
 // A decode window: buf[pos..end] is still to be read.
-struct pb_Reader { buf: const u8[:], pos: i64, end: i64, err: i32, depth: i32 }
+struct pb_Reader { buf: const u8[:], pos: i64, end: i64, err: i32, depth: i32, budget: i64 }
 
 fn pb_reader(buf: const u8[:]) -> pb_Reader {
-    return pb_Reader { buf: buf, pos: 0, end: buf.len, err: PB_OK, depth: 0 };
+    return pb_Reader { buf: buf, pos: 0, end: buf.len, err: PB_OK, depth: 0, budget: pb_decode_limit };
 }
 
 // Records code unless an error is already recorded, and ends the window.
 fn pb_fail(r: pb_Reader&, code: i32) {
     if r.err == PB_OK { r.err = code; }
     r.pos = r.end;
+}
+
+// Takes n bytes from what this decode may still allocate. Past that it fails, which
+// ends the window, so that the read which follows fails too and every loop stops.
+fn pb_charge(r: pb_Reader&, n: i64) {
+    r.budget -= n;
+    if r.budget < 0 { pb_fail(r, PB_ERR_TOO_LARGE); }
 }
 
 // --------------------------------------------------------------- wire types
@@ -419,6 +438,7 @@ fn pb_write_bytes(out: u8[>..]&, s: pb_Span) {
 // last value wins). After a failure old is kept.
 fn pb_read_bytes(r: pb_Reader&, old: pb_Span) -> pb_Span {
     let n = pb_read_len(r);
+    pb_charge(r, n);
     if r.err != PB_OK { return old; }
     let s = pb_bytes_append(pb_bytes_free(old), r.buf[r.pos..r.pos + n]);
     r.pos += n;
@@ -428,6 +448,7 @@ fn pb_read_bytes(r: pb_Reader&, old: pb_Span) -> pb_Span {
 // pb_read_bytes for a proto3 string: invalid UTF-8 fails with PB_ERR_UTF8.
 fn pb_read_string(r: pb_Reader&, old: pb_Span) -> pb_Span {
     let n = pb_read_len(r);
+    pb_charge(r, n);
     if r.err != PB_OK { return old; }
     let v = r.buf[r.pos..r.pos + n];
     if !pb_utf8_valid(v) { pb_fail(r, PB_ERR_UTF8); return old; }
@@ -576,6 +597,8 @@ fn pb_unknown_append(r: pb_Reader&, start: i64, tag: u32, s: pb_Span&, used: i64
 // pb_unknown_append does.
 fn pb_unknown_keep(r: pb_Reader&, start: i64, s: pb_Span&, used: i64&, had: i64) {
     let n = r.pos - start;
+    pb_charge(r, n);
+    if r.err != PB_OK { return; }
     pb_unknown_grow(s, used, had, n);
     let dst = pb_run(pb_bytes, s);
     for i in n { dst[used + i] = r.buf[start + i]; }
@@ -587,6 +610,8 @@ fn pb_unknown_keep(r: pb_Reader&, start: i64, s: pb_Span&, used: i64&, had: i64)
 fn pb_unknown_element(r: pb_Reader&, tag: u64, at: i64, s: pb_Span&, used: i64&, had: i64) {
     let t = pb_varint_size(tag);
     let n = r.pos - at;
+    pb_charge(r, t + n);
+    if r.err != PB_OK { return; }
     pb_unknown_grow(s, used, had, t + n);
     let dst = pb_run(pb_bytes, s);
     var v = tag;

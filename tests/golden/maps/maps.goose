@@ -94,13 +94,17 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
         } else if tag == 18 {
             m.s = pb_read_string(r, m.s);
         } else if tag == 24 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
@@ -280,6 +284,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -295,6 +300,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SsEntry_place(pb_e);
             pb_len1++;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -310,6 +316,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SbEntry_place(pb_e);
             pb_len2++;
         } else if tag == 26 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -325,6 +332,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SiEntry_place(pb_e);
             pb_len3++;
         } else if tag == 34 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -340,6 +348,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_IsEntry_place(pb_e);
             pb_len4++;
         } else if tag == 42 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -355,6 +364,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_LlEntry_place(pb_e);
             pb_len5++;
         } else if tag == 50 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -370,6 +380,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_UuEntry_place(pb_e);
             pb_len6++;
         } else if tag == 58 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -385,6 +396,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_VvEntry_place(pb_e);
             pb_len7++;
         } else if tag == 66 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -400,6 +412,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_ZzEntry_place(pb_e);
             pb_len8++;
         } else if tag == 74 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -415,6 +428,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_YyEntry_place(pb_e);
             pb_len9++;
         } else if tag == 82 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -430,6 +444,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_FfEntry_place(pb_e);
             pb_len10++;
         } else if tag == 90 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -445,6 +460,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_GgEntry_place(pb_e);
             pb_len11++;
         } else if tag == 98 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -460,6 +476,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_HhEntry_place(pb_e);
             pb_len12++;
         } else if tag == 106 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -475,6 +492,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_JjEntry_place(pb_e);
             pb_len13++;
         } else if tag == 114 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -490,6 +508,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_BbEntry_place(pb_e);
             pb_len14++;
         } else if tag == 122 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -505,6 +524,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SfEntry_place(pb_e);
             pb_len15++;
         } else if tag == 130 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -520,6 +540,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SdEntry_place(pb_e);
             pb_len16++;
         } else if tag == 138 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -535,6 +556,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SeEntry_place(pb_e);
             pb_len17++;
         } else if tag == 146 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -550,6 +572,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_SmEntry_place(pb_e);
             pb_len18++;
         } else if tag == 154 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -565,6 +588,7 @@ recursive fn Maps_decode_from(r: pb_Reader&, m: Maps&) {
             Maps_DurEntry_place(pb_e);
             pb_len19++;
         } else if tag == 162 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4599,6 +4623,7 @@ fn Maps_SmEntry_decode_from(r: pb_Reader&, m: Maps_SmEntry&) {
         if tag == 10 {
             m.key = pb_read_string(r, m.key);
         } else if tag == 18 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4794,6 +4819,7 @@ fn Maps_DurEntry_decode_from(r: pb_Reader&, m: Maps_DurEntry&) {
         if tag == 8 {
             m.key = pb_u64_to_int32(pb_read_varint(r));
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4980,6 +5006,7 @@ recursive fn Maps_SelfEntry_decode_from(r: pb_Reader&, m: Maps_SelfEntry&) {
         if tag == 10 {
             m.key = pb_read_string(r, m.key);
         } else if tag == 18 {
+            pb_charge(r, 200);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5191,6 +5218,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 200);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5202,6 +5230,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 200);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5217,6 +5246,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 200);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5228,6 +5258,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 34 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5519,6 +5550,7 @@ recursive fn NoMaps_decode_from(r: pb_Reader&, m: NoMaps&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5530,6 +5562,7 @@ recursive fn NoMaps_decode_from(r: pb_Reader&, m: NoMaps&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

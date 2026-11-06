@@ -85,6 +85,7 @@ recursive fn Struct_decode_from(r: pb_Reader&, m: Struct&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -247,6 +248,7 @@ recursive fn Struct_FieldsEntry_decode_from(r: pb_Reader&, m: Struct_FieldsEntry
         if tag == 10 {
             m.key = pb_read_string(r, m.key);
         } else if tag == 18 {
+            pb_charge(r, 80);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -478,6 +480,7 @@ recursive fn Value_decode_from(r: pb_Reader&, m: Value&) {
             Value_clear_kind(m);
             m.kind = Value_kind.bool_value { v: pb_v };
         } else if tag == 42 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -489,6 +492,7 @@ recursive fn Value_decode_from(r: pb_Reader&, m: Value&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 50 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -845,6 +849,7 @@ recursive fn ListValue_decode_from(r: pb_Reader&, m: ListValue&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 80);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

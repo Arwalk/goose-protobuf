@@ -268,6 +268,7 @@ recursive fn Node_decode_from(r: pb_Reader&, m: Node&) {
         if tag == 10 {
             m.name = pb_read_string(r, m.name);
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

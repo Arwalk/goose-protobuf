@@ -85,6 +85,7 @@ recursive fn Inner_decode_from(r: pb_Reader&, m: Inner&) {
             m.x = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -234,6 +235,7 @@ fn Req_decode_from(r: pb_Reader&, m: Req&) {
             m.s = pb_read_bytes(r, m.s);
             m.pb_has0 |= 0x00000002;
         } else if tag == 26 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -423,6 +425,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -543,6 +546,7 @@ recursive fn Free_decode_from(r: pb_Reader&, m: Free&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

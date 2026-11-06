@@ -483,6 +483,7 @@ fn ReqSub_decode_from(r: pb_Reader&, m: ReqSub&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -635,6 +636,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
             if r.err != PB_OK { break; }
             if pb_v == 1 || pb_v == 5 {
+                pb_charge(r, 4);
                 pb_append(pb_i32s, m.closed_packed, pb_len3, pb_had3, pb_v);
             } else {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
@@ -649,6 +651,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
                 let pb_v = pb_u64_to_int32(pb_read_varint(r));
                 if r.err != PB_OK { break; }
                 if pb_v == 1 || pb_v == 5 {
+                    pb_charge(r, 4);
                     pb_append(pb_i32s, m.closed_packed, pb_len3, pb_had3, pb_v);
                 } else {
                     pb_unknown_element(r, 24, pb_at, m.pb_unknown, unknown_len, unknown_had);
@@ -660,6 +663,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
             if r.err != PB_OK { break; }
             if pb_v == 1 || pb_v == 5 {
+                pb_charge(r, 4);
                 pb_append(pb_i32s, m.closed_expanded, pb_len4, pb_had4, pb_v);
             } else {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
@@ -674,6 +678,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
                 let pb_v = pb_u64_to_int32(pb_read_varint(r));
                 if r.err != PB_OK { break; }
                 if pb_v == 1 || pb_v == 5 {
+                    pb_charge(r, 4);
                     pb_append(pb_i32s, m.closed_expanded, pb_len4, pb_had4, pb_v);
                 } else {
                     pb_unknown_element(r, 32, pb_at, m.pb_unknown, unknown_len, unknown_had);
@@ -682,6 +687,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -703,6 +709,7 @@ fn Enums_decode_from(r: pb_Reader&, m: Enums&) {
             Enums_ClosedMapEntry_place(pb_e);
             pb_len5++;
         } else if tag == 50 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1414,23 +1421,31 @@ fn Repeats_decode_from(r: pb_Reader&, m: Repeats&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.packed_f, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.packed_f, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.packed_f, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 16 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.expanded, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 18 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.expanded, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.expanded, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
@@ -1585,10 +1600,13 @@ fn Utf8_decode_from(r: pb_Reader&, m: Utf8&) {
             m.unchecked = pb_read_bytes(r, m.unchecked);
             m.pb_has0 |= 0x00000002;
         } else if tag == 26 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.list_verified, pb_len3, pb_had3, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 34 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.list_unchecked, pb_len4, pb_had4, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 42 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1604,6 +1622,7 @@ fn Utf8_decode_from(r: pb_Reader&, m: Utf8&) {
             Utf8_MapVerifiedEntry_place(pb_e);
             pb_len5++;
         } else if tag == 50 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -2357,6 +2376,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -2368,6 +2388,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 19 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -2382,6 +2403,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else if tag == 27 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -2400,6 +2422,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else if tag == 35 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -2414,6 +2437,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else if tag == 42 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -2425,6 +2449,7 @@ fn Delimited_decode_from(r: pb_Reader&, m: Delimited&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 51 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -2797,6 +2822,7 @@ fn Imported_decode_from(r: pb_Reader&, m: Imported&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 120);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

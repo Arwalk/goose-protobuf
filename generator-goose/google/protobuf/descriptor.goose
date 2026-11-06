@@ -103,6 +103,7 @@ fn FileDescriptorSet_decode_from(r: pb_Reader&, m: FileDescriptorSet&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 144);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -278,30 +279,41 @@ fn FileDescriptorProto_decode_from(r: pb_Reader&, m: FileDescriptorProto&) {
             m.package = pb_read_bytes(r, m.package);
             m.pb_has0 |= 0x00000002;
         } else if tag == 26 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.dependency, pb_len3, pb_had3, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 80 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.public_dependency, pb_len10, pb_had10, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 82 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.public_dependency, pb_len10, pb_had10, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.public_dependency, pb_len10, pb_had10, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 88 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.weak_dependency, pb_len11, pb_had11, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 90 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.weak_dependency, pb_len11, pb_had11, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.weak_dependency, pb_len11, pb_had11, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 122 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.option_dependency, pb_len15, pb_had15, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 34 {
+            pb_charge(r, 120);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -317,6 +329,7 @@ fn FileDescriptorProto_decode_from(r: pb_Reader&, m: FileDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 80);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -332,6 +345,7 @@ fn FileDescriptorProto_decode_from(r: pb_Reader&, m: FileDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 50 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -347,6 +361,7 @@ fn FileDescriptorProto_decode_from(r: pb_Reader&, m: FileDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 58 {
+            pb_charge(r, 120);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -362,6 +377,7 @@ fn FileDescriptorProto_decode_from(r: pb_Reader&, m: FileDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 66 {
+            pb_charge(r, 200);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -373,6 +389,7 @@ fn FileDescriptorProto_decode_from(r: pb_Reader&, m: FileDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 74 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -999,6 +1016,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             m.name = pb_read_bytes(r, m.name);
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 120);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1014,6 +1032,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 50 {
+            pb_charge(r, 120);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1029,6 +1048,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 120);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1044,6 +1064,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 34 {
+            pb_charge(r, 80);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1059,6 +1080,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1074,6 +1096,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 66 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1089,6 +1112,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 58 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1100,6 +1124,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 74 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1115,6 +1140,7 @@ recursive fn DescriptorProto_decode_from(r: pb_Reader&, m: DescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 82 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.reserved_name, pb_len10, pb_had10, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 88 {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
@@ -1704,6 +1730,7 @@ fn DescriptorProto_ExtensionRange_decode_from(r: pb_Reader&, m: DescriptorProto_
             m.end = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000002;
         } else if tag == 26 {
+            pb_charge(r, 64);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1984,6 +2011,7 @@ fn ExtensionRangeOptions_decode_from(r: pb_Reader&, m: ExtensionRangeOptions&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1999,6 +2027,7 @@ fn ExtensionRangeOptions_decode_from(r: pb_Reader&, m: ExtensionRangeOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 18 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -2014,6 +2043,7 @@ fn ExtensionRangeOptions_decode_from(r: pb_Reader&, m: ExtensionRangeOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 402 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -2518,6 +2548,7 @@ fn FieldDescriptorProto_decode_from(r: pb_Reader&, m: FieldDescriptorProto&) {
             m.json_name = pb_read_bytes(r, m.json_name);
             m.pb_has0 |= 0x00000100;
         } else if tag == 66 {
+            pb_charge(r, 144);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -2898,6 +2929,7 @@ fn OneofDescriptorProto_decode_from(r: pb_Reader&, m: OneofDescriptorProto&) {
             m.name = pb_read_bytes(r, m.name);
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3055,6 +3087,7 @@ fn EnumDescriptorProto_decode_from(r: pb_Reader&, m: EnumDescriptorProto&) {
             m.name = pb_read_bytes(r, m.name);
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3070,6 +3103,7 @@ fn EnumDescriptorProto_decode_from(r: pb_Reader&, m: EnumDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3081,6 +3115,7 @@ fn EnumDescriptorProto_decode_from(r: pb_Reader&, m: EnumDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 34 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3096,6 +3131,7 @@ fn EnumDescriptorProto_decode_from(r: pb_Reader&, m: EnumDescriptorProto&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.reserved_name, pb_len5, pb_had5, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else if tag == 48 {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
@@ -3513,6 +3549,7 @@ fn EnumValueDescriptorProto_decode_from(r: pb_Reader&, m: EnumValueDescriptorPro
             m.number = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000002;
         } else if tag == 26 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3684,6 +3721,7 @@ fn ServiceDescriptorProto_decode_from(r: pb_Reader&, m: ServiceDescriptorProto&)
             m.name = pb_read_bytes(r, m.name);
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 80);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3699,6 +3737,7 @@ fn ServiceDescriptorProto_decode_from(r: pb_Reader&, m: ServiceDescriptorProto&)
             r.depth--;
             r.end = pb_outer;
         } else if tag == 26 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -3913,6 +3952,7 @@ fn MethodDescriptorProto_decode_from(r: pb_Reader&, m: MethodDescriptorProto&) {
             m.output_type = pb_read_bytes(r, m.output_type);
             m.pb_has0 |= 0x00000004;
         } else if tag == 34 {
+            pb_charge(r, 64);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4239,6 +4279,7 @@ fn FileOptions_decode_from(r: pb_Reader&, m: FileOptions&) {
             m.ruby_package = pb_read_bytes(r, m.ruby_package);
             m.pb_has0 |= 0x00040000;
         } else if tag == 402 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4250,6 +4291,7 @@ fn FileOptions_decode_from(r: pb_Reader&, m: FileOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4894,6 +4936,7 @@ fn MessageOptions_decode_from(r: pb_Reader&, m: MessageOptions&) {
             m.deprecated_legacy_json_field_conflicts = pb_read_varint(r) != 0;
             m.pb_has0 |= 0x00000010;
         } else if tag == 98 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -4905,6 +4948,7 @@ fn MessageOptions_decode_from(r: pb_Reader&, m: MessageOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5254,6 +5298,7 @@ fn FieldOptions_decode_from(r: pb_Reader&, m: FieldOptions&) {
             let pb_v = pb_u64_to_int32(pb_read_varint(r));
             if r.err != PB_OK { break; }
             if (pb_v >= 0 && pb_v <= 9) {
+                pb_charge(r, 4);
                 pb_append(pb_i32s, m.targets, pb_len19, pb_had19, pb_v);
             } else {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
@@ -5268,6 +5313,7 @@ fn FieldOptions_decode_from(r: pb_Reader&, m: FieldOptions&) {
                 let pb_v = pb_u64_to_int32(pb_read_varint(r));
                 if r.err != PB_OK { break; }
                 if (pb_v >= 0 && pb_v <= 9) {
+                    pb_charge(r, 4);
                     pb_append(pb_i32s, m.targets, pb_len19, pb_had19, pb_v);
                 } else {
                     pb_unknown_element(r, 152, pb_at, m.pb_unknown, unknown_len, unknown_had);
@@ -5276,6 +5322,7 @@ fn FieldOptions_decode_from(r: pb_Reader&, m: FieldOptions&) {
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 162 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5291,6 +5338,7 @@ fn FieldOptions_decode_from(r: pb_Reader&, m: FieldOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 170 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5302,6 +5350,7 @@ fn FieldOptions_decode_from(r: pb_Reader&, m: FieldOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 178 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -5313,6 +5362,7 @@ fn FieldOptions_decode_from(r: pb_Reader&, m: FieldOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6163,6 +6213,7 @@ fn OneofOptions_decode_from(r: pb_Reader&, m: OneofOptions&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6174,6 +6225,7 @@ fn OneofOptions_decode_from(r: pb_Reader&, m: OneofOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6364,6 +6416,7 @@ fn EnumOptions_decode_from(r: pb_Reader&, m: EnumOptions&) {
             m.deprecated_legacy_json_field_conflicts = pb_read_varint(r) != 0;
             m.pb_has0 |= 0x00000004;
         } else if tag == 58 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6375,6 +6428,7 @@ fn EnumOptions_decode_from(r: pb_Reader&, m: EnumOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6624,6 +6678,7 @@ fn EnumValueOptions_decode_from(r: pb_Reader&, m: EnumValueOptions&) {
             m.deprecated = pb_read_varint(r) != 0;
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6638,6 +6693,7 @@ fn EnumValueOptions_decode_from(r: pb_Reader&, m: EnumValueOptions&) {
             m.debug_redact = pb_read_varint(r) != 0;
             m.pb_has0 |= 0x00000002;
         } else if tag == 34 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6649,6 +6705,7 @@ fn EnumValueOptions_decode_from(r: pb_Reader&, m: EnumValueOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6907,6 +6964,7 @@ fn ServiceOptions_decode_from(r: pb_Reader&, m: ServiceOptions&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 274 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -6921,6 +6979,7 @@ fn ServiceOptions_decode_from(r: pb_Reader&, m: ServiceOptions&) {
             m.deprecated = pb_read_varint(r) != 0;
             m.pb_has0 |= 0x00000001;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -7136,6 +7195,7 @@ fn MethodOptions_decode_from(r: pb_Reader&, m: MethodOptions&) {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 282 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -7147,6 +7207,7 @@ fn MethodOptions_decode_from(r: pb_Reader&, m: MethodOptions&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 7994 {
+            pb_charge(r, 88);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -7379,6 +7440,7 @@ fn UninterpretedOption_decode_from(r: pb_Reader&, m: UninterpretedOption&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -8312,6 +8374,7 @@ fn FeatureSetDefaults_decode_from(r: pb_Reader&, m: FeatureSetDefaults&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -8514,6 +8577,7 @@ fn FeatureSetDefaults_FeatureSetEditionDefault_decode_from(r: pb_Reader&, m: Fea
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 34 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -8525,6 +8589,7 @@ fn FeatureSetDefaults_FeatureSetEditionDefault_decode_from(r: pb_Reader&, m: Fea
             r.depth--;
             r.end = pb_outer;
         } else if tag == 42 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -8692,6 +8757,7 @@ fn SourceCodeInfo_decode_from(r: pb_Reader&, m: SourceCodeInfo&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -8831,23 +8897,31 @@ fn SourceCodeInfo_Location_decode_from(r: pb_Reader&, m: SourceCodeInfo_Location
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.path, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.path, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.path, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 16 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.span, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 18 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.span, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.span, pb_len2, pb_had2, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 26 {
@@ -8857,6 +8931,7 @@ fn SourceCodeInfo_Location_decode_from(r: pb_Reader&, m: SourceCodeInfo_Location
             m.trailing_comments = pb_read_bytes(r, m.trailing_comments);
             m.pb_has0 |= 0x00000002;
         } else if tag == 50 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.leading_detached_comments, pb_len6, pb_had6, pb_read_bytes(r, pb_Span { at: 0, len: 0 }));
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
@@ -9061,6 +9136,7 @@ fn GeneratedCodeInfo_decode_from(r: pb_Reader&, m: GeneratedCodeInfo&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 72);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -9196,13 +9272,17 @@ fn GeneratedCodeInfo_Annotation_decode_from(r: pb_Reader&, m: GeneratedCodeInfo_
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 8 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.path, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 10 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.path, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.path, pb_len1, pb_had1, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 18 {

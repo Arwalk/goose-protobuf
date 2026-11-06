@@ -94,6 +94,7 @@ fn G_decode_from(r: pb_Reader&, m: G&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 11 {
+            pb_charge(r, 48);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -108,6 +109,7 @@ fn G_decode_from(r: pb_Reader&, m: G&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else if tag == 19 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -126,6 +128,7 @@ fn G_decode_from(r: pb_Reader&, m: G&) {
             r.end = pb_outer;
             r.pos = pb_after;
         } else if tag == 27 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -145,6 +148,7 @@ fn G_decode_from(r: pb_Reader&, m: G&) {
             G_clear_pick(m);
             m.pick = G_pick.other { v: pb_v };
         } else if tag == 42 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -156,6 +160,7 @@ fn G_decode_from(r: pb_Reader&, m: G&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 8003 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -522,6 +527,7 @@ fn G_One_decode_from(r: pb_Reader&, m: G_One&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else if tag == 19 {
+            pb_charge(r, 48);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -1036,6 +1042,7 @@ recursive fn Rec_decode_from(r: pb_Reader&, m: Rec&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 11 {
+            pb_charge(r, 48);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -1148,6 +1155,7 @@ recursive fn Rec_Node_decode_from(r: pb_Reader&, m: Rec_Node&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -1281,6 +1289,7 @@ fn ReqG_decode_from(r: pb_Reader&, m: ReqG&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 11 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -1495,6 +1504,7 @@ fn Holder_decode_from(r: pb_Reader&, m: Holder&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 11 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }
@@ -1613,6 +1623,7 @@ fn Holder_H_decode_from(r: pb_Reader&, m: Holder_H&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

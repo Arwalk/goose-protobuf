@@ -28,3 +28,4 @@ change, and *proposed* is waiting for the project owner's review.
 | [0015](0015-package-fetch-size.md) | What a git source costs a consumer, and that nothing needs trimming | Accepted |
 | [0016](0016-edition-2024.md) | Edition 2024 is supported, as nothing it changes reaches the wire format | Accepted |
 | [0017](0017-windows.md) | Windows is supported for the plugin and the runtime, as measured under Wine | Accepted |
+| [0018](0018-decode-limit.md) | One decode may allocate a set budget, and past it fails with an error code | Accepted |

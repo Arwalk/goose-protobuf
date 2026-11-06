@@ -223,26 +223,35 @@ fn Book_decode_from(r: pb_Reader&, m: Book&) {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 48 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.packed_values, pb_len6, pb_had6, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 50 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.packed_values, pb_len6, pb_had6, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.packed_values, pb_len6, pb_had6, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 56 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.expanded_values, pb_len7, pb_had7, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 58 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.expanded_values, pb_len7, pb_had7, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.expanded_values, pb_len7, pb_had7, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 66 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -258,6 +267,7 @@ fn Book_decode_from(r: pb_Reader&, m: Book&) {
             Book_CountsEntry_place(pb_e);
             pb_len8++;
         } else if tag == 74 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -269,6 +279,7 @@ fn Book_decode_from(r: pb_Reader&, m: Book&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 82 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -280,6 +291,7 @@ fn Book_decode_from(r: pb_Reader&, m: Book&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 90 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -291,6 +303,7 @@ fn Book_decode_from(r: pb_Reader&, m: Book&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 98 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -302,6 +315,7 @@ fn Book_decode_from(r: pb_Reader&, m: Book&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 107 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }

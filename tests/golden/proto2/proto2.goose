@@ -89,6 +89,7 @@ recursive fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
             m.a = pb_u64_to_int32(pb_read_varint(r));
             m.pb_has0 |= 0x00000001;
         } else if tag == 18 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -280,6 +281,7 @@ fn Pres_decode_from(r: pb_Reader&, m: Pres&) {
             m.o_bytes = pb_read_bytes(r, m.o_bytes);
             m.pb_has0 |= 0x00004000;
         } else if tag == 130 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -863,13 +865,17 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
                 pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);
             }
         } else if tag == 24 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.list, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.list, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.list, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else if tag == 32 {
@@ -878,6 +884,7 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
             Later_clear_pick(m);
             m.pick = Later_pick.member { v: pb_v };
         } else if tag == 42 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -893,6 +900,7 @@ fn Later_decode_from(r: pb_Reader&, m: Later&) {
             Later_CountsEntry_place(pb_e);
             pb_len5++;
         } else if tag == 51 {
+            pb_charge(r, 40);
             let pb_body = r.pos;
             let pb_stop = pb_skip_group(r, tag);
             if r.err != PB_OK { break; }

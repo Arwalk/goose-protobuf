@@ -17,6 +17,8 @@ generated code needs a runtime of the same version (`abi 1`, as
   with everything in the [README's table](README.md#what-it-covers).
 - The runtime package `pb_wire`, and the well-known types under `pb_wire.wkt`.
 - `pb_error_text`, which gives a decode error code as text.
+- A limit on what one decode may allocate, 512 MiB unless `pb_set_decode_limit` changes
+  it. Input that needs more gets `PB_ERR_TOO_LARGE`, where it could end the program.
 - `--version` and `--help` on the plugin.
 - Windows x64, for the plugin and the runtime, with [some limits](docs/install.md#windows).
 - `M_f_len` and `M_f_at` for repeated fields, and `M_f_len`, `M_f_key_at` and

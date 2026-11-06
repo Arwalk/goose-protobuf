@@ -93,13 +93,17 @@ fn Sub_decode_from(r: pb_Reader&, m: Sub&) {
         } else if tag == 18 {
             m.s = pb_read_string(r, m.s);
         } else if tag == 24 {
+            pb_charge(r, 4);
             pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
         } else if tag == 26 {
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             let pb_outer = r.end;
             r.end = r.pos + pb_n;
-            while r.pos < r.end { pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r))); }
+            while r.pos < r.end {
+                pb_charge(r, 4);
+                pb_append(pb_i32s, m.r, pb_len3, pb_had3, pb_u64_to_int32(pb_read_varint(r)));
+            }
             if r.err != PB_OK { break; }
             r.end = pb_outer;
         } else {
@@ -308,6 +312,7 @@ recursive fn Choice_decode_from(r: pb_Reader&, m: Choice&) {
             Choice_clear_pick(m);
             m.pick = Choice_pick.p_bytes { v: pb_v };
         } else if tag == 106 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -319,6 +324,7 @@ recursive fn Choice_decode_from(r: pb_Reader&, m: Choice&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 114 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -330,6 +336,7 @@ recursive fn Choice_decode_from(r: pb_Reader&, m: Choice&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 122 {
+            pb_charge(r, 208);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -361,6 +368,7 @@ recursive fn Choice_decode_from(r: pb_Reader&, m: Choice&) {
             Choice_clear_second(m);
             m.second = Choice_second.s_string { v: pb_v };
         } else if tag == 170 {
+            pb_charge(r, 56);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }

@@ -1,0 +1,45 @@
+// A field of every kind that makes a decoder allocate, for pb_set_decode_limit.
+syntax = "proto2";
+package limits;
+
+enum Closed {
+  ZERO = 0;
+  ONE = 1;
+}
+
+message Leaf {
+  optional int32 a = 1;
+  optional string s = 2;
+}
+
+message Tree {
+  optional Tree left = 1;
+  optional Tree right = 2;
+}
+
+message Choice {
+  oneof which {
+    Leaf leaf = 1;
+    Choice nested = 2;
+  }
+}
+
+message All {
+  repeated Leaf leaves = 1;
+  repeated group Items = 2 {
+    optional int32 a = 1;
+  }
+  map<int32, int32> numbers = 3;
+  map<string, Leaf> named = 4;
+  repeated int64 unpacked = 5;
+  repeated int64 packed = 6 [packed = true];
+  repeated bool flags = 7 [packed = true];
+  repeated string names = 8;
+  repeated bytes blobs = 9;
+  optional string text = 10;
+  optional bytes blob = 11;
+  repeated Closed closed = 12;
+  repeated Closed closed_packed = 13 [packed = true];
+  optional Tree tree = 14;
+  repeated Choice choices = 15;
+}

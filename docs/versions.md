@@ -24,7 +24,7 @@ diff them across versions.
 |---|---|
 | Generated names | [The naming rules, and every function listed in the reference](generated-code.md) |
 | Record fields | Those of scalar and enum fields, and a oneof's field with its member names, including `pb_none` |
-| Runtime | `PB_OK`, the `PB_ERR_*` codes with their values, `PB_MAX_DEPTH` and `pb_error_text` |
+| Runtime | `PB_OK`, the `PB_ERR_*` codes with their values, `PB_MAX_DEPTH`, `pb_error_text`, `PB_DEFAULT_DECODE_LIMIT` and `pb_set_decode_limit` |
 | Packages | The package name `pb_wire`, and the paths `pb_wire.wkt.*` with the names in them |
 | Plugin | Its name, `--version` and `--help`, and that it takes no parameter: an unknown one is an error |
 | Scripts | `install_plugin.sh`, `install_toolchain.sh` and `vendor_runtime.sh`: their arguments and what they install |

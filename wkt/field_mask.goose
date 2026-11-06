@@ -82,6 +82,7 @@ fn FieldMask_decode_from(r: pb_Reader&, m: FieldMask&) {
         let tag = pb_read_tag(r);
         if r.err != PB_OK { break; }
         if tag == 10 {
+            pb_charge(r, 8);
             pb_append(pb_spans, m.paths, pb_len1, pb_had1, pb_read_string(r, pb_Span { at: 0, len: 0 }));
         } else {
             pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);

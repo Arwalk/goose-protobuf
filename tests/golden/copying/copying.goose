@@ -104,6 +104,7 @@ recursive fn Msg_decode_from(r: pb_Reader&, m: Msg&) {
             m.os = pb_read_string(r, m.os);
             m.pb_has0 |= 0x00000002;
         } else if tag == 58 {
+            pb_charge(r, 40);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -115,6 +116,7 @@ recursive fn Msg_decode_from(r: pb_Reader&, m: Msg&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 66 {
+            pb_charge(r, 104);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
@@ -126,6 +128,7 @@ recursive fn Msg_decode_from(r: pb_Reader&, m: Msg&) {
             r.depth--;
             r.end = pb_outer;
         } else if tag == 74 {
+            pb_charge(r, 48);
             let pb_n = pb_read_len(r);
             if r.err != PB_OK { break; }
             if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }
