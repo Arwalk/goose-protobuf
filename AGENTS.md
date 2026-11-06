@@ -22,6 +22,7 @@ scripts/fuzz.sh [seconds]                       # libFuzzer on generated decoder
 scripts/build_selfhost.sh                       # the generator in Goose (generator-goose/)
 scripts/selfhost_diff.sh [names]                # it writes what the Zig generator writes
 scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
+scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
 scripts/check_docs.py                           # run docs/usage.md: its snippets, commands and output
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
@@ -39,8 +40,8 @@ golden diff in the commit, and the same with `scripts/wkt.sh --update` for the
 well-known types in `wkt/`. `scripts/test_golden.sh`,
 `scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`, `scripts/test_interop.sh`, `scripts/test_fuzz.sh`,
 `scripts/test_check_docs.sh`,
-`scripts/test_check_generated.sh` and `scripts/test_run_conformance.sh`
-self-test the harnesses.
+`scripts/test_check_generated.sh`, `scripts/test_selfhost_tests.sh` and
+`scripts/test_run_conformance.sh` self-test the harnesses.
 
 Goose unit tests: a `*_test.goose` file under `tests/` is a program built
 with `--debug` and run; it passes iff it exits 0 (fail with `abort(...)`).

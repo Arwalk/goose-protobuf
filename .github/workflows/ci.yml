@@ -65,6 +65,9 @@ jobs:
       - name: Bindings for descriptor and plugin protos
         run: scripts/selfhost_bindings.sh
 
+      - name: Goose generator unit tests
+        run: scripts/selfhost_tests.sh
+
       - name: Usage guide
         run: python3 scripts/check_docs.py
 
@@ -76,6 +79,7 @@ jobs:
           scripts/test_interop.sh
           scripts/test_check_docs.sh
           scripts/test_check_generated.sh
+          scripts/test_selfhost_tests.sh
 
   conformance:
     strategy:

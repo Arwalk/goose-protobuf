@@ -110,8 +110,8 @@ fn featuresChild(parent: Features, set: FeatureSet?) -> Features {
 }
 
 // proto2: FeatureSetDefaults' EDITION_LEGACY. scripts/edition_defaults.sh checks
-// generator/src/edition_defaults.binpb against protoc, and the Zig tests these
-// values against that file.
+// generator/src/edition_defaults.binpb against protoc, and
+// tests/selfhost/feature_defaults_unit.goose these values against that file.
 let proto2_defaults = Features { presence: PRESENCE_EXPLICIT, closed_enum: true, packed_repeated: false, verify_utf8: false, delimited: false };
 let proto3_defaults = Features { presence: PRESENCE_IMPLICIT, closed_enum: false, packed_repeated: true, verify_utf8: true, delimited: false };
 let edition_2023_defaults = Features { presence: PRESENCE_EXPLICIT, closed_enum: false, packed_repeated: true, verify_utf8: true, delimited: false };
