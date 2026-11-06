@@ -77,8 +77,8 @@ error: cannot find the module b, looked for
 Goose resolves every import from the directory of your root file, including those
 between generated files, so `--goose_out=gen` with `import gen.a;` fails. Generate next
 to your root file with `protoc --goose_out=.`, or make the directory a package
-([the usage guide](usage.md#generate-the-code) shows how). If this names one of your
-own protos, generate that file too.
+([the usage guide](usage.md#generated-code-in-a-directory-of-its-own) shows how). If this
+names one of your own protos, generate that file too.
 
 ### `pb_wire` is both a file and a package
 

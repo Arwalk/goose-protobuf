@@ -69,10 +69,8 @@ This writes `people.goose`. Output your generated files next to your program's
 root file: Goose resolves imports from there, including the ones between
 generated files.
 
-To keep them in a directory of their own, make it a package, whose imports resolve
-from its own root. Write `gen/gen.goose`, holding `import .people;` and a line like it
-for each file your program uses, and declare it in your root file with
-`import gen from "./gen";`, in place of `import people;`.
+[Several proto files](#several-proto-files) shows a directory of protos, and how to
+keep generated files in a directory of their own.
 
 ## Import the runtime
 
@@ -298,6 +296,110 @@ true
 
 This guide uses every kind of field proto3 has. proto2 and editions add `required`,
 which `M_is_initialized(m)` checks, `[default]` and groups, all read in the same way.
+
+## Several proto files
+
+A real project has a directory of protos that import each other. Here two files are
+under `proto/`, and one imports the other by its path from there:
+
+```sh run
+mkdir -p proto/acme/library
+```
+
+```proto file=proto/acme/library/author.proto
+syntax = "proto3";
+package acme.library;
+
+message Author {
+  string name = 1;
+}
+```
+
+```proto file=proto/acme/library/book.proto
+syntax = "proto3";
+package acme.library;
+
+import "acme/library/author.proto";
+
+message Book {
+  string title = 1;
+  Author author = 2;
+}
+```
+
+`-I` names the directory that import paths start from, and each file you pass is named
+from there. Pass every file your program needs, including the ones that are only
+imported, since `protoc` generates only what you name:
+
+```sh run
+protoc -I proto --goose_out=. acme/library/author.proto acme/library/book.proto
+```
+
+This writes `acme/library/author.goose` and `acme/library/book.goose`, which must stay
+at those paths next to your root file, as `book.goose` says `import acme.library.author;`
+and Goose resolves that from the root. Your root file imports what it uses by the same
+path. The proto package `acme.library` is the namespace `acme_library`:
+
+```goose file=library.goose
+import pb_wire from "../goose-protobuf";
+import acme.library.book;
+
+fn main() {
+    var book = acme_library::Book { .. };
+    acme_library::Book_set_title(book, "Emma");
+    acme_library::Author_set_name(acme_library::Book_mutable_author(book), "Jane");
+    print(acme_library::Book_title(book));
+    acme_library::Book_clear(book);
+}
+```
+
+```sh run
+goose build library.goose -o library
+./library
+```
+
+```text output
+Emma
+```
+
+### Generated code in a directory of its own
+
+Passing `--goose_out=gen` and then writing `import gen.acme.library.book;` does not
+work: the file's own `import acme.library.author;` would still start from your root
+file. Make the directory a package instead, whose imports start from its own root. It
+needs an entry file named after it, which imports what your program uses:
+
+```sh run
+mkdir gen
+protoc -I proto --goose_out=gen acme/library/author.proto acme/library/book.proto
+echo 'import .acme.library.book;' > gen/gen.goose
+```
+
+Your root file then declares that package, and uses the same namespace as before:
+
+```goose file=library_gen.goose
+import pb_wire from "../goose-protobuf";
+import gen from "./gen";
+
+fn main() {
+    var book = acme_library::Book { .. };
+    acme_library::Book_set_title(book, "Persuasion");
+    print(acme_library::Book_title(book));
+    acme_library::Book_clear(book);
+}
+```
+
+```sh run
+goose build library_gen.goose -o library_gen
+./library_gen
+```
+
+```text output
+Persuasion
+```
+
+[The multi-file example](../examples/multi_file/) is a complete program with two proto
+packages.
 
 ## Next
 
