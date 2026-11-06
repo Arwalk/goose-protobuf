@@ -219,12 +219,17 @@ fn scientific(t: const u8[:]) -> const u8[:] {
     return keep(out);
 }
 
+fn infinityLiteral(is32: bool, neg: bool) -> const u8[:] {
+    if is32 { return if neg { "pb_f32_from_bits(0xff800000)" } else { "pb_f32_from_bits(0x7f800000)" }; }
+    return if neg { "pb_f64_from_bits(0xfff0000000000000)" } else { "pb_f64_from_bits(0x7ff0000000000000)" };
+}
+
 // The Goose expression of float default `text`, as protoc writes it, or "" if it
 // is +0. Infinities and nan have no literal, so they go through the bits. Only
 // decimal text is read, which is all protoc writes; other text stays as it is.
 fn floatLiteral(is32: bool, text: const u8[:]) -> const u8[:] {
-    if text == "inf" { return if is32 { "pb_f32_from_bits(0x7f800000)" } else { "pb_f64_from_bits(0x7ff0000000000000)" }; }
-    if text == "-inf" { return if is32 { "pb_f32_from_bits(0xff800000)" } else { "pb_f64_from_bits(0xfff0000000000000)" }; }
+    if text == "inf" { return infinityLiteral(is32, false); }
+    if text == "-inf" { return infinityLiteral(is32, true); }
     if text == "nan" { return if is32 { "pb_f32_from_bits(0x7fc00000)" } else { "pb_f64_from_bits(0x7ff8000000000000)" }; }
     var scanned: u8[>..] = [];
     let ok, neg, exp10 = scanDecimal(text, scanned);
@@ -244,6 +249,7 @@ fn floatLiteral(is32: bool, text: const u8[:]) -> const u8[:] {
         bits = if magnitude > 400 { 0x7ff0000000000000 } else if magnitude < -400 { 0 } else { nearestBits(digits, exp10, 52, 1023) };
     }
     if bits == 0 { return if neg { "-0.0" } else { "" }; }
+    if bits == (if is32 { 0x7f800000 } else { 0x7ff0000000000000 }) { return infinityLiteral(is32, neg); }
     if is32 {
         let v = pb_f32_from_bits(bits as! u32);
         return scientific(str(if neg { -v } else { v }));
