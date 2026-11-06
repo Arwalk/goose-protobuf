@@ -112,14 +112,13 @@ bd close <id> --reason "..."  # only once the acceptance criteria are met
 ```
 
 Each phase is an epic, and each task carries labels from `generator`,
-`runtime`, `conformance`, `ci`, `spike` and `docs`. There is no git remote
-yet, so the Dolt database is local only. `.beads/issues.jsonl`, the
-committed export, is the git-tracked copy.
+`runtime`, `conformance`, `ci`, `spike` and `docs`. The backlog is local only, by
+the owner's choice: it lives in the Dolt database, with no Dolt remote and no JSONL
+export in git, so ignore what the managed blocks below say about those.
 
 **The project owner handles the remote, pushes, tags and releases.** Agents
-do not add a remote, push, tag or ask about them. The repository will be on
-GitHub, so CI is GitHub Actions (`.github/workflows/ci.yml`), which cannot run
-until the owner pushes.
+do not add a remote, push, tag or ask about them. CI is GitHub Actions
+(`.github/workflows/ci.yml`), and runs when the owner pushes.
 
 <!-- BEGIN BEADS INTEGRATION v:1 profile:minimal hash:1105d646 -->
 ## Beads Issue Tracker

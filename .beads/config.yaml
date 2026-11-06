@@ -53,13 +53,10 @@
 # Optional JSONL auto-export for viewers, interchange, and issue-level migration.
 # Disabled by default; enable only when an integration needs fresh .beads/issues.jsonl.
 # Use relative paths under .beads/ for JSONL import/export filenames.
-# Enabled: no Dolt remote yet, so the committed issues.jsonl is the only
-# copy of the backlog in git.
+# Off: the owner keeps the backlog local, in the Dolt database, and out of git.
 export:
-  auto: true
-  path: issues.jsonl
-  interval: 60s
-  git-add: true
+  auto: false
+  git-add: false
 # import:
 #   path: issues.jsonl
 

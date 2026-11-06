@@ -3,6 +3,9 @@ dolt/
 embeddeddolt/
 proxieddb/
 
+# The backlog stays local: a manual bd export must not reach git
+issues.jsonl
+
 # Runtime files
 bd.sock
 bd.sock.startlock
