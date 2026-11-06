@@ -175,6 +175,8 @@ clear it.
 | `PB_ERR_UTF8` | a string field that must be UTF-8 and is not |
 | `PB_ERR_REQUIRED` | a proto2 required field is unset |
 
+`pb_error_text(err)` gives the meaning of a code as text, for a message to a person.
+
 The input must not be a view of a message's contents, as decoding allocates in
 the pool that holds them. Copy such bytes into a buffer of their own first.
 
@@ -247,7 +249,7 @@ fn main() {
     let err = people::Person_decode(bytes, q);
     if err != PB_OK {
         people::Person_clear(q);
-        abort(str("decode error ", err));
+        abort(str("decode failed: ", pb_error_text(err)));
     }
     show(q);
 

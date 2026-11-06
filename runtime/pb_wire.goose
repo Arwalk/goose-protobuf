@@ -11,7 +11,7 @@
 //   - the pb_bytes pool and pb_Span runs (decision 0001), which hold
 //     unknown fields (gpb-41j.6), strings and bytes
 //
-// Public: only the error codes and PB_MAX_DEPTH, in the section below. Everything
+// Public: only the error codes, PB_MAX_DEPTH and pb_error_text, in the section below. Everything
 // after them is internal, for generated code, and may change in any release
 // (docs/decisions/0012-public-api.md).
 //
@@ -35,6 +35,17 @@ let PB_ERR_DEPTH = 3;       // nesting beyond PB_MAX_DEPTH
 let PB_ERR_UTF8 = 4;        // a proto3 string field that is not valid UTF-8
 let PB_ERR_REQUIRED = 5;    // decoded whole, but a required proto2 field is unset
 let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
+
+// What an error code means, for a message to a person.
+fn pb_error_text(err: i32) -> const u8[:] {
+    if err == PB_OK { return "no error"; }
+    if err == PB_ERR_TRUNCATED { return "truncated input"; }
+    if err == PB_ERR_MALFORMED { return "malformed input"; }
+    if err == PB_ERR_DEPTH { return "messages nested too deeply"; }
+    if err == PB_ERR_UTF8 { return "a string that is not valid UTF-8"; }
+    if err == PB_ERR_REQUIRED { return "a required field is not set"; }
+    return "unknown error";
+}
 
 // ======================================================== internal from here
 

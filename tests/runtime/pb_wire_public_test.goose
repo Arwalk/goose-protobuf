@@ -16,4 +16,5 @@ fn main() {
     expect("PB_ERR_UTF8", PB_ERR_UTF8, 4);
     expect("PB_ERR_REQUIRED", PB_ERR_REQUIRED, 5);
     expect("PB_MAX_DEPTH", PB_MAX_DEPTH, 100);
+    if pb_error_text(PB_OK).len == 0 { abort("pb_error_text"); }
 }

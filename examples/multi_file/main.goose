@@ -19,7 +19,8 @@ fn main() {
     api_books::Book_clear(book);
 
     var back = api_books::Book { .. };
-    if api_books::Book_decode(bytes, back) != PB_OK { abort("decode failed"); }
+    let err = api_books::Book_decode(bytes, back);
+    if err != PB_OK { abort(str("decode failed: ", pb_error_text(err))); }
     print(api_books::Book_title(back));
     for i in api_books::Book_people_len(back) {
         let p .= api_books::Book_people_at(back, i);

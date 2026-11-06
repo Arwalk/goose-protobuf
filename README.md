@@ -48,7 +48,7 @@ fn main() {
 
     var q = demo::Person { .. };
     let err = demo::Person_decode(bytes, q);
-    if err != PB_OK { abort(str("decode error ", err)); }
+    if err != PB_OK { abort(str("decode failed: ", pb_error_text(err))); }
     print(demo::Person_name(q), ", ", q.age, ", ", demo::Person_emails_at(q, 0));
     demo::Person_clear(q);
 }

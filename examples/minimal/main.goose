@@ -12,7 +12,7 @@ fn main() {
 
     var back = greeting::Greeting { .. };
     let err = greeting::Greeting_decode(bytes, back);
-    if err != PB_OK { abort(str("decode failed: ", err)); }
+    if err != PB_OK { abort(str("decode failed: ", pb_error_text(err))); }
     print(greeting::Greeting_text(back), " x ", back.count, " in ", bytes.len, " bytes");
     greeting::Greeting_clear(back);
 }

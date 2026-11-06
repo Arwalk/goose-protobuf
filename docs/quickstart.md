@@ -59,7 +59,7 @@ fn main() {
 
     var back = hello::Greeting { .. };
     let err = hello::Greeting_decode(bytes, back);
-    if err != PB_OK { abort(str("decode error ", err)); }
+    if err != PB_OK { abort(str("decode failed: ", pb_error_text(err))); }
     print(hello::Greeting_text(back), " x ", back.count, " in ", bytes.len, " bytes");
     hello::Greeting_clear(back);
 }

@@ -54,7 +54,8 @@ fn main() {
     event::Event_clear(e);
 
     var back = event::Event { .. };
-    if event::Event_decode(bytes, back) != PB_OK { abort("decode failed"); }
+    let err = event::Event_decode(bytes, back);
+    if err != PB_OK { abort(str("decode failed: ", pb_error_text(err))); }
     show(back);
     event::Event_clear(back);
 }

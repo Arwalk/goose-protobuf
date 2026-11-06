@@ -61,7 +61,8 @@ A message that can reach a proto2 `required` field also has:
 |---|---|
 | `M_is_initialized(m) -> bool` | True if every required field in reach is set. `M_decode` already checks this, and returns `PB_ERR_REQUIRED`. |
 
-The error codes and their values are in [the usage guide](usage.md#decode).
+`pb_error_text(err)` gives an error code's meaning, for a message to a person. The
+codes are in [the usage guide](usage.md#decode).
 
 ## Numbers, bools and enums
 

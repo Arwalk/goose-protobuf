@@ -17,7 +17,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-PUBLIC = re.compile(r"^(PB_OK|PB_ERR_\*|PB_ERR_[A-Z0-9_]+|PB_MAX_DEPTH|pb_none|pb_wire)$")
+PUBLIC = re.compile(r"^(PB_OK|PB_ERR_\*|PB_ERR_[A-Z0-9_]+|PB_MAX_DEPTH|pb_error_text|pb_none|pb_wire)$")
 MARK = re.compile(r"^<!-- golden: (\S+) (\S+)(?: (\S+))? -->$")
 ROW = re.compile(r"^\| `(M_\w+)\(([^)]*)\)(?: -> ([^`]+))?` \|")
 PREFIXES = ("set_", "has_", "clear_", "mutable_", "add_")
