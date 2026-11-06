@@ -81,6 +81,9 @@ prints:
 hi x 3 in 6 bytes
 ```
 
+`goose build` also prints lines of its own progress, such as `parsed ok`, `typechecked ok`,
+`bce:` and `wrote`. They are normal, and these guides leave them out.
+
 ## Three ways to get the runtime
 
 Generated code imports a small runtime package, `pb_wire`, and only your program's
