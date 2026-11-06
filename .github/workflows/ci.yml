@@ -62,7 +62,7 @@ jobs:
       - name: Goose generator unit tests
         run: scripts/selfhost_tests.sh
 
-      - name: Usage guide
+      - name: Guides
         run: python3 scripts/check_docs.py
 
       - name: Harness self-tests

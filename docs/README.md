@@ -12,7 +12,7 @@ text goes. A document marked *planned* does not exist yet.
 |---|---|
 | [README](../README.md) | Decide whether this project fits: what it does, its scope, a short sample |
 | `docs/install.md` *(planned)* | Install the tools and the plugin, and get the runtime |
-| `docs/quickstart.md` *(planned)* | Get from an empty directory to a round trip in five minutes |
+| [docs/quickstart.md](quickstart.md) | Get from an empty directory to a round trip in five minutes |
 | [docs/usage.md](usage.md) | Learn the whole path on a real message: build, encode, decode, read |
 | `docs/generated-code.md` *(planned)* | Look up an accessor, a naming rule or a view's lifetime |
 | `docs/limitations.md` *(planned)* | Check what is unsupported or slow, and the workaround |

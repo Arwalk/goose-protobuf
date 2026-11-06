@@ -6,10 +6,12 @@
   ```text output                         what the last `sh run` block must print
 
 The blocks run in a new directory `app`, next to a link `goose-protobuf` to this
-repository, so a guide's paths work as they read. A block with no such label is a
-failure, and so is a guide with snippets and no command, so none goes unchecked.
+repository, so a guide's paths work as they read. Each guide has a new home with
+~/.local/bin on PATH, so what it installs goes nowhere else and it starts with no
+Goose packages. A block with no such label is a failure, and so is a guide with
+snippets and no command, so none goes unchecked.
 
-Usage: scripts/check_docs.py [file.md...]   (default docs/usage.md)
+Usage: scripts/check_docs.py [file.md...]   (default docs/quickstart.md docs/usage.md)
 """
 import os
 import re
@@ -48,6 +50,11 @@ def check(path):
     if tools.is_dir():
         env["PATH"] = f"{tools}{os.pathsep}{env['PATH']}"
     with tempfile.TemporaryDirectory() as tmp:
+        home = Path(tmp) / "home"
+        home.mkdir()
+        env["HOME"] = str(home)
+        env.pop("GOOSE_HOME", None)
+        env["PATH"] = f"{home}/.local/bin{os.pathsep}{env['PATH']}"
         (Path(tmp) / "goose-protobuf").symlink_to(ROOT)
         app = Path(tmp) / "app"
         app.mkdir()
@@ -77,7 +84,7 @@ def check(path):
 
 
 def main():
-    files = [Path(a) for a in sys.argv[1:]] or [ROOT / "docs/usage.md"]
+    files = [Path(a) for a in sys.argv[1:]] or [ROOT / "docs/quickstart.md", ROOT / "docs/usage.md"]
     bad = 0
     for path in files:
         problems = check(path)
