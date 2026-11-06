@@ -38,6 +38,19 @@ type Request = google_protobuf_compiler::CodeGeneratorRequest;
 // decoded, so the views and references taken from it stay valid.
 var request = Request { .. };
 
+// What holds for the whole request, whichever file is being generated, so that a
+// file and what it imports are each worked out once. See indexRequest.
+var request_indexed = false;
+// Full name of a message -> the index of its file in proto_file.
+var message_files: u32 = 0;
+// Full name of an enum -> its index in enum_infos.
+var enum_index: u32 = 0;
+// Proto name of a file whose names are claimed -> its index in file_emitters.
+var claimed_files: u32 = 0;
+// Full name of a message -> what holdsRequired and holdsMaps have found.
+var required_answers: u32 = 0;
+var maps_answers: u32 = 0;
+
 // The text of the files generated so far: `w` of the Zig emitter. The response
 // keeps a copy of each, so the plugin holds its output twice. It cannot shrink, as
 // a global may hold a reference into a grow-only array.
@@ -565,13 +578,29 @@ fn isRealOneofMember(fd: FieldDesc&) -> bool {
     return google_protobuf::FieldDescriptorProto_has_oneof_index(fd) && !fd.proto3_optional;
 }
 
-// True if oneof `i` of `m` is real: synthetic ones hold only a proto3 optional.
-fn isRealOneof(m: MessageDesc&, i: i64) -> bool {
+// Runs of realOneofSlots, in a global pool as a local array could not stay in scope
+// across the recursion of the messages.
+var oneof_slots: i64[>..] = [];
+
+// Adds a run to oneof_slots and returns where it starts: for each oneof of `m` in
+// order, its place among the real ones, or -1 for a synthetic one, which holds only
+// a proto3 optional.
+fn realOneofSlots(m: MessageDesc&) -> i64 {
+    let at = oneof_slots.len;
+    let count = google_protobuf::DescriptorProto_oneof_decl(m).len;
+    for i in count { oneof_slots.push(-1); }
     for k in google_protobuf::DescriptorProto_field(m).len {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
-        if isRealOneofMember(fd) && fd.oneof_index == i { return true; }
+        if isRealOneofMember(fd) && fd.oneof_index >= 0 && fd.oneof_index < count { oneof_slots[at + fd.oneof_index] = 0; }
     }
-    return false;
+    var next = 0;
+    for i in count {
+        if oneof_slots[at + i] >= 0 {
+            oneof_slots[at + i] = next;
+            next += 1;
+        }
+    }
+    return at;
 }
 
 // The scalar storage of singular field `fd`, which has features `ff`, or null
@@ -800,12 +829,12 @@ struct FileEmitter {
     // Full name of a message of another file whose names are claimed ->
     // the message, its names qualified from this file.
     foreign: u32,
-    // Other files whose names are claimed, by their proto name.
-    foreign_files: u32,
     // Import paths of the files that the stored fields need.
     imports: u32,
     // How the codec functions of the current message are declared.
     fn_kw: const u8[:] = "fn",
+    // True once findCycles has been through the messages of this file.
+    cycles_found: bool = false,
 }
 
 // The emitters of this run: one for each file generated, and one for each file
@@ -813,10 +842,56 @@ struct FileEmitter {
 var file_emitters: FileEmitter[>..] = [];
 
 fn newFileEmitter(file: FileDesc&) -> FileEmitter& {
-    return file_emitters.push(FileEmitter {
+    let fe .= file_emitters.push(FileEmitter {
         file: file, names: newMap(), message_paths: newMap(), decls: newMap(), messages: newMap(),
-        foreign: newMap(), foreign_files: newMap(), imports: newMap(),
+        foreign: newMap(), imports: newMap(),
     });
+    mapPut(claimed_files, fileName(file)).index = file_emitters.len - 1;
+    return fe;
+}
+
+// Forgets what is known of the request, for a test that makes another.
+fn forgetRequest() {
+    request_indexed = false;
+}
+
+// Indexes the messages and enums of every file of the request by full name.
+fn indexRequest() {
+    if request_indexed { return; }
+    request_indexed = true;
+    message_files = newMap();
+    enum_index = newMap();
+    claimed_files = newMap();
+    required_answers = newMap();
+    maps_answers = newMap();
+    for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file(request).len {
+        let file .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, i);
+        let inherited = featuresOfFile(file);
+        let package = filePackage(file);
+        for k in google_protobuf::FileDescriptorProto_enum_type(file).len {
+            indexEnum(google_protobuf::FileDescriptorProto_enum_type_at(file, k), package, inherited);
+        }
+        for k in google_protobuf::FileDescriptorProto_message_type(file).len {
+            indexMessage(google_protobuf::FileDescriptorProto_message_type_at(file, k), package, inherited, i);
+        }
+    }
+}
+
+fn indexEnum(e: EnumDesc&, scope: const u8[:], parent: Features) {
+    enum_infos.push(EnumInfo { desc: e, closed: featuresOfEnum(parent, e).closed_enum });
+    mapPut(enum_index, fullName(scope, enumName(e))).index = enum_infos.len - 1;
+}
+
+recursive fn indexMessage(m: MessageDesc&, scope: const u8[:], parent: Features, file_at: i64) {
+    let full = fullName(scope, messageName(m));
+    mapPut(message_files, full).index = file_at;
+    let inherited = featuresOfMessage(parent, m);
+    for i in google_protobuf::DescriptorProto_enum_type(m).len {
+        indexEnum(google_protobuf::DescriptorProto_enum_type_at(m, i), full, inherited);
+    }
+    for i in google_protobuf::DescriptorProto_nested_type(m).len {
+        indexMessage(google_protobuf::DescriptorProto_nested_type_at(m, i), full, inherited, file_at);
+    }
 }
 
 fn emit(fe: FileEmitter&) {
@@ -947,8 +1022,9 @@ recursive fn claimGenerated(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[
         }
     }
     // A oneof's type and its clear_. A field cannot have its name.
+    let slots_at = realOneofSlots(m);
     for i in google_protobuf::DescriptorProto_oneof_decl(m).len {
-        if !isRealOneof(m, i) { continue; }
+        if oneof_slots[slots_at + i] < 0 { continue; }
         let oname = google_protobuf::OneofDescriptorProto_name(google_protobuf::DescriptorProto_oneof_decl_at(m, i));
         claim(fe, generatedName(path, oname), keep(str("oneof ", oname, " of ", full)), true);
         claim(fe, accessorName(path, oname, clear_acc), keep(str("accessor clear_", oname, " of ", full)), true);
@@ -1019,118 +1095,121 @@ fn mapEntryOf(fe: FileEmitter&, fd: FieldDesc&) -> MessageInfo? {
     return if isMapEntryType(info) { info } else { null };
 }
 
-// The message of type `t`, in this file or in another.
-fn lookupMessage(fe: FileEmitter&, t: const u8[:]) -> MessageInfo? {
-    let own = mapGet(fe.messages, t);
-    if own { return infoOf(own); }
-    return foreignMessage(fe, t);
-}
-
-// True if a message of type `t` can reach a required field that is
-// stored, itself or in what it holds, in any file: it then has
-// is_initialized. `seen` guards against cycles. Call it only once the
-// imports are written, as looking a type up may mark another.
-recursive fn holdsRequired(fe: FileEmitter&, t: const u8[:], seen: u32) -> bool {
-    if mapContains(seen, t) { return false; }
-    mapPut(seen, t);
-    let info = lookupMessage(fe, t);
-    guard info else { return false; }
-    for k in google_protobuf::DescriptorProto_field(info.desc).len {
-        let fd .= google_protobuf::DescriptorProto_field_at(info.desc, k);
-        if fieldFeatures(info.file, info.features, info.desc, fd).presence == PRESENCE_REQUIRED { return true; }
-        let s = messageTypeOf(fd);
-        if s.len > 0 {
-            if holdsRequired(fe, s, seen) { return true; }
-        }
+// The message of type `t`, in any file, with no qualifier: what it holds, not how
+// a file writes it. Claims the names of its file the first time, as generating that
+// file does, or null if no file declares it.
+fn claimedMessage(t: const u8[:]) -> MessageInfo? {
+    let home = mapGet(message_files, t);
+    guard home else { return null; }
+    let file .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, home.index);
+    var claimed = mapGet(claimed_files, fileName(file));
+    if claimed == null {
+        claimAll(newFileEmitter(file));
+        claimed .= mapGet(claimed_files, fileName(file));
     }
-    return false;
+    assert(claimed);
+    let found = mapGet(file_emitters[claimed.index].messages, t);
+    guard found else { return null; }
+    return infoOf(found);
 }
 
-// True if a message of type `t` can reach a map field that is stored: it
-// then has fold_maps. An entry counts what its value holds, not itself.
-// Call it only once the imports are written, like holdsRequired.
-recursive fn holdsMaps(fe: FileEmitter&, t: const u8[:], seen: u32) -> bool {
-    if mapContains(seen, t) { return false; }
-    mapPut(seen, t);
-    let info = lookupMessage(fe, t);
+// What a search has found about a message, in MapEntry.index of an answers map.
+let ANSWER_UNKNOWN = 0;
+let ANSWER_YES = 1;
+let ANSWER_NO = 2;
+// Being searched, or found to have nothing but what is being searched: it may yet
+// turn out to reach what its ancestors reach.
+let ANSWER_OPEN = 3;
+
+// True if a message of type `t` can reach a required field that is stored, itself
+// or in what it holds, in any file: it then has is_initialized.
+fn holdsRequired(t: const u8[:]) -> bool {
+    return answerFor(t, required_answers, false);
+}
+
+// True if a message of type `t` can reach a map field that is stored: it then has
+// fold_maps. An entry counts what its value holds, not itself.
+fn holdsMaps(t: const u8[:]) -> bool {
+    return answerFor(t, maps_answers, true);
+}
+
+// The answer for `t`. A search stops at what it looks for, so it claims no more
+// files than it needs. Finding nothing settles every message it went through, as
+// they have seen all they can reach. Finding something settles only those on the
+// way to it: another may have stopped short at a message being searched.
+fn answerFor(t: const u8[:], answers: u32, maps: bool) -> bool {
+    let found = searchAnswer(t, answers, maps);
+    while open_answers.len > 0 {
+        let e .= map_entries[open_answers.pop()];
+        if e.index == ANSWER_OPEN { e.index = if found { ANSWER_UNKNOWN } else { ANSWER_NO }; }
+    }
+    return found;
+}
+
+// The map entries a search has gone through, by index in map_entries.
+var open_answers: i64[>..<] = [];
+
+recursive fn searchAnswer(t: const u8[:], answers: u32, maps: bool) -> bool {
+    let answer_at = mapPutIndex(answers, t);
+    let answer .= map_entries[answer_at];
+    if answer.index != ANSWER_UNKNOWN { return answer.index == ANSWER_YES; }
+    answer.index = ANSWER_OPEN;
+    open_answers.push(answer_at);
+    let info = claimedMessage(t);
     guard info else { return false; }
     for k in google_protobuf::DescriptorProto_field(info.desc).len {
         let fd .= google_protobuf::DescriptorProto_field_at(info.desc, k);
+        if !maps && fieldFeatures(info.file, info.features, info.desc, fd).presence == PRESENCE_REQUIRED {
+            answer.index = ANSWER_YES;
+            return true;
+        }
         let s = messageTypeOf(fd);
         if s.len == 0 { continue; }
-        let sub = lookupMessage(fe, s);
-        guard sub else { continue; }
-        if isMapEntryType(sub) { return true; }
-        if holdsMaps(fe, s, seen) { return true; }
+        if maps {
+            let sub = claimedMessage(s);
+            guard sub else { continue; }
+            if isMapEntryType(sub) {
+                answer.index = ANSWER_YES;
+                return true;
+            }
+        }
+        if searchAnswer(s, answers, maps) {
+            answer.index = ANSWER_YES;
+            return true;
+        }
     }
     return false;
 }
 
 // True if the message that stored field `f` holds has fold_maps.
-fn fieldHoldsMaps(fe: FileEmitter&, f: Field&) -> bool {
+fn fieldHoldsMaps(f: Field&) -> bool {
     let t = messageTypeOf(f.fd);
     if t.len == 0 { return false; }
-    return holdsMaps(fe, t, newMap());
+    return holdsMaps(t);
 }
 
 // True if the message that stored field `f` holds has is_initialized.
-fn fieldHoldsRequired(fe: FileEmitter&, f: Field&) -> bool {
+fn fieldHoldsRequired(f: Field&) -> bool {
     let t = messageTypeOf(f.fd);
     if t.len == 0 { return false; }
-    return holdsRequired(fe, t, newMap());
+    return holdsRequired(t);
 }
 
-// Message `t` of another file, whose names it claims the first time
-// (as generating that file does), and which it marks for import.
+// Message `t` of another file, as this file writes it, which it marks for import.
 fn foreignMessage(fe: FileEmitter&, t: const u8[:]) -> MessageInfo? {
     let known = mapGet(fe.foreign, t);
     if known { return infoOf(known); }
-    let files = google_protobuf_compiler::CodeGeneratorRequest_proto_file(request).len;
-    for i in files {
-        let f .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, i);
-        let fname = fileName(f);
-        if fname == fileName(fe.file) || mapContains(fe.foreign_files, fname) { continue; }
-        if !declaresTopLevel(f, t) { continue; }
-        mapPut(fe.foreign_files, fname);
-        let other .= newFileEmitter(f);
-        claimAll(other);
-        let ns = qualifier(fe, filePackage(f));
-        let import_path = importPath(f);
-        var at = map_firsts[other.messages];
-        while at != 0 {
-            let e .= map_entries[at - 1];
-            let info .= infoOf(e);
-            message_infos.push(MessageInfo {
-                desc: info.desc, path: info.path, goose_name: keep(str(ns, info.goose_name)),
-                ns: ns, import_path: import_path, file: info.file, features: info.features,
-            });
-            mapPut(fe.foreign, e.key).index = message_infos.len - 1;
-            at = e.next_of_map;
-        }
-        break;
-    }
-    let found = mapGet(fe.foreign, t);
-    guard found else { return null; }
-    let info .= infoOf(found);
-    mapPut(fe.imports, info.import_path);
-    return info;
-}
-
-fn declaresTopLevel(f: FileDesc&, t: const u8[:]) -> bool {
-    for i in google_protobuf::FileDescriptorProto_message_type(f).len {
-        let m .= google_protobuf::FileDescriptorProto_message_type_at(f, i);
-        if declaresMessage(m, filePackage(f), t) { return true; }
-    }
-    return false;
-}
-
-recursive fn declaresMessage(m: MessageDesc&, scope: const u8[:], t: const u8[:]) -> bool {
-    let full = fullName(scope, messageName(m));
-    if full == t { return true; }
-    for i in google_protobuf::DescriptorProto_nested_type(m).len {
-        if declaresMessage(google_protobuf::DescriptorProto_nested_type_at(m, i), full, t) { return true; }
-    }
-    return false;
+    let info = claimedMessage(t);
+    guard info else { return null; }
+    let ns = qualifier(fe, filePackage(info.file));
+    let import_path = importPath(info.file);
+    message_infos.push(MessageInfo {
+        desc: info.desc, path: info.path, goose_name: keep(str(ns, info.goose_name)),
+        ns: ns, import_path: import_path, file: info.file, features: info.features,
+    });
+    mapPut(fe.foreign, t).index = message_infos.len - 1;
+    mapPut(fe.imports, import_path);
+    return message_infos[message_infos.len - 1];
 }
 
 // What names in the namespace of `package` are written with from
@@ -1152,13 +1231,17 @@ fn subName(fe: FileEmitter&, sub: MessageInfo&, op: const u8[:]) -> const u8[:] 
 fn isRecursive(fe: FileEmitter&, full: const u8[:]) -> bool {
     let own = mapGet(fe.messages, full);
     guard own else { return false; }
-    let info .= infoOf(own);
-    for k in google_protobuf::DescriptorProto_field(info.desc).len {
-        let t = sameFileMessageType(fe, google_protobuf::DescriptorProto_field_at(info.desc, k));
-        if t.len == 0 { continue; }
-        if reaches(fe, t, full, newMap()) { return true; }
+    if !fe.cycles_found {
+        fe.cycles_found = true;
+        while cycle_nodes.len < message_infos.len { cycle_nodes.push(CycleNode { .. }); }
+        var at = map_firsts[fe.messages];
+        while at != 0 {
+            let e .= map_entries[at - 1];
+            if cycle_nodes[e.index].order == 0 { findCycles(fe, e.index); }
+            at = e.next_of_map;
+        }
     }
-    return false;
+    return cycle_nodes[own.index].in_cycle;
 }
 
 // The full name of the message in this file that `fd` holds, if it
@@ -1169,20 +1252,51 @@ fn sameFileMessageType(fe: FileEmitter&, fd: FieldDesc&) -> const u8[:] {
     return if mapContains(fe.messages, t) { t } else { "" };
 }
 
-// True if a message of type `from` can hold one of type `target`.
-recursive fn reaches(fe: FileEmitter&, from_t: const u8[:], target: const u8[:], seen: u32) -> bool {
-    if from_t == target { return true; }
-    if mapContains(seen, from_t) { return false; }
-    mapPut(seen, from_t);
-    let own = mapGet(fe.messages, from_t);
-    guard own else { return false; }
-    let info .= infoOf(own);
-    for k in google_protobuf::DescriptorProto_field(info.desc).len {
-        let t = sameFileMessageType(fe, google_protobuf::DescriptorProto_field_at(info.desc, k));
+// A message of the file being generated, in Tarjan's search for strongly connected
+// components, by its index in message_infos. `order` is 0 until it is reached.
+struct CycleNode {
+    order: i64,
+    low: i64,
+    on_stack: bool,
+    in_cycle: bool,
+}
+
+var cycle_nodes: CycleNode[>..] = [];
+var cycle_stack: i64[>..<] = [];
+var cycle_order: i64 = 0;
+
+// Finds the cycles through what the message at `at` of message_infos can reach, in
+// this file: a component of several messages, or one that holds itself, is a cycle.
+recursive fn findCycles(fe: FileEmitter&, at: i64) {
+    let node .= cycle_nodes[at];
+    cycle_order += 1;
+    node.order = cycle_order;
+    node.low = cycle_order;
+    node.on_stack = true;
+    cycle_stack.push(at);
+    let desc .= message_infos[at].desc;
+    for k in google_protobuf::DescriptorProto_field(desc).len {
+        let t = sameFileMessageType(fe, google_protobuf::DescriptorProto_field_at(desc, k));
         if t.len == 0 { continue; }
-        if reaches(fe, t, target, seen) { return true; }
+        let held = mapGet(fe.messages, t);
+        assert(held);
+        if held.index == at { node.in_cycle = true; }
+        let next .= cycle_nodes[held.index];
+        if next.order == 0 {
+            findCycles(fe, held.index);
+            if next.low < node.low { node.low = next.low; }
+        } else if next.on_stack {
+            if next.order < node.low { node.low = next.order; }
+        }
     }
-    return false;
+    if node.low != node.order { return; }
+    let several = cycle_stack[cycle_stack.len - 1] != at;
+    loop {
+        let member = cycle_stack.pop();
+        cycle_nodes[member].on_stack = false;
+        if several { cycle_nodes[member].in_cycle = true; }
+        if member == at { break; }
+    }
 }
 
 fn emitEnum(fe: FileEmitter&, e: EnumDesc&, scope: const u8[:]) {
@@ -1218,9 +1332,9 @@ recursive fn emitMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:],
     var bits = 0;
     // The real oneofs of a stored message, in the order of oneof_decl.
     let oneofs_at = oneof_pool.len;
-    let oneof_count = google_protobuf::DescriptorProto_oneof_decl(m).len;
-    for i in oneof_count {
-        if !isRealOneof(m, i) { continue; }
+    let slots_at = realOneofSlots(m);
+    for i in google_protobuf::DescriptorProto_oneof_decl(m).len {
+        if oneof_slots[slots_at + i] < 0 { continue; }
         let oname = google_protobuf::OneofDescriptorProto_name(google_protobuf::DescriptorProto_oneof_decl_at(m, i));
         let o .= oneof_pool.push(Oneof {
             name: ident(oname),
@@ -1250,16 +1364,16 @@ recursive fn emitMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:],
         let rname = ident(fieldName(fd));
         claimRecordField(fe, record_names, rname, full);
         var oneof: Oneof? = null;
-        if isRealOneofMember(fd) { oneof .= oneofAt(m, oneofs_at, fd.oneof_index); }
+        if isRealOneofMember(fd) { oneof .= oneof_pool[oneofs_at + oneof_slots[slots_at + fd.oneof_index]]; }
         var bit = -1;
         if sub == null && !repeated && oneof == null && !is_entry && hasPresence(ff, fd) {
             bit = bits;
             bits += 1;
         }
-        let dflt = if is_entry || repeated || sub != null || entry != null { "" } else { defaultLiteral(fe, fd) };
+        let dflt = if is_entry || repeated || sub != null || entry != null { "" } else { defaultLiteral(fd) };
         var closed = "";
         if !is_entry {
-            closed = if entry { closedCheck(fe, mapValueOf(entry.desc)) } else { closedCheck(fe, fd) };
+            closed = if entry { closedCheck(mapValueOf(entry.desc)) } else { closedCheck(fd) };
         }
         field_pool.push(Field {
             fd: fd, sc: sc_opt, name: rname, bit: bit, sub: sub, repeated: repeated, oneof: oneof, map: entry, always: is_entry, closed: closed, packs: ff.packed_repeated, required: ff.presence == PRESENCE_REQUIRED, delimited: delimited,
@@ -1275,8 +1389,8 @@ recursive fn emitMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:],
     let by_number = field_pool[by_number_at..];
     sort(by_number) { a, b => f_number(a) < f_number(b) };
     fe.fn_kw = if isRecursive(fe, full) { "recursive fn" } else { "fn" };
-    let checked = holdsRequired(fe, full, newMap());
-    let folded = holdsMaps(fe, full, newMap());
+    let checked = holdsRequired(full);
+    let folded = holdsMaps(full);
 
     emitOneofTypes(fe, oneofs, fields);
     emitRecord(fe, goose_name, fields, oneofs, has_words);
@@ -1300,15 +1414,6 @@ recursive fn emitMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:],
     }
 }
 
-// The Oneof of real oneof `index` of `m`, in the run that starts at `at`.
-fn oneofAt(m: MessageDesc&, at: i64, index: i64) -> Oneof& {
-    var slot = at;
-    for i in index {
-        if isRealOneof(m, i) { slot += 1; }
-    }
-    return oneof_pool[slot];
-}
-
 // Claims a record field name of the message `full`.
 fn claimRecordField(fe: FileEmitter&, names: u32, rname: const u8[:], full: const u8[:]) {
     if !mapContains(names, rname) {
@@ -1321,36 +1426,31 @@ fn claimRecordField(fe: FileEmitter&, names: u32, rname: const u8[:], full: cons
 // The condition on pb_v that a value of enum field `fd` is declared, if
 // its enum is closed, else "". The enum's own features decide that: a proto3 enum
 // stays open in a proto2 field. Written out, the check needs nothing of its file.
-fn closedCheck(fe: FileEmitter&, fd: FieldDesc&) -> const u8[:] {
-    let found = enumOf(fe, fd);
+fn closedCheck(fd: FieldDesc&) -> const u8[:] {
+    let found = enumOf(fd);
     guard found else { return ""; }
     if !found.closed { return ""; }
     return knownValues(found.desc);
 }
 
 // The enum of field `fd`, in any file.
-fn enumOf(fe: FileEmitter&, fd: FieldDesc&) -> EnumInfo? {
+fn enumOf(fd: FieldDesc&) -> EnumInfo? {
     if fieldType(fd) != TYPE_ENUM { return null; }
     if !google_protobuf::FieldDescriptorProto_has_type_name(fd) { return null; }
     let tn = google_protobuf::FieldDescriptorProto_type_name(fd);
-    let t = if startsWith(tn, ".") { tn[1..] } else { tn };
-    let here = findEnum(fe.file, t);
-    if here { return here; }
-    for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file(request).len {
-        let found = findEnum(google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, i), t);
-        if found { return found; }
-    }
-    return null;
+    let found = mapGet(enum_index, if startsWith(tn, ".") { tn[1..] } else { tn });
+    guard found else { return null; }
+    return enum_infos[found.index];
 }
 
 // The Goose expression of the default of singular field `fd`, if it is a
 // number, bool or enum whose default is not the one of its type, else "". An enum
 // with no [default] has its first value, which an open enum requires to be 0.
-fn defaultLiteral(fe: FileEmitter&, fd: FieldDesc&) -> const u8[:] {
+fn defaultLiteral(fd: FieldDesc&) -> const u8[:] {
     if !google_protobuf::FieldDescriptorProto_has_type(fd) { return ""; }
     let t = fd.type_;
     if t == TYPE_ENUM {
-        let found = enumOf(fe, fd);
+        let found = enumOf(fd);
         guard found else { return ""; }
         let number = enumDefault(found.desc, fd);
         if number == 0 { return ""; }
@@ -1374,39 +1474,6 @@ fn emitDefaultBytes(fe: FileEmitter&, name: const u8[:], value: const u8[:]) {
         format(w, value[i]);
     }
     w.append("];\n");
-}
-
-fn findEnum(file: FileDesc&, t: const u8[:]) -> EnumInfo? {
-    let inherited = featuresOfFile(file);
-    let package = filePackage(file);
-    for i in google_protobuf::FileDescriptorProto_enum_type(file).len {
-        let e .= google_protobuf::FileDescriptorProto_enum_type_at(file, i);
-        if fullName(package, enumName(e)) == t {
-            return enum_infos.push(EnumInfo { desc: e, closed: featuresOfEnum(inherited, e).closed_enum });
-        }
-    }
-    for i in google_protobuf::FileDescriptorProto_message_type(file).len {
-        let m .= google_protobuf::FileDescriptorProto_message_type_at(file, i);
-        let found = findEnumIn(m, package, t, inherited);
-        if found { return found; }
-    }
-    return null;
-}
-
-recursive fn findEnumIn(m: MessageDesc&, scope: const u8[:], t: const u8[:], parent: Features) -> EnumInfo? {
-    let inherited = featuresOfMessage(parent, m);
-    let full = fullName(scope, messageName(m));
-    for i in google_protobuf::DescriptorProto_enum_type(m).len {
-        let e .= google_protobuf::DescriptorProto_enum_type_at(m, i);
-        if fullName(full, enumName(e)) == t {
-            return enum_infos.push(EnumInfo { desc: e, closed: featuresOfEnum(inherited, e).closed_enum });
-        }
-    }
-    for i in google_protobuf::DescriptorProto_nested_type(m).len {
-        let found = findEnumIn(google_protobuf::DescriptorProto_nested_type_at(m, i), full, t, inherited);
-        if found { return found; }
-    }
-    return null;
 }
 
 // The storage of a sub-message field: a link, whose presence is the
@@ -1977,7 +2044,7 @@ fn emitFoldMaps(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fi
             let entry .= fieldMap(f);
             format(w, "    m.", f.name, " = ", subName(fe, entry, "fold"), "(m.", f.name, ");\n");
         }
-        if !fieldHoldsMaps(fe, f) {
+        if !fieldHoldsMaps(f) {
             continue;
         }
         if f.map != null {
@@ -2034,7 +2101,7 @@ fn emitIsInitialized(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:
         if f.required && f.sub != null {
             format(w, "    if m.", f.name, ".m == null { return false; }\n");
         }
-        if !fieldHoldsRequired(fe, f) {
+        if !fieldHoldsRequired(f) {
             continue;
         }
         if f.map != null {
@@ -2686,6 +2753,7 @@ fn emitSubMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path: cons
 // Generates the .goose source for `file` into `w`. False on a name collision,
 // and `diag` holds the message.
 fn generateFile(file: FileDesc&) -> bool {
+    indexRequest();
     let fe .= newFileEmitter(file);
     emit(fe);
     return diag.len == 0;

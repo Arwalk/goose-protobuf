@@ -69,14 +69,25 @@ fn mapContains(map: u32, key: const u8[:]) -> bool {
     return mapGet(map, key) != null;
 }
 
+// The index in map_entries of the entry of `key` in `map`, added empty if there is
+// none: what a recursive function can keep, where it cannot keep a reference.
+fn mapPutIndex(map: u32, key: const u8[:]) -> i64 {
+    let b = mapBucket(map, key);
+    var at: i64 = map_buckets[b];
+    while at != 0 {
+        let e .= map_entries[at - 1];
+        if e.map == map && e.key == key { return at - 1; }
+        at = e.next;
+    }
+    map_entries.push(MapEntry { map: map, key: key, next: map_buckets[b], next_of_map: map_firsts[map], text: "", flag: false, index: 0 });
+    let added = map_entries.len as! u32;
+    map_buckets[b] = added;
+    map_firsts[map] = added;
+    return map_entries.len - 1;
+}
+
 // The entry of `key` in `map`, added empty if there is none.
 fn mapPut(map: u32, key: const u8[:]) -> MapEntry& {
-    let found = mapGet(map, key);
-    if found { return found; }
-    let b = mapBucket(map, key);
-    let e .= map_entries.push(MapEntry { map: map, key: key, next: map_buckets[b], next_of_map: map_firsts[map], text: "", flag: false, index: 0 });
-    let at = map_entries.len as! u32;
-    map_buckets[b] = at;
-    map_firsts[map] = at;
-    return e;
+    let at = mapPutIndex(map, key);
+    return map_entries[at];
 }

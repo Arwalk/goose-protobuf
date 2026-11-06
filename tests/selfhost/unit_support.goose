@@ -86,6 +86,7 @@ fn add_enum_value(e: EnumDesc&, name: const u8[:], number: i32) {
 // Starts a request over, as a new run of the plugin would have it.
 fn reset_generator() {
     google_protobuf_compiler::CodeGeneratorRequest_clear(request);
+    forgetRequest();
     diag = "";
 }
 

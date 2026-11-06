@@ -28,6 +28,7 @@ scripts/check_generated.sh [-I dir] protos      # generate + goose check, no gol
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
 scripts/edition_defaults.sh                     # feature defaults match protoc (--update to accept)
 scripts/bench_maps.sh [sizes]                   # map decode timings (decision 0008)
+scripts/bench_generator.py [--check] [shapes]   # the plugin's time and memory on large requests
 ```
 
 Golden tests: each `tests/protos/<name>.proto` is generated twice (the two

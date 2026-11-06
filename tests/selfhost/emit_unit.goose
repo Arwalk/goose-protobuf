@@ -123,14 +123,36 @@ fn proto3_optional_has_a_bit_and_a_real_oneof_an_adt() {
     google_protobuf::FieldDescriptorProto_set_oneof_index(o, 0);
     google_protobuf::FieldDescriptorProto_set_proto3_optional(o, true);
     google_protobuf::FieldDescriptorProto_set_oneof_index(add_field(m, "u", 2, LABEL_OPTIONAL, TYPE_INT32), 1);
-    expect(!isRealOneof(m, 0), "a synthetic oneof");
-    expect(isRealOneof(m, 1), "a real oneof");
+    let slots_at = realOneofSlots(m);
+    expect(oneof_slots[slots_at] == -1, "a synthetic oneof");
+    expect(oneof_slots[slots_at + 1] == 0, "a real oneof, the first");
     let out = generated_text(file);
     expect_has(out, "    o: i32,\n    pick: M_pick = M_pick.pb_none,\n    pb_has0: u32,");
     expect_has(out, "fn M_set_o(m: M&, v: i32)");
     expect_has(out, "enum M_pick {\n    pb_none,\n    u { v: i32 },\n}");
     expect_lacks(out, "    u: i32,");
     expect_lacks(out, "enum M__o");
+}
+
+fn each_member_goes_to_its_own_oneof() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let m .= add_message(file, "M");
+    add_oneof(m, "first");
+    add_oneof(m, "_o");
+    add_oneof(m, "second");
+    google_protobuf::FieldDescriptorProto_set_oneof_index(add_field(m, "x", 1, LABEL_OPTIONAL, TYPE_INT32), 0);
+    let o .= add_field(m, "o", 2, LABEL_OPTIONAL, TYPE_INT32);
+    google_protobuf::FieldDescriptorProto_set_oneof_index(o, 1);
+    google_protobuf::FieldDescriptorProto_set_proto3_optional(o, true);
+    google_protobuf::FieldDescriptorProto_set_oneof_index(add_field(m, "y", 3, LABEL_OPTIONAL, TYPE_INT32), 2);
+    let slots_at = realOneofSlots(m);
+    expect(oneof_slots[slots_at] == 0, "the first real oneof");
+    expect(oneof_slots[slots_at + 1] == -1, "the synthetic one");
+    expect(oneof_slots[slots_at + 2] == 1, "the second real oneof");
+    let out = generated_text(file);
+    expect_has(out, "enum M_first {\n    pb_none,\n    x { v: i32 },\n}");
+    expect_has(out, "enum M_second {\n    pb_none,\n    y { v: i32 },\n}");
 }
 
 fn repeated_scalars_of_proto2_are_unpacked() {
@@ -236,6 +258,70 @@ fn sub_messages_are_stored_and_cycles_are_recursive() {
     expect_has(out, "\nfn Later_copy(dst: Later&, src: Later&) {");
 }
 
+fn only_messages_on_a_cycle_are_recursive() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto2");
+    // Two cycles, with messages between, before and after them.
+    add_message_field(add_message(file, "Before"), "a", 1, LABEL_OPTIONAL, ".A");
+    let a .= add_message(file, "A");
+    add_message_field(a, "b", 1, LABEL_OPTIONAL, ".B");
+    add_message_field(a, "between", 2, LABEL_OPTIONAL, ".Between");
+    add_message_field(add_message(file, "B"), "a", 1, LABEL_OPTIONAL, ".A");
+    add_message_field(add_message(file, "Between"), "c", 1, LABEL_OPTIONAL, ".C");
+    let c .= add_message(file, "C");
+    add_message_field(c, "c", 1, LABEL_OPTIONAL, ".C");
+    add_message_field(c, "after", 2, LABEL_OPTIONAL, ".After");
+    add_message(file, "After");
+    // A longer one, whose first message learns of it only through the others.
+    add_message_field(add_message(file, "T1"), "t", 1, LABEL_OPTIONAL, ".T2");
+    add_message_field(add_message(file, "T2"), "t", 1, LABEL_OPTIONAL, ".T3");
+    add_message_field(add_message(file, "T3"), "t", 1, LABEL_OPTIONAL, ".T1");
+    let out = generated_text(file);
+    expect_has(out, "recursive fn T1_encode(");
+    expect_has(out, "recursive fn T2_encode(");
+    expect_has(out, "recursive fn T3_encode(");
+    expect_has(out, "recursive fn A_encode(");
+    expect_has(out, "recursive fn B_encode(");
+    expect_has(out, "recursive fn C_encode(");
+    expect_has(out, "\nfn Before_encode(");
+    expect_has(out, "\nfn Between_encode(");
+    expect_has(out, "\nfn After_encode(");
+}
+
+fn a_search_stopped_short_at_a_cycle_is_not_settled() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto2");
+    // From X, Y finds only X, which is being searched, before X finds R. So Y is
+    // not settled by that search, and it does reach R.
+    let x .= add_message(file, "X");
+    add_message_field(x, "y", 1, LABEL_OPTIONAL, ".Y");
+    add_message_field(x, "r", 2, LABEL_OPTIONAL, ".R");
+    add_message_field(add_message(file, "Y"), "x", 1, LABEL_OPTIONAL, ".X");
+    add_field(add_message(file, "R"), "v", 1, LABEL_REQUIRED, TYPE_INT32);
+    // The same with a map at the end.
+    let p .= add_message(file, "P");
+    add_message_field(p, "q", 1, LABEL_OPTIONAL, ".Q");
+    add_message_field(p, "s", 2, LABEL_OPTIONAL, ".S");
+    add_message_field(add_message(file, "Q"), "p", 1, LABEL_OPTIONAL, ".P");
+    let holder .= add_message(file, "S");
+    let entry .= add_map_entry(holder, "AEntry");
+    add_field(entry, "key", 1, LABEL_OPTIONAL, TYPE_INT32);
+    add_field(entry, "value", 2, LABEL_OPTIONAL, TYPE_INT32);
+    add_message_field(holder, "a", 1, LABEL_REPEATED, ".S.AEntry");
+    // And what finds nothing has neither.
+    add_message_field(add_message(file, "N"), "o", 1, LABEL_OPTIONAL, ".O");
+    add_message_field(add_message(file, "O"), "n", 1, LABEL_OPTIONAL, ".N");
+    let out = generated_text(file);
+    expect_has(out, "fn X_is_initialized(");
+    expect_has(out, "fn Y_is_initialized(");
+    expect_has(out, "fn P_fold_maps(");
+    expect_has(out, "fn Q_fold_maps(");
+    expect_lacks(out, "fn N_is_initialized(");
+    expect_lacks(out, "fn O_fold_maps(");
+    expect_lacks(out, "fn P_is_initialized(");
+    expect_lacks(out, "fn X_fold_maps(");
+}
+
 fn repeated_messages_cycle_and_maps_store_a_run() {
     reset_generator();
     let file .= add_file("t.proto", "p", "proto3");
@@ -323,11 +409,14 @@ fn main() {
     an_imported_file_that_collides_is_reported();
     field_kinds_and_presence();
     proto3_optional_has_a_bit_and_a_real_oneof_an_adt();
+    each_member_goes_to_its_own_oneof();
     repeated_scalars_of_proto2_are_unpacked();
     singular_fields_are_stored_and_messages_are_not_scalars();
     proto3_strings_are_validated_and_bytes_are_not();
     a_nested_name_equal_to_a_oneof_name_is_escaped();
     sub_messages_are_stored_and_cycles_are_recursive();
+    only_messages_on_a_cycle_are_recursive();
+    a_search_stopped_short_at_a_cycle_is_not_settled();
     repeated_messages_cycle_and_maps_store_a_run();
     defaults_are_literal_and_bytes_unescaped();
     a_closed_enum_is_checked_as_sorted_runs();
