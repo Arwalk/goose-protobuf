@@ -73,6 +73,7 @@ jobs:
           scripts/test_interop.sh
           scripts/test_check_docs.sh
           scripts/test_check_generated.sh
+          scripts/test_install_plugin.sh
           scripts/test_selfhost_tests.sh
 
   conformance:

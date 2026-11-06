@@ -19,6 +19,7 @@ scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundt
 scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
 scripts/fuzz.sh [seconds]                       # libFuzzer on generated decoders (needs clang)
 scripts/build_plugin.sh                         # the generator, generator-goose/, to build/protoc-gen-goose
+scripts/install_plugin.sh [prefix]              # build it and copy it to <prefix>/bin (default ~/.local)
 scripts/regen_bindings.sh [--update]            # it writes its own bindings unchanged
 scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
@@ -40,7 +41,7 @@ golden diff in the commit, and the same with `scripts/wkt.sh --update` for the
 well-known types in `wkt/`. `scripts/test_golden.sh`,
 `scripts/test_goose_tests.sh`, `scripts/test_roundtrip.sh`, `scripts/test_interop.sh`, `scripts/test_fuzz.sh`,
 `scripts/test_check_docs.sh`,
-`scripts/test_check_generated.sh`, `scripts/test_selfhost_tests.sh` and
+`scripts/test_check_generated.sh`, `scripts/test_install_plugin.sh`, `scripts/test_selfhost_tests.sh` and
 `scripts/test_run_conformance.sh` self-test the harnesses.
 
 Goose unit tests: a `*_test.goose` file under `tests/` is a program built

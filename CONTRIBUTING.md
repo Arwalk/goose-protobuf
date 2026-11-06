@@ -62,6 +62,7 @@ Every CI step runs a script that also runs locally.
 ```sh
 goose check runtime/pb_wire.goose               # Goose typecheck
 scripts/build_plugin.sh                         # the generator, to build/protoc-gen-goose
+scripts/install_plugin.sh [prefix]              # build it and copy it to <prefix>/bin (default ~/.local)
 tests/smoke_plugin.sh                           # protoc runs the plugin; bad input is refused
 scripts/golden.sh                               # golden tests (--update to accept)
 scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_test.goose)
@@ -95,6 +96,7 @@ scripts/test_interop.sh
 scripts/test_fuzz.sh
 scripts/test_check_docs.sh
 scripts/test_check_generated.sh
+scripts/test_install_plugin.sh
 scripts/test_selfhost_tests.sh
 scripts/test_run_conformance.sh
 ```
