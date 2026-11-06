@@ -225,9 +225,10 @@ fn show(p: people::Person&) {
 }
 ```
 
-A view such as `Person_name(p)` is valid until the next change to any message:
-changes may move the pool under it. Copy what you want to keep with `str(...)` or
-into your own buffer.
+A view such as `Person_name(p)` is valid until the next change to any message, so
+copy what you want to keep with `str(...)` or into your own buffer.
+[The generated code reference](generated-code.md) lists every function by kind of
+field, and how long what each returns stays valid.
 
 An unset field reads as its default. A field the message does not know is kept
 and written back by `encode`, after the known fields.
@@ -293,5 +294,6 @@ which `M_is_initialized(m)` checks, `[default]` and groups, all read in the same
 
 ## Next
 
+- [The generated code reference](generated-code.md) lists every function.
 - [Limitations](limitations.md) lists what is unsupported or slow, and the workarounds.
 - [The documentation map](README.md) lists everything else.

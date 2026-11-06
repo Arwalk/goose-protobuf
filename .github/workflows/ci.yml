@@ -63,7 +63,9 @@ jobs:
         run: scripts/selfhost_tests.sh
 
       - name: Guides
-        run: python3 scripts/check_docs.py
+        run: |
+          python3 scripts/check_docs.py
+          python3 scripts/check_reference.py
 
       - name: Consumer test
         run: scripts/consumer_test.sh
@@ -75,6 +77,7 @@ jobs:
           scripts/test_roundtrip.sh
           scripts/test_interop.sh
           scripts/test_check_docs.sh
+          scripts/test_check_reference.sh
           scripts/test_consumer_test.sh
           scripts/test_check_generated.sh
           scripts/test_install_plugin.sh

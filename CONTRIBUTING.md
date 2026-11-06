@@ -73,6 +73,7 @@ scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGe
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
 scripts/consumer_test.sh                        # consume this repo from outside: vendored, path, git
 scripts/check_docs.py                           # run README and the guides: snippets, commands and output
+scripts/check_reference.py                      # docs/generated-code.md matches tests/golden/
 scripts/check_generated.sh [-I dir] protos      # generate + goose check, no golden
 scripts/wkt.sh                                  # wkt/ matches the plugin (--update to accept)
 scripts/edition_defaults.sh                     # feature defaults match protoc (--update to accept)
@@ -96,6 +97,7 @@ scripts/test_roundtrip.sh
 scripts/test_interop.sh
 scripts/test_fuzz.sh
 scripts/test_check_docs.sh
+scripts/test_check_reference.sh
 scripts/test_consumer_test.sh
 scripts/test_check_generated.sh
 scripts/test_install_plugin.sh
