@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -274,8 +276,8 @@ fn Lists_fold_maps(m: Lists&) {
     m.counts = Lists_CountsEntry_fold(m.counts);
 }
 
-// The spans of names, in pb_spans: its .len is the number of values.
-fn Lists_names(m: Lists&) -> pb_Span[:] { return pb_run(pb_spans, m.names); }
+// The number of values of names.
+fn Lists_names_len(m: Lists&) -> i64 { return m.names.len; }
 
 // The contents of value i of names, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -289,8 +291,8 @@ fn Lists_set_names(m: Lists&, i: i64, v: const u8[:]) { pb_spans_set(m.names, i,
 
 fn Lists_clear_names(m: Lists&) { m.names = pb_spans_free(m.names); }
 
-// The spans of blobs, in pb_spans: its .len is the number of values.
-fn Lists_blobs(m: Lists&) -> pb_Span[:] { return pb_run(pb_spans, m.blobs); }
+// The number of values of blobs.
+fn Lists_blobs_len(m: Lists&) -> i64 { return m.blobs.len; }
 
 // The contents of value i of blobs, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -304,8 +306,8 @@ fn Lists_set_blobs(m: Lists&, i: i64, v: const u8[:]) { pb_spans_set(m.blobs, i,
 
 fn Lists_clear_blobs(m: Lists&) { m.blobs = pb_spans_free(m.blobs); }
 
-// The links of items, in Item_links: its .len is the number of messages.
-fn Lists_items(m: Lists&) -> Item_Ref[:] { return pb_run(Item_links, m.items); }
+// The number of messages of items.
+fn Lists_items_len(m: Lists&) -> i64 { return m.items.len; }
 
 // Message i of items. Valid until it or m is cleared.
 fn Lists_items_at(m: Lists&, i: i64) -> Item& {
@@ -334,8 +336,8 @@ fn Lists_clear_items(m: Lists&) {
     m.items = pb_resize(Item_links, m.items, 0);
 }
 
-// The links of timeouts, in google_protobuf::Duration_links: its .len is the number of messages.
-fn Lists_timeouts(m: Lists&) -> google_protobuf::Duration_Ref[:] { return pb_run(google_protobuf::Duration_links, m.timeouts); }
+// The number of messages of timeouts.
+fn Lists_timeouts_len(m: Lists&) -> i64 { return m.timeouts.len; }
 
 // Message i of timeouts. Valid until it or m is cleared.
 fn Lists_timeouts_at(m: Lists&, i: i64) -> google_protobuf::Duration& {
@@ -364,10 +366,15 @@ fn Lists_clear_timeouts(m: Lists&) {
     m.timeouts = pb_resize(google_protobuf::Duration_links, m.timeouts, 0);
 }
 
-// The entries of counts, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Lists_counts(m: Lists&) -> Lists_CountsEntry[:] { return pb_run(Lists_CountsEntry_entries, m.counts); }
+// The number of entries of counts.
+fn Lists_counts_len(m: Lists&) -> i64 { return m.counts.len; }
+
+// The key of entry i of counts, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Lists_counts_key_at(m: Lists&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Lists_CountsEntry_entries, m.counts)[i].key); }
+
+// The value of entry i of counts.
+fn Lists_counts_value_at(m: Lists&, i: i64) -> i32 { return pb_run(Lists_CountsEntry_entries, m.counts)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Lists_counts_get(m: Lists&, k: const u8[:]) -> i32, bool {
@@ -668,8 +675,8 @@ fn Item_set_label(m: Item&, v: const u8[:]) {
     m.label = pb_bytes_set(m.label, v);
 }
 
-// The spans of tags, in pb_spans: its .len is the number of values.
-fn Item_tags(m: Item&) -> pb_Span[:] { return pb_run(pb_spans, m.tags); }
+// The number of values of tags.
+fn Item_tags_len(m: Item&) -> i64 { return m.tags.len; }
 
 // The contents of value i of tags, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -802,8 +809,8 @@ fn Tree_set_name(m: Tree&, v: const u8[:]) {
     m.name = pb_bytes_set(m.name, v);
 }
 
-// The links of children, in Tree_links: its .len is the number of messages.
-fn Tree_children(m: Tree&) -> Tree_Ref[:] { return pb_run(Tree_links, m.children); }
+// The number of messages of children.
+fn Tree_children_len(m: Tree&) -> i64 { return m.children.len; }
 
 // Message i of children. Valid until it or m is cleared.
 fn Tree_children_at(m: Tree&, i: i64) -> Tree& {
@@ -932,8 +939,8 @@ recursive fn Forest_copy(dst: Forest&, src: Forest&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
-// The links of groves, in Grove_links: its .len is the number of messages.
-fn Forest_groves(m: Forest&) -> Grove_Ref[:] { return pb_run(Grove_links, m.groves); }
+// The number of messages of groves.
+fn Forest_groves_len(m: Forest&) -> i64 { return m.groves.len; }
 
 // Message i of groves. Valid until it or m is cleared.
 fn Forest_groves_at(m: Forest&, i: i64) -> Grove& {

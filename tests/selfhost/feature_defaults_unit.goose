@@ -47,7 +47,7 @@ fn main() {
     if err != PB_OK { abort(str("decode error ", err)); }
     if defaults.minimum_edition != EDITION_PROTO2 { abort(str("minimum edition ", defaults.minimum_edition)); }
     if defaults.maximum_edition != EDITION_2023 { abort(str("maximum edition ", defaults.maximum_edition)); }
-    let count = google_protobuf::FeatureSetDefaults_defaults(defaults).len;
+    let count = google_protobuf::FeatureSetDefaults_defaults_len(defaults);
     if count != 3 { abort(str(count, " editions, not 3")); }
     var seen_legacy = false;
     var seen_proto3 = false;

@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -358,8 +360,8 @@ fn Node_set_name(m: Node&, v: const u8[:]) {
     m.name = pb_bytes_set(m.name, v);
 }
 
-// The links of children, in Node_links: its .len is the number of messages.
-fn Node_children(m: Node&) -> Node_Ref[:] { return pb_run(Node_links, m.children); }
+// The number of messages of children.
+fn Node_children_len(m: Node&) -> i64 { return m.children.len; }
 
 // Message i of children. Valid until it or m is cleared.
 fn Node_children_at(m: Node&, i: i64) -> Node& {

@@ -94,7 +94,7 @@ fn check_built_cases() {
 
 fn check_accessors() {
     var m = maps::Maps { .. };
-    if maps::Maps_si(m).len != 0 { fail_at("accessors", "view of an empty map"); }
+    if maps::Maps_si_len(m) != 0 { fail_at("accessors", "an empty map"); }
     let v0, found0 = maps::Maps_si_get(m, "a");
     if found0 || v0 != 0 { fail_at("accessors", "get of a missing key"); }
     if maps::Maps_si_remove(m, "a") { fail_at("accessors", "remove of a missing key"); }
@@ -102,12 +102,12 @@ fn check_accessors() {
     maps::Maps_si_put(m, "a", 1);
     maps::Maps_si_put(m, "b", 2);
     maps::Maps_si_put(m, "a", 3);
-    if maps::Maps_si(m).len != 2 { fail_at("accessors", "put of a key there adds"); }
+    if maps::Maps_si_len(m) != 2 { fail_at("accessors", "put of a key there adds"); }
     let v1, found1 = maps::Maps_si_get(m, "a");
     if !found1 || v1 != 3 { fail_at("accessors", "put replaces"); }
-    // Insertion order, in the view too.
-    if maps::Maps_SiEntry_key(maps::Maps_si(m)[1]) != "b" { fail_at("accessors", "view order"); }
-    if maps::Maps_si(m)[1].value != 2 { fail_at("accessors", "view value"); }
+    // Insertion order, by index too.
+    if maps::Maps_si_key_at(m, 1) != "b" { fail_at("accessors", "key_at order"); }
+    if maps::Maps_si_value_at(m, 1) != 2 { fail_at("accessors", "value_at"); }
 
     if !maps::Maps_si_remove(m, "a") { fail_at("accessors", "remove"); }
     let v2, found2 = maps::Maps_si_get(m, "a");
@@ -115,7 +115,7 @@ fn check_accessors() {
     let v3, found3 = maps::Maps_si_get(m, "b");
     if !found3 || v3 != 2 { fail_at("accessors", "remove took another"); }
     maps::Maps_clear_si(m);
-    if maps::Maps_si(m).len != 0 { fail_at("accessors", "clear_"); }
+    if maps::Maps_si_len(m) != 0 { fail_at("accessors", "clear_"); }
 
     // A key and value from the pool, even from this very entry.
     maps::Maps_ss_put(m, "key", "value");
@@ -165,7 +165,7 @@ fn check_decode() {
 
     // Two entries.
     decode_all(embed_file("two_a.bin"), m);
-    if maps::Maps_si(m).len != 2 { fail_at("decode", "two entries"); }
+    if maps::Maps_si_len(m) != 2 { fail_at("decode", "two entries"); }
     maps::Maps_clear(m);
 
     // A duplicate key: the last value wins, in the first one's place.
@@ -174,17 +174,17 @@ fn check_decode() {
     w.append(embed_file("dup_c.bin"));
     w.append(embed_file("dup_b.bin"));
     decode_all(w, m);
-    if maps::Maps_si(m).len != 2 { fail_at("decode", str("duplicate key: ", maps::Maps_si(m).len, " entries")); }
+    if maps::Maps_si_len(m) != 2 { fail_at("decode", str("duplicate key: ", maps::Maps_si_len(m), " entries")); }
     let v, found = maps::Maps_si_get(m, "a");
     if !found || v != 9 { fail_at("decode", "duplicate key: last value"); }
-    if maps::Maps_SiEntry_key(maps::Maps_si(m)[0]) != "a" { fail_at("decode", "duplicate key: place"); }
+    if maps::Maps_si_key_at(m, 0) != "a" { fail_at("decode", "duplicate key: place"); }
     maps::Maps_clear(m);
 
     // The same across two decodes.
     decode_all(embed_file("dup_a.bin"), m);
     decode_all(embed_file("dup_b.bin"), m);
     let v2, f2 = maps::Maps_si_get(m, "a");
-    if !f2 || v2 != 9 || maps::Maps_si(m).len != 1 { fail_at("decode", "duplicate key over decodes"); }
+    if !f2 || v2 != 9 || maps::Maps_si_len(m) != 1 { fail_at("decode", "duplicate key over decodes"); }
     maps::Maps_clear(m);
 
     // A duplicate key with a message value replaces, it does not merge.
@@ -208,7 +208,7 @@ fn check_decode() {
     let empty: u8[4] = [0x1a, 0, 0x1a, 0];
     decode_all(empty, m);
     let v4, f4 = maps::Maps_si_get(m, "");
-    if !f4 || v4 != 0 || maps::Maps_si(m).len != 1 { fail_at("decode", "empty entries"); }
+    if !f4 || v4 != 0 || maps::Maps_si_len(m) != 1 { fail_at("decode", "empty entries"); }
     var eo: u8[>..] = [];
     maps::Maps_encode(m, eo);
     if eo != embed_file("si_defaults.bin") { fail_at("decode", "defaults are encoded"); }
@@ -222,7 +222,7 @@ fn check_decode() {
     let keys: u8[10] = [0x1a, 8, 0x0a, 1, 0x61, 0x0a, 1, 0x62, 0x10, 2];
     decode_all(keys, m);
     let v5, f5 = maps::Maps_si_get(m, "b");
-    if !f5 || v5 != 2 || maps::Maps_si(m).len != 1 { fail_at("decode", "key twice"); }
+    if !f5 || v5 != 2 || maps::Maps_si_len(m) != 1 { fail_at("decode", "key twice"); }
     maps::Maps_clear(m);
     // The value message twice in one entry merges: value { a: 1 } value { r: 2 }.
     let vals: u8[11] = [0x92, 0x01, 8, 0x12, 2, 0x08, 1, 0x12, 2, 0x18, 2];
@@ -240,7 +240,7 @@ fn check_decode() {
     // A map field with another wire type is an unknown field.
     let wrong: u8[2] = [0x18, 1];
     decode_all(wrong, m);
-    if maps::Maps_si(m).len != 0 || maps::Maps_size_of(m) != 2 { fail_at("decode", "map field with another wire type"); }
+    if maps::Maps_si_len(m) != 0 || maps::Maps_size_of(m) != 2 { fail_at("decode", "map field with another wire type"); }
     maps::Maps_clear(m);
 }
 

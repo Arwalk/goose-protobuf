@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -178,6 +180,9 @@ fn Sub_s(m: Sub&) -> u8[:] { return pb_run(pb_bytes, m.s); }
 fn Sub_set_s(m: Sub&, v: const u8[:]) {
     m.s = pb_bytes_set(m.s, v);
 }
+
+// The number of values of r.
+fn Sub_r_len(m: Sub&) -> i64 { return m.r.len; }
 
 // The values of r, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -951,10 +956,16 @@ recursive fn Maps_fold_maps(m: Maps&) {
     for pb_i in m.self_.len { Maps_SelfEntry_fold_maps(pb_run(Maps_SelfEntry_entries, m.self_)[pb_i]); }
 }
 
-// The entries of ss, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_ss(m: Maps&) -> Maps_SsEntry[:] { return pb_run(Maps_SsEntry_entries, m.ss); }
+// The number of entries of ss.
+fn Maps_ss_len(m: Maps&) -> i64 { return m.ss.len; }
+
+// The key of entry i of ss, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_ss_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SsEntry_entries, m.ss)[i].key); }
+
+// The value of entry i of ss. Valid until the map next changes or m is
+// cleared.
+fn Maps_ss_value_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SsEntry_entries, m.ss)[i].value); }
 
 // The value with key k and true, or the default and false. Valid until the
 // map next changes or m is cleared.
@@ -1000,10 +1011,16 @@ recursive fn Maps_clear_ss(m: Maps&) {
     m.ss = pb_resize(Maps_SsEntry_entries, m.ss, 0);
 }
 
-// The entries of sb, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_sb(m: Maps&) -> Maps_SbEntry[:] { return pb_run(Maps_SbEntry_entries, m.sb); }
+// The number of entries of sb.
+fn Maps_sb_len(m: Maps&) -> i64 { return m.sb.len; }
+
+// The key of entry i of sb, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_sb_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SbEntry_entries, m.sb)[i].key); }
+
+// The value of entry i of sb. Valid until the map next changes or m is
+// cleared.
+fn Maps_sb_value_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SbEntry_entries, m.sb)[i].value); }
 
 // The value with key k and true, or the default and false. Valid until the
 // map next changes or m is cleared.
@@ -1049,10 +1066,15 @@ recursive fn Maps_clear_sb(m: Maps&) {
     m.sb = pb_resize(Maps_SbEntry_entries, m.sb, 0);
 }
 
-// The entries of si, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_si(m: Maps&) -> Maps_SiEntry[:] { return pb_run(Maps_SiEntry_entries, m.si); }
+// The number of entries of si.
+fn Maps_si_len(m: Maps&) -> i64 { return m.si.len; }
+
+// The key of entry i of si, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_si_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SiEntry_entries, m.si)[i].key); }
+
+// The value of entry i of si.
+fn Maps_si_value_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_SiEntry_entries, m.si)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_si_get(m: Maps&, k: const u8[:]) -> i32, bool {
@@ -1097,10 +1119,15 @@ recursive fn Maps_clear_si(m: Maps&) {
     m.si = pb_resize(Maps_SiEntry_entries, m.si, 0);
 }
 
-// The entries of is, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_is(m: Maps&) -> Maps_IsEntry[:] { return pb_run(Maps_IsEntry_entries, m.is); }
+// The number of entries of is.
+fn Maps_is_len(m: Maps&) -> i64 { return m.is.len; }
+
+// The key of entry i of is, in insertion order.
+fn Maps_is_key_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_IsEntry_entries, m.is)[i].key; }
+
+// The value of entry i of is. Valid until the map next changes or m is
+// cleared.
+fn Maps_is_value_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_IsEntry_entries, m.is)[i].value); }
 
 // The value with key k and true, or the default and false. Valid until the
 // map next changes or m is cleared.
@@ -1146,10 +1173,14 @@ recursive fn Maps_clear_is(m: Maps&) {
     m.is = pb_resize(Maps_IsEntry_entries, m.is, 0);
 }
 
-// The entries of ll, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_ll(m: Maps&) -> Maps_LlEntry[:] { return pb_run(Maps_LlEntry_entries, m.ll); }
+// The number of entries of ll.
+fn Maps_ll_len(m: Maps&) -> i64 { return m.ll.len; }
+
+// The key of entry i of ll, in insertion order.
+fn Maps_ll_key_at(m: Maps&, i: i64) -> i64 { return pb_run(Maps_LlEntry_entries, m.ll)[i].key; }
+
+// The value of entry i of ll.
+fn Maps_ll_value_at(m: Maps&, i: i64) -> i64 { return pb_run(Maps_LlEntry_entries, m.ll)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_ll_get(m: Maps&, k: i64) -> i64, bool {
@@ -1194,10 +1225,14 @@ recursive fn Maps_clear_ll(m: Maps&) {
     m.ll = pb_resize(Maps_LlEntry_entries, m.ll, 0);
 }
 
-// The entries of uu, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_uu(m: Maps&) -> Maps_UuEntry[:] { return pb_run(Maps_UuEntry_entries, m.uu); }
+// The number of entries of uu.
+fn Maps_uu_len(m: Maps&) -> i64 { return m.uu.len; }
+
+// The key of entry i of uu, in insertion order.
+fn Maps_uu_key_at(m: Maps&, i: i64) -> u32 { return pb_run(Maps_UuEntry_entries, m.uu)[i].key; }
+
+// The value of entry i of uu.
+fn Maps_uu_value_at(m: Maps&, i: i64) -> u32 { return pb_run(Maps_UuEntry_entries, m.uu)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_uu_get(m: Maps&, k: u32) -> u32, bool {
@@ -1242,10 +1277,14 @@ recursive fn Maps_clear_uu(m: Maps&) {
     m.uu = pb_resize(Maps_UuEntry_entries, m.uu, 0);
 }
 
-// The entries of vv, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_vv(m: Maps&) -> Maps_VvEntry[:] { return pb_run(Maps_VvEntry_entries, m.vv); }
+// The number of entries of vv.
+fn Maps_vv_len(m: Maps&) -> i64 { return m.vv.len; }
+
+// The key of entry i of vv, in insertion order.
+fn Maps_vv_key_at(m: Maps&, i: i64) -> u64 { return pb_run(Maps_VvEntry_entries, m.vv)[i].key; }
+
+// The value of entry i of vv.
+fn Maps_vv_value_at(m: Maps&, i: i64) -> u64 { return pb_run(Maps_VvEntry_entries, m.vv)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_vv_get(m: Maps&, k: u64) -> u64, bool {
@@ -1290,10 +1329,14 @@ recursive fn Maps_clear_vv(m: Maps&) {
     m.vv = pb_resize(Maps_VvEntry_entries, m.vv, 0);
 }
 
-// The entries of zz, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_zz(m: Maps&) -> Maps_ZzEntry[:] { return pb_run(Maps_ZzEntry_entries, m.zz); }
+// The number of entries of zz.
+fn Maps_zz_len(m: Maps&) -> i64 { return m.zz.len; }
+
+// The key of entry i of zz, in insertion order.
+fn Maps_zz_key_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_ZzEntry_entries, m.zz)[i].key; }
+
+// The value of entry i of zz.
+fn Maps_zz_value_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_ZzEntry_entries, m.zz)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_zz_get(m: Maps&, k: i32) -> i32, bool {
@@ -1338,10 +1381,14 @@ recursive fn Maps_clear_zz(m: Maps&) {
     m.zz = pb_resize(Maps_ZzEntry_entries, m.zz, 0);
 }
 
-// The entries of yy, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_yy(m: Maps&) -> Maps_YyEntry[:] { return pb_run(Maps_YyEntry_entries, m.yy); }
+// The number of entries of yy.
+fn Maps_yy_len(m: Maps&) -> i64 { return m.yy.len; }
+
+// The key of entry i of yy, in insertion order.
+fn Maps_yy_key_at(m: Maps&, i: i64) -> i64 { return pb_run(Maps_YyEntry_entries, m.yy)[i].key; }
+
+// The value of entry i of yy.
+fn Maps_yy_value_at(m: Maps&, i: i64) -> i64 { return pb_run(Maps_YyEntry_entries, m.yy)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_yy_get(m: Maps&, k: i64) -> i64, bool {
@@ -1386,10 +1433,14 @@ recursive fn Maps_clear_yy(m: Maps&) {
     m.yy = pb_resize(Maps_YyEntry_entries, m.yy, 0);
 }
 
-// The entries of ff, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_ff(m: Maps&) -> Maps_FfEntry[:] { return pb_run(Maps_FfEntry_entries, m.ff); }
+// The number of entries of ff.
+fn Maps_ff_len(m: Maps&) -> i64 { return m.ff.len; }
+
+// The key of entry i of ff, in insertion order.
+fn Maps_ff_key_at(m: Maps&, i: i64) -> u32 { return pb_run(Maps_FfEntry_entries, m.ff)[i].key; }
+
+// The value of entry i of ff.
+fn Maps_ff_value_at(m: Maps&, i: i64) -> u32 { return pb_run(Maps_FfEntry_entries, m.ff)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_ff_get(m: Maps&, k: u32) -> u32, bool {
@@ -1434,10 +1485,14 @@ recursive fn Maps_clear_ff(m: Maps&) {
     m.ff = pb_resize(Maps_FfEntry_entries, m.ff, 0);
 }
 
-// The entries of gg, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_gg(m: Maps&) -> Maps_GgEntry[:] { return pb_run(Maps_GgEntry_entries, m.gg); }
+// The number of entries of gg.
+fn Maps_gg_len(m: Maps&) -> i64 { return m.gg.len; }
+
+// The key of entry i of gg, in insertion order.
+fn Maps_gg_key_at(m: Maps&, i: i64) -> u64 { return pb_run(Maps_GgEntry_entries, m.gg)[i].key; }
+
+// The value of entry i of gg.
+fn Maps_gg_value_at(m: Maps&, i: i64) -> u64 { return pb_run(Maps_GgEntry_entries, m.gg)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_gg_get(m: Maps&, k: u64) -> u64, bool {
@@ -1482,10 +1537,14 @@ recursive fn Maps_clear_gg(m: Maps&) {
     m.gg = pb_resize(Maps_GgEntry_entries, m.gg, 0);
 }
 
-// The entries of hh, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_hh(m: Maps&) -> Maps_HhEntry[:] { return pb_run(Maps_HhEntry_entries, m.hh); }
+// The number of entries of hh.
+fn Maps_hh_len(m: Maps&) -> i64 { return m.hh.len; }
+
+// The key of entry i of hh, in insertion order.
+fn Maps_hh_key_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_HhEntry_entries, m.hh)[i].key; }
+
+// The value of entry i of hh.
+fn Maps_hh_value_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_HhEntry_entries, m.hh)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_hh_get(m: Maps&, k: i32) -> i32, bool {
@@ -1530,10 +1589,14 @@ recursive fn Maps_clear_hh(m: Maps&) {
     m.hh = pb_resize(Maps_HhEntry_entries, m.hh, 0);
 }
 
-// The entries of jj, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_jj(m: Maps&) -> Maps_JjEntry[:] { return pb_run(Maps_JjEntry_entries, m.jj); }
+// The number of entries of jj.
+fn Maps_jj_len(m: Maps&) -> i64 { return m.jj.len; }
+
+// The key of entry i of jj, in insertion order.
+fn Maps_jj_key_at(m: Maps&, i: i64) -> i64 { return pb_run(Maps_JjEntry_entries, m.jj)[i].key; }
+
+// The value of entry i of jj.
+fn Maps_jj_value_at(m: Maps&, i: i64) -> i64 { return pb_run(Maps_JjEntry_entries, m.jj)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_jj_get(m: Maps&, k: i64) -> i64, bool {
@@ -1578,10 +1641,14 @@ recursive fn Maps_clear_jj(m: Maps&) {
     m.jj = pb_resize(Maps_JjEntry_entries, m.jj, 0);
 }
 
-// The entries of bb, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_bb(m: Maps&) -> Maps_BbEntry[:] { return pb_run(Maps_BbEntry_entries, m.bb); }
+// The number of entries of bb.
+fn Maps_bb_len(m: Maps&) -> i64 { return m.bb.len; }
+
+// The key of entry i of bb, in insertion order.
+fn Maps_bb_key_at(m: Maps&, i: i64) -> bool { return pb_run(Maps_BbEntry_entries, m.bb)[i].key; }
+
+// The value of entry i of bb.
+fn Maps_bb_value_at(m: Maps&, i: i64) -> bool { return pb_run(Maps_BbEntry_entries, m.bb)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_bb_get(m: Maps&, k: bool) -> bool, bool {
@@ -1626,10 +1693,15 @@ recursive fn Maps_clear_bb(m: Maps&) {
     m.bb = pb_resize(Maps_BbEntry_entries, m.bb, 0);
 }
 
-// The entries of sf, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_sf(m: Maps&) -> Maps_SfEntry[:] { return pb_run(Maps_SfEntry_entries, m.sf); }
+// The number of entries of sf.
+fn Maps_sf_len(m: Maps&) -> i64 { return m.sf.len; }
+
+// The key of entry i of sf, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_sf_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SfEntry_entries, m.sf)[i].key); }
+
+// The value of entry i of sf.
+fn Maps_sf_value_at(m: Maps&, i: i64) -> f32 { return pb_run(Maps_SfEntry_entries, m.sf)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_sf_get(m: Maps&, k: const u8[:]) -> f32, bool {
@@ -1674,10 +1746,15 @@ recursive fn Maps_clear_sf(m: Maps&) {
     m.sf = pb_resize(Maps_SfEntry_entries, m.sf, 0);
 }
 
-// The entries of sd, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_sd(m: Maps&) -> Maps_SdEntry[:] { return pb_run(Maps_SdEntry_entries, m.sd); }
+// The number of entries of sd.
+fn Maps_sd_len(m: Maps&) -> i64 { return m.sd.len; }
+
+// The key of entry i of sd, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_sd_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SdEntry_entries, m.sd)[i].key); }
+
+// The value of entry i of sd.
+fn Maps_sd_value_at(m: Maps&, i: i64) -> f64 { return pb_run(Maps_SdEntry_entries, m.sd)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_sd_get(m: Maps&, k: const u8[:]) -> f64, bool {
@@ -1722,10 +1799,15 @@ recursive fn Maps_clear_sd(m: Maps&) {
     m.sd = pb_resize(Maps_SdEntry_entries, m.sd, 0);
 }
 
-// The entries of se, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_se(m: Maps&) -> Maps_SeEntry[:] { return pb_run(Maps_SeEntry_entries, m.se); }
+// The number of entries of se.
+fn Maps_se_len(m: Maps&) -> i64 { return m.se.len; }
+
+// The key of entry i of se, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_se_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SeEntry_entries, m.se)[i].key); }
+
+// The value of entry i of se.
+fn Maps_se_value_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_SeEntry_entries, m.se)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_se_get(m: Maps&, k: const u8[:]) -> i32, bool {
@@ -1770,10 +1852,20 @@ recursive fn Maps_clear_se(m: Maps&) {
     m.se = pb_resize(Maps_SeEntry_entries, m.se, 0);
 }
 
-// The entries of sm, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_sm(m: Maps&) -> Maps_SmEntry[:] { return pb_run(Maps_SmEntry_entries, m.sm); }
+// The number of entries of sm.
+fn Maps_sm_len(m: Maps&) -> i64 { return m.sm.len; }
+
+// The key of entry i of sm, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_sm_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SmEntry_entries, m.sm)[i].key); }
+
+// The value of entry i of sm. Valid until its entry is removed or m is
+// cleared.
+fn Maps_sm_value_at(m: Maps&, i: i64) -> Sub& {
+    let pb_l = pb_run(Maps_SmEntry_entries, m.sm)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -1819,10 +1911,19 @@ recursive fn Maps_clear_sm(m: Maps&) {
     m.sm = pb_resize(Maps_SmEntry_entries, m.sm, 0);
 }
 
-// The entries of dur, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_dur(m: Maps&) -> Maps_DurEntry[:] { return pb_run(Maps_DurEntry_entries, m.dur); }
+// The number of entries of dur.
+fn Maps_dur_len(m: Maps&) -> i64 { return m.dur.len; }
+
+// The key of entry i of dur, in insertion order.
+fn Maps_dur_key_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_DurEntry_entries, m.dur)[i].key; }
+
+// The value of entry i of dur. Valid until its entry is removed or m is
+// cleared.
+fn Maps_dur_value_at(m: Maps&, i: i64) -> google_protobuf::Duration& {
+    let pb_l = pb_run(Maps_DurEntry_entries, m.dur)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -1868,10 +1969,20 @@ recursive fn Maps_clear_dur(m: Maps&) {
     m.dur = pb_resize(Maps_DurEntry_entries, m.dur, 0);
 }
 
-// The entries of self, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_self(m: Maps&) -> Maps_SelfEntry[:] { return pb_run(Maps_SelfEntry_entries, m.self_); }
+// The number of entries of self.
+fn Maps_self_len(m: Maps&) -> i64 { return m.self_.len; }
+
+// The key of entry i of self, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_self_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SelfEntry_entries, m.self_)[i].key); }
+
+// The value of entry i of self. Valid until its entry is removed or m is
+// cleared.
+fn Maps_self_value_at(m: Maps&, i: i64) -> Maps& {
+    let pb_l = pb_run(Maps_SelfEntry_entries, m.self_)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -5299,8 +5410,8 @@ fn Holder_clear_one(m: Holder&) {
     m.one.m .= null;
 }
 
-// The links of many, in Maps_links: its .len is the number of messages.
-fn Holder_many(m: Holder&) -> Maps_Ref[:] { return pb_run(Maps_links, m.many); }
+// The number of messages of many.
+fn Holder_many_len(m: Holder&) -> i64 { return m.many.len; }
 
 // Message i of many. Valid until it or m is cleared.
 fn Holder_many_at(m: Holder&, i: i64) -> Maps& {
@@ -5530,8 +5641,8 @@ recursive fn NoMaps_clear_sub(m: NoMaps&) {
     m.sub.m .= null;
 }
 
-// The links of more, in NoMaps_links: its .len is the number of messages.
-fn NoMaps_more(m: NoMaps&) -> NoMaps_Ref[:] { return pb_run(NoMaps_links, m.more); }
+// The number of messages of more.
+fn NoMaps_more_len(m: NoMaps&) -> i64 { return m.more.len; }
 
 // Message i of more. Valid until it or m is cleared.
 fn NoMaps_more_at(m: NoMaps&, i: i64) -> NoMaps& {

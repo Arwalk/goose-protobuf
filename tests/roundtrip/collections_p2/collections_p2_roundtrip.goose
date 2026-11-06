@@ -64,7 +64,7 @@ fn check_lists() {
     if c2::Lists_decode(want, b) != PB_OK { fail_at("lists", "decode"); }
     if b.pb_unknown.len != 0 { fail_at("lists", "kept as unknown"); }
     if c2::Lists_ints(b).len != 2 || c2::Lists_ints_at(b, 1) != -2 { fail_at("lists", "ints"); }
-    if c2::Lists_strs(b).len != 2 || c2::Lists_strs_at(b, 0)[0] != 'a' { fail_at("lists", "strs"); }
+    if c2::Lists_strs_len(b) != 2 || c2::Lists_strs_at(b, 0)[0] != 'a' { fail_at("lists", "strs"); }
     if c2::Sub_has_a(c2::Lists_subs_at(b, 1)) { fail_at("lists", "subs"); }
     if c2::Lists_packed_colors_at(b, 0) != c2::Color_BLUE { fail_at("lists", "colors"); }
     if lists_out(b) != want { fail_at("lists", "re-encoding differs"); }
@@ -210,7 +210,7 @@ fn check_maps() {
     let rep: u8[12] = [0x22, 4, 0x08, 1, 0x10, 1, 0x22, 4, 0x08, 1, 0x10, 5];
     if c2::Maps_decode(rep, m) != PB_OK { fail_at("maps", "repeat decode"); }
     let c2v, c2f = c2::Maps_colors_get(m, 1);
-    if !c2f || c2v != c2::Color_BLUE || c2::Maps_colors(m).len != 1 { fail_at("maps", "repeat"); }
+    if !c2f || c2v != c2::Color_BLUE || c2::Maps_colors_len(m) != 1 { fail_at("maps", "repeat"); }
     c2::Maps_clear(m);
     let nov: u8[4] = [0x22, 2, 0x08, 1];
     if c2::Maps_decode(nov, m) != PB_OK || m.pb_unknown.len != 0 { fail_at("maps", "no value"); }
@@ -222,7 +222,7 @@ fn check_maps() {
     // are, and leaves an entry of that key in place.
     let bad: u8[12] = [0x22, 4, 0x08, 1, 0x10, 5, 0x22, 4, 0x10, 9, 0x08, 1];
     if c2::Maps_decode(bad, m) != PB_OK { fail_at("maps closed", "decode"); }
-    if c2::Maps_colors(m).len != 1 { fail_at("maps closed", "entries"); }
+    if c2::Maps_colors_len(m) != 1 { fail_at("maps closed", "entries"); }
     let c4v, c4f = c2::Maps_colors_get(m, 1);
     if !c4f || c4v != c2::Color_BLUE { fail_at("maps closed", "value"); }
     if m.pb_unknown.len != 6 { fail_at("maps closed", "unknown"); }
@@ -231,10 +231,10 @@ fn check_maps() {
 
     // A bad string key or value is not rejected.
     let k: u8[5] = [0x0a, 3, 0x0a, 1, 0xff];
-    if c2::Maps_decode(k, m) != PB_OK || c2::Maps_counts(m).len != 1 { fail_at("maps", "utf8 key"); }
+    if c2::Maps_decode(k, m) != PB_OK || c2::Maps_counts_len(m) != 1 { fail_at("maps", "utf8 key"); }
     c2::Maps_clear(m);
     let v: u8[5] = [0x12, 3, 0x12, 1, 0xff];
-    if c2::Maps_decode(v, m) != PB_OK || c2::Maps_names(m).len != 1 { fail_at("maps", "utf8 value"); }
+    if c2::Maps_decode(v, m) != PB_OK || c2::Maps_names_len(m) != 1 { fail_at("maps", "utf8 value"); }
     c2::Maps_clear(m);
 }
 

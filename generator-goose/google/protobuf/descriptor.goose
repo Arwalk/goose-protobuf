@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -188,8 +190,8 @@ fn FileDescriptorSet_is_initialized(m: FileDescriptorSet&) -> bool {
     return true;
 }
 
-// The links of file, in FileDescriptorProto_links: its .len is the number of messages.
-fn FileDescriptorSet_file(m: FileDescriptorSet&) -> FileDescriptorProto_Ref[:] { return pb_run(FileDescriptorProto_links, m.file); }
+// The number of messages of file.
+fn FileDescriptorSet_file_len(m: FileDescriptorSet&) -> i64 { return m.file.len; }
 
 // Message i of file. Valid until it or m is cleared.
 fn FileDescriptorSet_file_at(m: FileDescriptorSet&, i: i64) -> FileDescriptorProto& {
@@ -681,8 +683,8 @@ fn FileDescriptorProto_clear_package(m: FileDescriptorProto&) {
     m.pb_has0 &= 0xfffffffd;
 }
 
-// The spans of dependency, in pb_spans: its .len is the number of values.
-fn FileDescriptorProto_dependency(m: FileDescriptorProto&) -> pb_Span[:] { return pb_run(pb_spans, m.dependency); }
+// The number of values of dependency.
+fn FileDescriptorProto_dependency_len(m: FileDescriptorProto&) -> i64 { return m.dependency.len; }
 
 // The contents of value i of dependency, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -695,6 +697,9 @@ fn FileDescriptorProto_add_dependency(m: FileDescriptorProto&, v: const u8[:]) {
 fn FileDescriptorProto_set_dependency(m: FileDescriptorProto&, i: i64, v: const u8[:]) { pb_spans_set(m.dependency, i, v); }
 
 fn FileDescriptorProto_clear_dependency(m: FileDescriptorProto&) { m.dependency = pb_spans_free(m.dependency); }
+
+// The number of values of public_dependency.
+fn FileDescriptorProto_public_dependency_len(m: FileDescriptorProto&) -> i64 { return m.public_dependency.len; }
 
 // The values of public_dependency, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -710,6 +715,9 @@ fn FileDescriptorProto_set_public_dependency(m: FileDescriptorProto&, v: const i
 
 fn FileDescriptorProto_clear_public_dependency(m: FileDescriptorProto&) { m.public_dependency = pb_resize(pb_i32s, m.public_dependency, 0); }
 
+// The number of values of weak_dependency.
+fn FileDescriptorProto_weak_dependency_len(m: FileDescriptorProto&) -> i64 { return m.weak_dependency.len; }
+
 // The values of weak_dependency, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn FileDescriptorProto_weak_dependency(m: FileDescriptorProto&) -> i32[:] { return pb_run(pb_i32s, m.weak_dependency); }
@@ -724,8 +732,8 @@ fn FileDescriptorProto_set_weak_dependency(m: FileDescriptorProto&, v: const i32
 
 fn FileDescriptorProto_clear_weak_dependency(m: FileDescriptorProto&) { m.weak_dependency = pb_resize(pb_i32s, m.weak_dependency, 0); }
 
-// The spans of option_dependency, in pb_spans: its .len is the number of values.
-fn FileDescriptorProto_option_dependency(m: FileDescriptorProto&) -> pb_Span[:] { return pb_run(pb_spans, m.option_dependency); }
+// The number of values of option_dependency.
+fn FileDescriptorProto_option_dependency_len(m: FileDescriptorProto&) -> i64 { return m.option_dependency.len; }
 
 // The contents of value i of option_dependency, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -739,8 +747,8 @@ fn FileDescriptorProto_set_option_dependency(m: FileDescriptorProto&, i: i64, v:
 
 fn FileDescriptorProto_clear_option_dependency(m: FileDescriptorProto&) { m.option_dependency = pb_spans_free(m.option_dependency); }
 
-// The links of message_type, in DescriptorProto_links: its .len is the number of messages.
-fn FileDescriptorProto_message_type(m: FileDescriptorProto&) -> DescriptorProto_Ref[:] { return pb_run(DescriptorProto_links, m.message_type); }
+// The number of messages of message_type.
+fn FileDescriptorProto_message_type_len(m: FileDescriptorProto&) -> i64 { return m.message_type.len; }
 
 // Message i of message_type. Valid until it or m is cleared.
 fn FileDescriptorProto_message_type_at(m: FileDescriptorProto&, i: i64) -> DescriptorProto& {
@@ -769,8 +777,8 @@ fn FileDescriptorProto_clear_message_type(m: FileDescriptorProto&) {
     m.message_type = pb_resize(DescriptorProto_links, m.message_type, 0);
 }
 
-// The links of enum_type, in EnumDescriptorProto_links: its .len is the number of messages.
-fn FileDescriptorProto_enum_type(m: FileDescriptorProto&) -> EnumDescriptorProto_Ref[:] { return pb_run(EnumDescriptorProto_links, m.enum_type); }
+// The number of messages of enum_type.
+fn FileDescriptorProto_enum_type_len(m: FileDescriptorProto&) -> i64 { return m.enum_type.len; }
 
 // Message i of enum_type. Valid until it or m is cleared.
 fn FileDescriptorProto_enum_type_at(m: FileDescriptorProto&, i: i64) -> EnumDescriptorProto& {
@@ -799,8 +807,8 @@ fn FileDescriptorProto_clear_enum_type(m: FileDescriptorProto&) {
     m.enum_type = pb_resize(EnumDescriptorProto_links, m.enum_type, 0);
 }
 
-// The links of service, in ServiceDescriptorProto_links: its .len is the number of messages.
-fn FileDescriptorProto_service(m: FileDescriptorProto&) -> ServiceDescriptorProto_Ref[:] { return pb_run(ServiceDescriptorProto_links, m.service); }
+// The number of messages of service.
+fn FileDescriptorProto_service_len(m: FileDescriptorProto&) -> i64 { return m.service.len; }
 
 // Message i of service. Valid until it or m is cleared.
 fn FileDescriptorProto_service_at(m: FileDescriptorProto&, i: i64) -> ServiceDescriptorProto& {
@@ -829,8 +837,8 @@ fn FileDescriptorProto_clear_service(m: FileDescriptorProto&) {
     m.service = pb_resize(ServiceDescriptorProto_links, m.service, 0);
 }
 
-// The links of extension, in FieldDescriptorProto_links: its .len is the number of messages.
-fn FileDescriptorProto_extension(m: FileDescriptorProto&) -> FieldDescriptorProto_Ref[:] { return pb_run(FieldDescriptorProto_links, m.extension); }
+// The number of messages of extension.
+fn FileDescriptorProto_extension_len(m: FileDescriptorProto&) -> i64 { return m.extension.len; }
 
 // Message i of extension. Valid until it or m is cleared.
 fn FileDescriptorProto_extension_at(m: FileDescriptorProto&, i: i64) -> FieldDescriptorProto& {
@@ -1402,8 +1410,8 @@ fn DescriptorProto_clear_name(m: DescriptorProto&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
-// The links of field, in FieldDescriptorProto_links: its .len is the number of messages.
-fn DescriptorProto_field(m: DescriptorProto&) -> FieldDescriptorProto_Ref[:] { return pb_run(FieldDescriptorProto_links, m.field); }
+// The number of messages of field.
+fn DescriptorProto_field_len(m: DescriptorProto&) -> i64 { return m.field.len; }
 
 // Message i of field. Valid until it or m is cleared.
 fn DescriptorProto_field_at(m: DescriptorProto&, i: i64) -> FieldDescriptorProto& {
@@ -1432,8 +1440,8 @@ recursive fn DescriptorProto_clear_field(m: DescriptorProto&) {
     m.field = pb_resize(FieldDescriptorProto_links, m.field, 0);
 }
 
-// The links of extension, in FieldDescriptorProto_links: its .len is the number of messages.
-fn DescriptorProto_extension(m: DescriptorProto&) -> FieldDescriptorProto_Ref[:] { return pb_run(FieldDescriptorProto_links, m.extension); }
+// The number of messages of extension.
+fn DescriptorProto_extension_len(m: DescriptorProto&) -> i64 { return m.extension.len; }
 
 // Message i of extension. Valid until it or m is cleared.
 fn DescriptorProto_extension_at(m: DescriptorProto&, i: i64) -> FieldDescriptorProto& {
@@ -1462,8 +1470,8 @@ recursive fn DescriptorProto_clear_extension(m: DescriptorProto&) {
     m.extension = pb_resize(FieldDescriptorProto_links, m.extension, 0);
 }
 
-// The links of nested_type, in DescriptorProto_links: its .len is the number of messages.
-fn DescriptorProto_nested_type(m: DescriptorProto&) -> DescriptorProto_Ref[:] { return pb_run(DescriptorProto_links, m.nested_type); }
+// The number of messages of nested_type.
+fn DescriptorProto_nested_type_len(m: DescriptorProto&) -> i64 { return m.nested_type.len; }
 
 // Message i of nested_type. Valid until it or m is cleared.
 fn DescriptorProto_nested_type_at(m: DescriptorProto&, i: i64) -> DescriptorProto& {
@@ -1492,8 +1500,8 @@ recursive fn DescriptorProto_clear_nested_type(m: DescriptorProto&) {
     m.nested_type = pb_resize(DescriptorProto_links, m.nested_type, 0);
 }
 
-// The links of enum_type, in EnumDescriptorProto_links: its .len is the number of messages.
-fn DescriptorProto_enum_type(m: DescriptorProto&) -> EnumDescriptorProto_Ref[:] { return pb_run(EnumDescriptorProto_links, m.enum_type); }
+// The number of messages of enum_type.
+fn DescriptorProto_enum_type_len(m: DescriptorProto&) -> i64 { return m.enum_type.len; }
 
 // Message i of enum_type. Valid until it or m is cleared.
 fn DescriptorProto_enum_type_at(m: DescriptorProto&, i: i64) -> EnumDescriptorProto& {
@@ -1522,8 +1530,8 @@ recursive fn DescriptorProto_clear_enum_type(m: DescriptorProto&) {
     m.enum_type = pb_resize(EnumDescriptorProto_links, m.enum_type, 0);
 }
 
-// The links of extension_range, in DescriptorProto_ExtensionRange_links: its .len is the number of messages.
-fn DescriptorProto_extension_range(m: DescriptorProto&) -> DescriptorProto_ExtensionRange_Ref[:] { return pb_run(DescriptorProto_ExtensionRange_links, m.extension_range); }
+// The number of messages of extension_range.
+fn DescriptorProto_extension_range_len(m: DescriptorProto&) -> i64 { return m.extension_range.len; }
 
 // Message i of extension_range. Valid until it or m is cleared.
 fn DescriptorProto_extension_range_at(m: DescriptorProto&, i: i64) -> DescriptorProto_ExtensionRange& {
@@ -1552,8 +1560,8 @@ recursive fn DescriptorProto_clear_extension_range(m: DescriptorProto&) {
     m.extension_range = pb_resize(DescriptorProto_ExtensionRange_links, m.extension_range, 0);
 }
 
-// The links of oneof_decl, in OneofDescriptorProto_links: its .len is the number of messages.
-fn DescriptorProto_oneof_decl(m: DescriptorProto&) -> OneofDescriptorProto_Ref[:] { return pb_run(OneofDescriptorProto_links, m.oneof_decl); }
+// The number of messages of oneof_decl.
+fn DescriptorProto_oneof_decl_len(m: DescriptorProto&) -> i64 { return m.oneof_decl.len; }
 
 // Message i of oneof_decl. Valid until it or m is cleared.
 fn DescriptorProto_oneof_decl_at(m: DescriptorProto&, i: i64) -> OneofDescriptorProto& {
@@ -1606,8 +1614,8 @@ recursive fn DescriptorProto_clear_options(m: DescriptorProto&) {
     m.options.m .= null;
 }
 
-// The links of reserved_range, in DescriptorProto_ReservedRange_links: its .len is the number of messages.
-fn DescriptorProto_reserved_range(m: DescriptorProto&) -> DescriptorProto_ReservedRange_Ref[:] { return pb_run(DescriptorProto_ReservedRange_links, m.reserved_range); }
+// The number of messages of reserved_range.
+fn DescriptorProto_reserved_range_len(m: DescriptorProto&) -> i64 { return m.reserved_range.len; }
 
 // Message i of reserved_range. Valid until it or m is cleared.
 fn DescriptorProto_reserved_range_at(m: DescriptorProto&, i: i64) -> DescriptorProto_ReservedRange& {
@@ -1636,8 +1644,8 @@ recursive fn DescriptorProto_clear_reserved_range(m: DescriptorProto&) {
     m.reserved_range = pb_resize(DescriptorProto_ReservedRange_links, m.reserved_range, 0);
 }
 
-// The spans of reserved_name, in pb_spans: its .len is the number of values.
-fn DescriptorProto_reserved_name(m: DescriptorProto&) -> pb_Span[:] { return pb_run(pb_spans, m.reserved_name); }
+// The number of values of reserved_name.
+fn DescriptorProto_reserved_name_len(m: DescriptorProto&) -> i64 { return m.reserved_name.len; }
 
 // The contents of value i of reserved_name, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -2140,8 +2148,8 @@ fn ExtensionRangeOptions_is_initialized(m: ExtensionRangeOptions&) -> bool {
     return true;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn ExtensionRangeOptions_uninterpreted_option(m: ExtensionRangeOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn ExtensionRangeOptions_uninterpreted_option_len(m: ExtensionRangeOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn ExtensionRangeOptions_uninterpreted_option_at(m: ExtensionRangeOptions&, i: i64) -> UninterpretedOption& {
@@ -2170,8 +2178,8 @@ fn ExtensionRangeOptions_clear_uninterpreted_option(m: ExtensionRangeOptions&) {
     m.uninterpreted_option = pb_resize(UninterpretedOption_links, m.uninterpreted_option, 0);
 }
 
-// The links of declaration, in ExtensionRangeOptions_Declaration_links: its .len is the number of messages.
-fn ExtensionRangeOptions_declaration(m: ExtensionRangeOptions&) -> ExtensionRangeOptions_Declaration_Ref[:] { return pb_run(ExtensionRangeOptions_Declaration_links, m.declaration); }
+// The number of messages of declaration.
+fn ExtensionRangeOptions_declaration_len(m: ExtensionRangeOptions&) -> i64 { return m.declaration.len; }
 
 // Message i of declaration. Valid until it or m is cleared.
 fn ExtensionRangeOptions_declaration_at(m: ExtensionRangeOptions&, i: i64) -> ExtensionRangeOptions_Declaration& {
@@ -3248,8 +3256,8 @@ fn EnumDescriptorProto_clear_name(m: EnumDescriptorProto&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
-// The links of value, in EnumValueDescriptorProto_links: its .len is the number of messages.
-fn EnumDescriptorProto_value(m: EnumDescriptorProto&) -> EnumValueDescriptorProto_Ref[:] { return pb_run(EnumValueDescriptorProto_links, m.value); }
+// The number of messages of value.
+fn EnumDescriptorProto_value_len(m: EnumDescriptorProto&) -> i64 { return m.value.len; }
 
 // Message i of value. Valid until it or m is cleared.
 fn EnumDescriptorProto_value_at(m: EnumDescriptorProto&, i: i64) -> EnumValueDescriptorProto& {
@@ -3302,8 +3310,8 @@ fn EnumDescriptorProto_clear_options(m: EnumDescriptorProto&) {
     m.options.m .= null;
 }
 
-// The links of reserved_range, in EnumDescriptorProto_EnumReservedRange_links: its .len is the number of messages.
-fn EnumDescriptorProto_reserved_range(m: EnumDescriptorProto&) -> EnumDescriptorProto_EnumReservedRange_Ref[:] { return pb_run(EnumDescriptorProto_EnumReservedRange_links, m.reserved_range); }
+// The number of messages of reserved_range.
+fn EnumDescriptorProto_reserved_range_len(m: EnumDescriptorProto&) -> i64 { return m.reserved_range.len; }
 
 // Message i of reserved_range. Valid until it or m is cleared.
 fn EnumDescriptorProto_reserved_range_at(m: EnumDescriptorProto&, i: i64) -> EnumDescriptorProto_EnumReservedRange& {
@@ -3332,8 +3340,8 @@ fn EnumDescriptorProto_clear_reserved_range(m: EnumDescriptorProto&) {
     m.reserved_range = pb_resize(EnumDescriptorProto_EnumReservedRange_links, m.reserved_range, 0);
 }
 
-// The spans of reserved_name, in pb_spans: its .len is the number of values.
-fn EnumDescriptorProto_reserved_name(m: EnumDescriptorProto&) -> pb_Span[:] { return pb_run(pb_spans, m.reserved_name); }
+// The number of values of reserved_name.
+fn EnumDescriptorProto_reserved_name_len(m: EnumDescriptorProto&) -> i64 { return m.reserved_name.len; }
 
 // The contents of value i of reserved_name, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -3814,8 +3822,8 @@ fn ServiceDescriptorProto_clear_name(m: ServiceDescriptorProto&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
-// The links of method, in MethodDescriptorProto_links: its .len is the number of messages.
-fn ServiceDescriptorProto_method(m: ServiceDescriptorProto&) -> MethodDescriptorProto_Ref[:] { return pb_run(MethodDescriptorProto_links, m.method); }
+// The number of messages of method.
+fn ServiceDescriptorProto_method_len(m: ServiceDescriptorProto&) -> i64 { return m.method.len; }
 
 // Message i of method. Valid until it or m is cleared.
 fn ServiceDescriptorProto_method_at(m: ServiceDescriptorProto&, i: i64) -> MethodDescriptorProto& {
@@ -4805,8 +4813,8 @@ fn FileOptions_clear_features(m: FileOptions&) {
     m.features.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn FileOptions_uninterpreted_option(m: FileOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn FileOptions_uninterpreted_option_len(m: FileOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn FileOptions_uninterpreted_option_at(m: FileOptions&, i: i64) -> UninterpretedOption& {
@@ -5126,8 +5134,8 @@ fn MessageOptions_clear_features(m: MessageOptions&) {
     m.features.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn MessageOptions_uninterpreted_option(m: MessageOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn MessageOptions_uninterpreted_option_len(m: MessageOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn MessageOptions_uninterpreted_option_at(m: MessageOptions&, i: i64) -> UninterpretedOption& {
@@ -5641,6 +5649,9 @@ fn FieldOptions_clear_retention(m: FieldOptions&) {
     m.pb_has0 &= 0xfffffeff;
 }
 
+// The number of values of targets.
+fn FieldOptions_targets_len(m: FieldOptions&) -> i64 { return m.targets.len; }
+
 // The values of targets, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn FieldOptions_targets(m: FieldOptions&) -> i32[:] { return pb_run(pb_i32s, m.targets); }
@@ -5655,8 +5666,8 @@ fn FieldOptions_set_targets(m: FieldOptions&, v: const i32[:]) { m.targets = pb_
 
 fn FieldOptions_clear_targets(m: FieldOptions&) { m.targets = pb_resize(pb_i32s, m.targets, 0); }
 
-// The links of edition_defaults, in FieldOptions_EditionDefault_links: its .len is the number of messages.
-fn FieldOptions_edition_defaults(m: FieldOptions&) -> FieldOptions_EditionDefault_Ref[:] { return pb_run(FieldOptions_EditionDefault_links, m.edition_defaults); }
+// The number of messages of edition_defaults.
+fn FieldOptions_edition_defaults_len(m: FieldOptions&) -> i64 { return m.edition_defaults.len; }
 
 // Message i of edition_defaults. Valid until it or m is cleared.
 fn FieldOptions_edition_defaults_at(m: FieldOptions&, i: i64) -> FieldOptions_EditionDefault& {
@@ -5733,8 +5744,8 @@ fn FieldOptions_clear_feature_support(m: FieldOptions&) {
     m.feature_support.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn FieldOptions_uninterpreted_option(m: FieldOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn FieldOptions_uninterpreted_option_len(m: FieldOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn FieldOptions_uninterpreted_option_at(m: FieldOptions&, i: i64) -> UninterpretedOption& {
@@ -6285,8 +6296,8 @@ fn OneofOptions_clear_features(m: OneofOptions&) {
     m.features.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn OneofOptions_uninterpreted_option(m: OneofOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn OneofOptions_uninterpreted_option_len(m: OneofOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn OneofOptions_uninterpreted_option_at(m: OneofOptions&, i: i64) -> UninterpretedOption& {
@@ -6551,8 +6562,8 @@ fn EnumOptions_clear_features(m: EnumOptions&) {
     m.features.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn EnumOptions_uninterpreted_option(m: EnumOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn EnumOptions_uninterpreted_option_len(m: EnumOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn EnumOptions_uninterpreted_option_at(m: EnumOptions&, i: i64) -> UninterpretedOption& {
@@ -6839,8 +6850,8 @@ fn EnumValueOptions_clear_feature_support(m: EnumValueOptions&) {
     m.feature_support.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn EnumValueOptions_uninterpreted_option(m: EnumValueOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn EnumValueOptions_uninterpreted_option_len(m: EnumValueOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn EnumValueOptions_uninterpreted_option_at(m: EnumValueOptions&, i: i64) -> UninterpretedOption& {
@@ -7055,8 +7066,8 @@ fn ServiceOptions_clear_deprecated(m: ServiceOptions&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn ServiceOptions_uninterpreted_option(m: ServiceOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn ServiceOptions_uninterpreted_option_len(m: ServiceOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn ServiceOptions_uninterpreted_option_at(m: ServiceOptions&, i: i64) -> UninterpretedOption& {
@@ -7302,8 +7313,8 @@ fn MethodOptions_clear_features(m: MethodOptions&) {
     m.features.m .= null;
 }
 
-// The links of uninterpreted_option, in UninterpretedOption_links: its .len is the number of messages.
-fn MethodOptions_uninterpreted_option(m: MethodOptions&) -> UninterpretedOption_Ref[:] { return pb_run(UninterpretedOption_links, m.uninterpreted_option); }
+// The number of messages of uninterpreted_option.
+fn MethodOptions_uninterpreted_option_len(m: MethodOptions&) -> i64 { return m.uninterpreted_option.len; }
 
 // Message i of uninterpreted_option. Valid until it or m is cleared.
 fn MethodOptions_uninterpreted_option_at(m: MethodOptions&, i: i64) -> UninterpretedOption& {
@@ -7517,8 +7528,8 @@ fn UninterpretedOption_is_initialized(m: UninterpretedOption&) -> bool {
     return true;
 }
 
-// The links of name, in UninterpretedOption_NamePart_links: its .len is the number of messages.
-fn UninterpretedOption_name(m: UninterpretedOption&) -> UninterpretedOption_NamePart_Ref[:] { return pb_run(UninterpretedOption_NamePart_links, m.name); }
+// The number of messages of name.
+fn UninterpretedOption_name_len(m: UninterpretedOption&) -> i64 { return m.name.len; }
 
 // Message i of name. Valid until it or m is cleared.
 fn UninterpretedOption_name_at(m: UninterpretedOption&, i: i64) -> UninterpretedOption_NamePart& {
@@ -8411,8 +8422,8 @@ fn FeatureSetDefaults_copy(dst: FeatureSetDefaults&, src: FeatureSetDefaults&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
-// The links of defaults, in FeatureSetDefaults_FeatureSetEditionDefault_links: its .len is the number of messages.
-fn FeatureSetDefaults_defaults(m: FeatureSetDefaults&) -> FeatureSetDefaults_FeatureSetEditionDefault_Ref[:] { return pb_run(FeatureSetDefaults_FeatureSetEditionDefault_links, m.defaults); }
+// The number of messages of defaults.
+fn FeatureSetDefaults_defaults_len(m: FeatureSetDefaults&) -> i64 { return m.defaults.len; }
 
 // Message i of defaults. Valid until it or m is cleared.
 fn FeatureSetDefaults_defaults_at(m: FeatureSetDefaults&, i: i64) -> FeatureSetDefaults_FeatureSetEditionDefault& {
@@ -8757,8 +8768,8 @@ fn SourceCodeInfo_copy(dst: SourceCodeInfo&, src: SourceCodeInfo&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
-// The links of location, in SourceCodeInfo_Location_links: its .len is the number of messages.
-fn SourceCodeInfo_location(m: SourceCodeInfo&) -> SourceCodeInfo_Location_Ref[:] { return pb_run(SourceCodeInfo_Location_links, m.location); }
+// The number of messages of location.
+fn SourceCodeInfo_location_len(m: SourceCodeInfo&) -> i64 { return m.location.len; }
 
 // Message i of location. Valid until it or m is cleared.
 fn SourceCodeInfo_location_at(m: SourceCodeInfo&, i: i64) -> SourceCodeInfo_Location& {
@@ -8941,6 +8952,9 @@ fn SourceCodeInfo_Location_copy(dst: SourceCodeInfo_Location&, src: SourceCodeIn
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
+// The number of values of path.
+fn SourceCodeInfo_Location_path_len(m: SourceCodeInfo_Location&) -> i64 { return m.path.len; }
+
 // The values of path, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn SourceCodeInfo_Location_path(m: SourceCodeInfo_Location&) -> i32[:] { return pb_run(pb_i32s, m.path); }
@@ -8954,6 +8968,9 @@ fn SourceCodeInfo_Location_add_path(m: SourceCodeInfo_Location&, v: i32) { m.pat
 fn SourceCodeInfo_Location_set_path(m: SourceCodeInfo_Location&, v: const i32[:]) { m.path = pb_set_run(pb_i32s, m.path, v); }
 
 fn SourceCodeInfo_Location_clear_path(m: SourceCodeInfo_Location&) { m.path = pb_resize(pb_i32s, m.path, 0); }
+
+// The number of values of span.
+fn SourceCodeInfo_Location_span_len(m: SourceCodeInfo_Location&) -> i64 { return m.span.len; }
 
 // The values of span, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -9005,8 +9022,8 @@ fn SourceCodeInfo_Location_clear_trailing_comments(m: SourceCodeInfo_Location&) 
     m.pb_has0 &= 0xfffffffd;
 }
 
-// The spans of leading_detached_comments, in pb_spans: its .len is the number of values.
-fn SourceCodeInfo_Location_leading_detached_comments(m: SourceCodeInfo_Location&) -> pb_Span[:] { return pb_run(pb_spans, m.leading_detached_comments); }
+// The number of values of leading_detached_comments.
+fn SourceCodeInfo_Location_leading_detached_comments_len(m: SourceCodeInfo_Location&) -> i64 { return m.leading_detached_comments.len; }
 
 // The contents of value i of leading_detached_comments, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -9120,8 +9137,8 @@ fn GeneratedCodeInfo_copy(dst: GeneratedCodeInfo&, src: GeneratedCodeInfo&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
-// The links of annotation, in GeneratedCodeInfo_Annotation_links: its .len is the number of messages.
-fn GeneratedCodeInfo_annotation(m: GeneratedCodeInfo&) -> GeneratedCodeInfo_Annotation_Ref[:] { return pb_run(GeneratedCodeInfo_Annotation_links, m.annotation); }
+// The number of messages of annotation.
+fn GeneratedCodeInfo_annotation_len(m: GeneratedCodeInfo&) -> i64 { return m.annotation.len; }
 
 // Message i of annotation. Valid until it or m is cleared.
 fn GeneratedCodeInfo_annotation_at(m: GeneratedCodeInfo&, i: i64) -> GeneratedCodeInfo_Annotation& {
@@ -9290,6 +9307,9 @@ fn GeneratedCodeInfo_Annotation_copy(dst: GeneratedCodeInfo_Annotation&, src: Ge
     dst.pb_has0 = src.pb_has0;
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
+
+// The number of values of path.
+fn GeneratedCodeInfo_Annotation_path_len(m: GeneratedCodeInfo_Annotation&) -> i64 { return m.path.len; }
 
 // The values of path, in pb_i32s: valid until it is next changed or m is
 // cleared.

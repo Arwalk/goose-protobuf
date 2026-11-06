@@ -16,7 +16,7 @@ fn fail_at(what: u8[:], detail: u8[:]) {
 // The number of unknown bytes in s, everywhere in it.
 recursive fn unknown_in_struct(s: google_protobuf::Struct&) -> i64 {
     var n: i64 = s.pb_unknown.len;
-    let entries = google_protobuf::Struct_fields(s);
+    let entries = pb_run(google_protobuf::Struct_FieldsEntry_entries, s.fields_);
     for i in entries.len {
         n += entries[i].pb_unknown.len;
         let v = entries[i].value.m;
@@ -27,7 +27,7 @@ recursive fn unknown_in_struct(s: google_protobuf::Struct&) -> i64 {
 
 recursive fn unknown_in_list(l: google_protobuf::ListValue&) -> i64 {
     var n: i64 = l.pb_unknown.len;
-    for i in google_protobuf::ListValue_values(l).len {
+    for i in google_protobuf::ListValue_values_len(l) {
         n += unknown_in_value(google_protobuf::ListValue_values_at(l, i));
     }
     return n;
@@ -86,7 +86,7 @@ fn check_field_mask(name: u8[:], want: const u8[:], n: i64) {
     let err = google_protobuf::FieldMask_decode(want, m);
     if err != PB_OK { fail_at(name, str("decode error ", err)); }
     if m.pb_unknown.len != 0 { fail_at(name, "kept as unknown fields"); }
-    if google_protobuf::FieldMask_paths(m).len != n { fail_at(name, "paths"); }
+    if google_protobuf::FieldMask_paths_len(m) != n { fail_at(name, "paths"); }
     var out: u8[>..] = [];
     google_protobuf::FieldMask_encode(m, out);
     if out != want { fail_at(name, "re-encode differs from protoc"); }
@@ -99,7 +99,7 @@ fn check_field_mask(name: u8[:], want: const u8[:], n: i64) {
 fn check_read() {
     var m = google_protobuf::Struct { .. };
     if google_protobuf::Struct_decode(embed_file("struct_nested.bin"), m) != PB_OK { fail_at("read", "decode"); }
-    if google_protobuf::Struct_fields(m).len != 2 { fail_at("read", "entries"); }
+    if google_protobuf::Struct_fields_len(m) != 2 { fail_at("read", "entries"); }
     let num = google_protobuf::Struct_fields_get(m, "num");
     guard num else { fail_at("read", "num"); return; }
     if google_protobuf::Value_number_value(num) != 1.5 { fail_at("read", "number"); }
@@ -109,7 +109,7 @@ fn check_read() {
     guard lv else { fail_at("read", "list"); return; }
     let l = google_protobuf::Value_list_value(lv);
     guard l else { fail_at("read", "list member"); return; }
-    if google_protobuf::ListValue_values(l).len != 5 { fail_at("read", "list length"); }
+    if google_protobuf::ListValue_values_len(l) != 5 { fail_at("read", "list length"); }
     if google_protobuf::Value_string_value(google_protobuf::ListValue_values_at(l, 0)) != "x" { fail_at("read", "string"); }
     if !google_protobuf::Value_bool_value(google_protobuf::ListValue_values_at(l, 1)) { fail_at("read", "bool"); }
     let null_v .= google_protobuf::ListValue_values_at(l, 2);

@@ -27,7 +27,7 @@ fn generate() -> bool {
         return false;
     }
     let outputs = new_map();
-    for i in google_protobuf_compiler::CodeGeneratorRequest_file_to_generate(request).len {
+    for i in google_protobuf_compiler::CodeGeneratorRequest_file_to_generate_len(request) {
         let name = google_protobuf_compiler::CodeGeneratorRequest_file_to_generate_at(request, i);
         let file = find_file(name);
         guard file else {
@@ -59,7 +59,7 @@ fn generate() -> bool {
 }
 
 fn find_file(name: const u8[:]) -> FileDesc? {
-    for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file(request).len {
+    for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file_len(request) {
         let f .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, i);
         if file_name(f) == name { return f; }
     }

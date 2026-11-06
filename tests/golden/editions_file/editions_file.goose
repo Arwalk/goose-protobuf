@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -272,6 +274,9 @@ fn Overrides_copy(dst: Overrides&, src: Overrides&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
+// The number of values of inherited.
+fn Overrides_inherited_len(m: Overrides&) -> i64 { return m.inherited.len; }
+
 // The values of inherited, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Overrides_inherited(m: Overrides&) -> i32[:] { return pb_run(pb_i32s, m.inherited); }
@@ -285,6 +290,9 @@ fn Overrides_add_inherited(m: Overrides&, v: i32) { m.inherited = pb_add(pb_i32s
 fn Overrides_set_inherited(m: Overrides&, v: const i32[:]) { m.inherited = pb_set_run(pb_i32s, m.inherited, v); }
 
 fn Overrides_clear_inherited(m: Overrides&) { m.inherited = pb_resize(pb_i32s, m.inherited, 0); }
+
+// The number of values of packed_f.
+fn Overrides_packed_f_len(m: Overrides&) -> i64 { return m.packed_f.len; }
 
 // The values of packed_f, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -430,6 +438,9 @@ fn Overrides_Nested_copy(dst: Overrides_Nested&, src: Overrides_Nested&) {
     dst.checked = pb_bytes_copy(src.checked);
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
+
+// The number of values of inherited.
+fn Overrides_Nested_inherited_len(m: Overrides_Nested&) -> i64 { return m.inherited.len; }
 
 // The values of inherited, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -754,6 +765,9 @@ fn All_clear_closed(m: All&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
+// The number of values of expanded.
+fn All_expanded_len(m: All&) -> i64 { return m.expanded.len; }
+
 // The values of expanded, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn All_expanded(m: All&) -> i32[:] { return pb_run(pb_i32s, m.expanded); }
@@ -801,10 +815,19 @@ fn All_clear_delimited(m: All&) {
     m.delimited.m .= null;
 }
 
-// The entries of subs, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn All_subs(m: All&) -> All_SubsEntry[:] { return pb_run(All_SubsEntry_entries, m.subs); }
+// The number of entries of subs.
+fn All_subs_len(m: All&) -> i64 { return m.subs.len; }
+
+// The key of entry i of subs, in insertion order.
+fn All_subs_key_at(m: All&, i: i64) -> i32 { return pb_run(All_SubsEntry_entries, m.subs)[i].key; }
+
+// The value of entry i of subs. Valid until its entry is removed or m is
+// cleared.
+fn All_subs_value_at(m: All&, i: i64) -> Sub& {
+    let pb_l = pb_run(All_SubsEntry_entries, m.subs)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -887,6 +910,9 @@ fn All_clear_prefixed(m: All&) {
     Sub_pool.free(Sub_pool.index_of(pb_sub));
     m.prefixed.m .= null;
 }
+
+// The number of values of packed_f.
+fn All_packed_f_len(m: All&) -> i64 { return m.packed_f.len; }
 
 // The values of packed_f, in pb_i32s: valid until it is next changed or m is
 // cleared.

@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -917,6 +919,9 @@ fn Enums_clear_closed(m: Enums&) {
     m.pb_has0 &= 0xfffffffd;
 }
 
+// The number of values of closed_packed.
+fn Enums_closed_packed_len(m: Enums&) -> i64 { return m.closed_packed.len; }
+
 // The values of closed_packed, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Enums_closed_packed(m: Enums&) -> i32[:] { return pb_run(pb_i32s, m.closed_packed); }
@@ -930,6 +935,9 @@ fn Enums_add_closed_packed(m: Enums&, v: i32) { m.closed_packed = pb_add(pb_i32s
 fn Enums_set_closed_packed(m: Enums&, v: const i32[:]) { m.closed_packed = pb_set_run(pb_i32s, m.closed_packed, v); }
 
 fn Enums_clear_closed_packed(m: Enums&) { m.closed_packed = pb_resize(pb_i32s, m.closed_packed, 0); }
+
+// The number of values of closed_expanded.
+fn Enums_closed_expanded_len(m: Enums&) -> i64 { return m.closed_expanded.len; }
 
 // The values of closed_expanded, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -945,10 +953,14 @@ fn Enums_set_closed_expanded(m: Enums&, v: const i32[:]) { m.closed_expanded = p
 
 fn Enums_clear_closed_expanded(m: Enums&) { m.closed_expanded = pb_resize(pb_i32s, m.closed_expanded, 0); }
 
-// The entries of closed_map, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Enums_closed_map(m: Enums&) -> Enums_ClosedMapEntry[:] { return pb_run(Enums_ClosedMapEntry_entries, m.closed_map); }
+// The number of entries of closed_map.
+fn Enums_closed_map_len(m: Enums&) -> i64 { return m.closed_map.len; }
+
+// The key of entry i of closed_map, in insertion order.
+fn Enums_closed_map_key_at(m: Enums&, i: i64) -> i32 { return pb_run(Enums_ClosedMapEntry_entries, m.closed_map)[i].key; }
+
+// The value of entry i of closed_map.
+fn Enums_closed_map_value_at(m: Enums&, i: i64) -> i32 { return pb_run(Enums_ClosedMapEntry_entries, m.closed_map)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Enums_closed_map_get(m: Enums&, k: i32) -> i32, bool {
@@ -993,10 +1005,14 @@ fn Enums_clear_closed_map(m: Enums&) {
     m.closed_map = pb_resize(Enums_ClosedMapEntry_entries, m.closed_map, 0);
 }
 
-// The entries of open_map, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Enums_open_map(m: Enums&) -> Enums_OpenMapEntry[:] { return pb_run(Enums_OpenMapEntry_entries, m.open_map); }
+// The number of entries of open_map.
+fn Enums_open_map_len(m: Enums&) -> i64 { return m.open_map.len; }
+
+// The key of entry i of open_map, in insertion order.
+fn Enums_open_map_key_at(m: Enums&, i: i64) -> i32 { return pb_run(Enums_OpenMapEntry_entries, m.open_map)[i].key; }
+
+// The value of entry i of open_map.
+fn Enums_open_map_value_at(m: Enums&, i: i64) -> i32 { return pb_run(Enums_OpenMapEntry_entries, m.open_map)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Enums_open_map_get(m: Enums&, k: i32) -> i32, bool {
@@ -1486,6 +1502,9 @@ fn Repeats_copy(dst: Repeats&, src: Repeats&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
+// The number of values of packed_f.
+fn Repeats_packed_f_len(m: Repeats&) -> i64 { return m.packed_f.len; }
+
 // The values of packed_f, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Repeats_packed_f(m: Repeats&) -> i32[:] { return pb_run(pb_i32s, m.packed_f); }
@@ -1499,6 +1518,9 @@ fn Repeats_add_packed_f(m: Repeats&, v: i32) { m.packed_f = pb_add(pb_i32s, m.pa
 fn Repeats_set_packed_f(m: Repeats&, v: const i32[:]) { m.packed_f = pb_set_run(pb_i32s, m.packed_f, v); }
 
 fn Repeats_clear_packed_f(m: Repeats&) { m.packed_f = pb_resize(pb_i32s, m.packed_f, 0); }
+
+// The number of values of expanded.
+fn Repeats_expanded_len(m: Repeats&) -> i64 { return m.expanded.len; }
 
 // The values of expanded, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -1791,8 +1813,8 @@ fn Utf8_clear_unchecked(m: Utf8&) {
     m.pb_has0 &= 0xfffffffd;
 }
 
-// The spans of list_verified, in pb_spans: its .len is the number of values.
-fn Utf8_list_verified(m: Utf8&) -> pb_Span[:] { return pb_run(pb_spans, m.list_verified); }
+// The number of values of list_verified.
+fn Utf8_list_verified_len(m: Utf8&) -> i64 { return m.list_verified.len; }
 
 // The contents of value i of list_verified, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -1806,8 +1828,8 @@ fn Utf8_set_list_verified(m: Utf8&, i: i64, v: const u8[:]) { pb_spans_set(m.lis
 
 fn Utf8_clear_list_verified(m: Utf8&) { m.list_verified = pb_spans_free(m.list_verified); }
 
-// The spans of list_unchecked, in pb_spans: its .len is the number of values.
-fn Utf8_list_unchecked(m: Utf8&) -> pb_Span[:] { return pb_run(pb_spans, m.list_unchecked); }
+// The number of values of list_unchecked.
+fn Utf8_list_unchecked_len(m: Utf8&) -> i64 { return m.list_unchecked.len; }
 
 // The contents of value i of list_unchecked, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -1821,10 +1843,16 @@ fn Utf8_set_list_unchecked(m: Utf8&, i: i64, v: const u8[:]) { pb_spans_set(m.li
 
 fn Utf8_clear_list_unchecked(m: Utf8&) { m.list_unchecked = pb_spans_free(m.list_unchecked); }
 
-// The entries of map_verified, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Utf8_map_verified(m: Utf8&) -> Utf8_MapVerifiedEntry[:] { return pb_run(Utf8_MapVerifiedEntry_entries, m.map_verified); }
+// The number of entries of map_verified.
+fn Utf8_map_verified_len(m: Utf8&) -> i64 { return m.map_verified.len; }
+
+// The key of entry i of map_verified, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Utf8_map_verified_key_at(m: Utf8&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Utf8_MapVerifiedEntry_entries, m.map_verified)[i].key); }
+
+// The value of entry i of map_verified. Valid until the map next changes or m is
+// cleared.
+fn Utf8_map_verified_value_at(m: Utf8&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Utf8_MapVerifiedEntry_entries, m.map_verified)[i].value); }
 
 // The value with key k and true, or the default and false. Valid until the
 // map next changes or m is cleared.
@@ -1870,10 +1898,16 @@ fn Utf8_clear_map_verified(m: Utf8&) {
     m.map_verified = pb_resize(Utf8_MapVerifiedEntry_entries, m.map_verified, 0);
 }
 
-// The entries of map_unchecked, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Utf8_map_unchecked(m: Utf8&) -> Utf8_MapUncheckedEntry[:] { return pb_run(Utf8_MapUncheckedEntry_entries, m.map_unchecked); }
+// The number of entries of map_unchecked.
+fn Utf8_map_unchecked_len(m: Utf8&) -> i64 { return m.map_unchecked.len; }
+
+// The key of entry i of map_unchecked, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Utf8_map_unchecked_key_at(m: Utf8&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Utf8_MapUncheckedEntry_entries, m.map_unchecked)[i].key); }
+
+// The value of entry i of map_unchecked. Valid until the map next changes or m is
+// cleared.
+fn Utf8_map_unchecked_value_at(m: Utf8&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Utf8_MapUncheckedEntry_entries, m.map_unchecked)[i].value); }
 
 // The value with key k and true, or the default and false. Valid until the
 // map next changes or m is cleared.
@@ -2625,8 +2659,8 @@ fn Delimited_clear_delimited(m: Delimited&) {
     m.delimited.m .= null;
 }
 
-// The links of list_delimited, in Sub_links: its .len is the number of messages.
-fn Delimited_list_delimited(m: Delimited&) -> Sub_Ref[:] { return pb_run(Sub_links, m.list_delimited); }
+// The number of messages of list_delimited.
+fn Delimited_list_delimited_len(m: Delimited&) -> i64 { return m.list_delimited.len; }
 
 // Message i of list_delimited. Valid until it or m is cleared.
 fn Delimited_list_delimited_at(m: Delimited&, i: i64) -> Sub& {

@@ -28,7 +28,7 @@ fn main() {
     if maps::Holder_decode(b, h) != PB_OK { abort("decode"); }
     let m = maps::Holder_one(h);
     guard m else { abort("no sub-message"); return; }
-    if maps::Maps_uu(m).len != n { abort(str(maps::Maps_uu(m).len, " entries")); }
+    if maps::Maps_uu_len(m) != n { abort(str(maps::Maps_uu_len(m), " entries")); }
     maps::Holder_clear(h);
     print("ok");
 }

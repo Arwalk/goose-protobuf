@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -536,6 +538,9 @@ fn Packed_copy(dst: Packed&, src: Packed&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
+// The number of values of f_int32.
+fn Packed_f_int32_len(m: Packed&) -> i64 { return m.f_int32.len; }
+
 // The values of f_int32, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_int32(m: Packed&) -> i32[:] { return pb_run(pb_i32s, m.f_int32); }
@@ -549,6 +554,9 @@ fn Packed_add_f_int32(m: Packed&, v: i32) { m.f_int32 = pb_add(pb_i32s, m.f_int3
 fn Packed_set_f_int32(m: Packed&, v: const i32[:]) { m.f_int32 = pb_set_run(pb_i32s, m.f_int32, v); }
 
 fn Packed_clear_f_int32(m: Packed&) { m.f_int32 = pb_resize(pb_i32s, m.f_int32, 0); }
+
+// The number of values of f_int64.
+fn Packed_f_int64_len(m: Packed&) -> i64 { return m.f_int64.len; }
 
 // The values of f_int64, in pb_i64s: valid until it is next changed or m is
 // cleared.
@@ -564,6 +572,9 @@ fn Packed_set_f_int64(m: Packed&, v: const i64[:]) { m.f_int64 = pb_set_run(pb_i
 
 fn Packed_clear_f_int64(m: Packed&) { m.f_int64 = pb_resize(pb_i64s, m.f_int64, 0); }
 
+// The number of values of f_uint32.
+fn Packed_f_uint32_len(m: Packed&) -> i64 { return m.f_uint32.len; }
+
 // The values of f_uint32, in pb_u32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_uint32(m: Packed&) -> u32[:] { return pb_run(pb_u32s, m.f_uint32); }
@@ -577,6 +588,9 @@ fn Packed_add_f_uint32(m: Packed&, v: u32) { m.f_uint32 = pb_add(pb_u32s, m.f_ui
 fn Packed_set_f_uint32(m: Packed&, v: const u32[:]) { m.f_uint32 = pb_set_run(pb_u32s, m.f_uint32, v); }
 
 fn Packed_clear_f_uint32(m: Packed&) { m.f_uint32 = pb_resize(pb_u32s, m.f_uint32, 0); }
+
+// The number of values of f_uint64.
+fn Packed_f_uint64_len(m: Packed&) -> i64 { return m.f_uint64.len; }
 
 // The values of f_uint64, in pb_u64s: valid until it is next changed or m is
 // cleared.
@@ -592,6 +606,9 @@ fn Packed_set_f_uint64(m: Packed&, v: const u64[:]) { m.f_uint64 = pb_set_run(pb
 
 fn Packed_clear_f_uint64(m: Packed&) { m.f_uint64 = pb_resize(pb_u64s, m.f_uint64, 0); }
 
+// The number of values of f_sint32.
+fn Packed_f_sint32_len(m: Packed&) -> i64 { return m.f_sint32.len; }
+
 // The values of f_sint32, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_sint32(m: Packed&) -> i32[:] { return pb_run(pb_i32s, m.f_sint32); }
@@ -605,6 +622,9 @@ fn Packed_add_f_sint32(m: Packed&, v: i32) { m.f_sint32 = pb_add(pb_i32s, m.f_si
 fn Packed_set_f_sint32(m: Packed&, v: const i32[:]) { m.f_sint32 = pb_set_run(pb_i32s, m.f_sint32, v); }
 
 fn Packed_clear_f_sint32(m: Packed&) { m.f_sint32 = pb_resize(pb_i32s, m.f_sint32, 0); }
+
+// The number of values of f_sint64.
+fn Packed_f_sint64_len(m: Packed&) -> i64 { return m.f_sint64.len; }
 
 // The values of f_sint64, in pb_i64s: valid until it is next changed or m is
 // cleared.
@@ -620,6 +640,9 @@ fn Packed_set_f_sint64(m: Packed&, v: const i64[:]) { m.f_sint64 = pb_set_run(pb
 
 fn Packed_clear_f_sint64(m: Packed&) { m.f_sint64 = pb_resize(pb_i64s, m.f_sint64, 0); }
 
+// The number of values of f_fixed32.
+fn Packed_f_fixed32_len(m: Packed&) -> i64 { return m.f_fixed32.len; }
+
 // The values of f_fixed32, in pb_u32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_fixed32(m: Packed&) -> u32[:] { return pb_run(pb_u32s, m.f_fixed32); }
@@ -633,6 +656,9 @@ fn Packed_add_f_fixed32(m: Packed&, v: u32) { m.f_fixed32 = pb_add(pb_u32s, m.f_
 fn Packed_set_f_fixed32(m: Packed&, v: const u32[:]) { m.f_fixed32 = pb_set_run(pb_u32s, m.f_fixed32, v); }
 
 fn Packed_clear_f_fixed32(m: Packed&) { m.f_fixed32 = pb_resize(pb_u32s, m.f_fixed32, 0); }
+
+// The number of values of f_fixed64.
+fn Packed_f_fixed64_len(m: Packed&) -> i64 { return m.f_fixed64.len; }
 
 // The values of f_fixed64, in pb_u64s: valid until it is next changed or m is
 // cleared.
@@ -648,6 +674,9 @@ fn Packed_set_f_fixed64(m: Packed&, v: const u64[:]) { m.f_fixed64 = pb_set_run(
 
 fn Packed_clear_f_fixed64(m: Packed&) { m.f_fixed64 = pb_resize(pb_u64s, m.f_fixed64, 0); }
 
+// The number of values of f_sfixed32.
+fn Packed_f_sfixed32_len(m: Packed&) -> i64 { return m.f_sfixed32.len; }
+
 // The values of f_sfixed32, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_sfixed32(m: Packed&) -> i32[:] { return pb_run(pb_i32s, m.f_sfixed32); }
@@ -661,6 +690,9 @@ fn Packed_add_f_sfixed32(m: Packed&, v: i32) { m.f_sfixed32 = pb_add(pb_i32s, m.
 fn Packed_set_f_sfixed32(m: Packed&, v: const i32[:]) { m.f_sfixed32 = pb_set_run(pb_i32s, m.f_sfixed32, v); }
 
 fn Packed_clear_f_sfixed32(m: Packed&) { m.f_sfixed32 = pb_resize(pb_i32s, m.f_sfixed32, 0); }
+
+// The number of values of f_sfixed64.
+fn Packed_f_sfixed64_len(m: Packed&) -> i64 { return m.f_sfixed64.len; }
 
 // The values of f_sfixed64, in pb_i64s: valid until it is next changed or m is
 // cleared.
@@ -676,6 +708,9 @@ fn Packed_set_f_sfixed64(m: Packed&, v: const i64[:]) { m.f_sfixed64 = pb_set_ru
 
 fn Packed_clear_f_sfixed64(m: Packed&) { m.f_sfixed64 = pb_resize(pb_i64s, m.f_sfixed64, 0); }
 
+// The number of values of f_float.
+fn Packed_f_float_len(m: Packed&) -> i64 { return m.f_float.len; }
+
 // The values of f_float, in pb_f32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_float(m: Packed&) -> f32[:] { return pb_run(pb_f32s, m.f_float); }
@@ -689,6 +724,9 @@ fn Packed_add_f_float(m: Packed&, v: f32) { m.f_float = pb_add(pb_f32s, m.f_floa
 fn Packed_set_f_float(m: Packed&, v: const f32[:]) { m.f_float = pb_set_run(pb_f32s, m.f_float, v); }
 
 fn Packed_clear_f_float(m: Packed&) { m.f_float = pb_resize(pb_f32s, m.f_float, 0); }
+
+// The number of values of f_double.
+fn Packed_f_double_len(m: Packed&) -> i64 { return m.f_double.len; }
 
 // The values of f_double, in pb_f64s: valid until it is next changed or m is
 // cleared.
@@ -704,6 +742,9 @@ fn Packed_set_f_double(m: Packed&, v: const f64[:]) { m.f_double = pb_set_run(pb
 
 fn Packed_clear_f_double(m: Packed&) { m.f_double = pb_resize(pb_f64s, m.f_double, 0); }
 
+// The number of values of f_bool.
+fn Packed_f_bool_len(m: Packed&) -> i64 { return m.f_bool.len; }
+
 // The values of f_bool, in pb_bools: valid until it is next changed or m is
 // cleared.
 fn Packed_f_bool(m: Packed&) -> bool[:] { return pb_run(pb_bools, m.f_bool); }
@@ -718,6 +759,9 @@ fn Packed_set_f_bool(m: Packed&, v: const bool[:]) { m.f_bool = pb_set_run(pb_bo
 
 fn Packed_clear_f_bool(m: Packed&) { m.f_bool = pb_resize(pb_bools, m.f_bool, 0); }
 
+// The number of values of f_enum.
+fn Packed_f_enum_len(m: Packed&) -> i64 { return m.f_enum.len; }
+
 // The values of f_enum, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Packed_f_enum(m: Packed&) -> i32[:] { return pb_run(pb_i32s, m.f_enum); }
@@ -731,6 +775,9 @@ fn Packed_add_f_enum(m: Packed&, v: i32) { m.f_enum = pb_add(pb_i32s, m.f_enum, 
 fn Packed_set_f_enum(m: Packed&, v: const i32[:]) { m.f_enum = pb_set_run(pb_i32s, m.f_enum, v); }
 
 fn Packed_clear_f_enum(m: Packed&) { m.f_enum = pb_resize(pb_i32s, m.f_enum, 0); }
+
+// The number of values of far.
+fn Packed_far_len(m: Packed&) -> i64 { return m.far.len; }
 
 // The values of far, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -1214,6 +1261,9 @@ fn Unpacked_copy(dst: Unpacked&, src: Unpacked&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
+// The number of values of f_int32.
+fn Unpacked_f_int32_len(m: Unpacked&) -> i64 { return m.f_int32.len; }
+
 // The values of f_int32, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_int32(m: Unpacked&) -> i32[:] { return pb_run(pb_i32s, m.f_int32); }
@@ -1227,6 +1277,9 @@ fn Unpacked_add_f_int32(m: Unpacked&, v: i32) { m.f_int32 = pb_add(pb_i32s, m.f_
 fn Unpacked_set_f_int32(m: Unpacked&, v: const i32[:]) { m.f_int32 = pb_set_run(pb_i32s, m.f_int32, v); }
 
 fn Unpacked_clear_f_int32(m: Unpacked&) { m.f_int32 = pb_resize(pb_i32s, m.f_int32, 0); }
+
+// The number of values of f_int64.
+fn Unpacked_f_int64_len(m: Unpacked&) -> i64 { return m.f_int64.len; }
 
 // The values of f_int64, in pb_i64s: valid until it is next changed or m is
 // cleared.
@@ -1242,6 +1295,9 @@ fn Unpacked_set_f_int64(m: Unpacked&, v: const i64[:]) { m.f_int64 = pb_set_run(
 
 fn Unpacked_clear_f_int64(m: Unpacked&) { m.f_int64 = pb_resize(pb_i64s, m.f_int64, 0); }
 
+// The number of values of f_uint32.
+fn Unpacked_f_uint32_len(m: Unpacked&) -> i64 { return m.f_uint32.len; }
+
 // The values of f_uint32, in pb_u32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_uint32(m: Unpacked&) -> u32[:] { return pb_run(pb_u32s, m.f_uint32); }
@@ -1255,6 +1311,9 @@ fn Unpacked_add_f_uint32(m: Unpacked&, v: u32) { m.f_uint32 = pb_add(pb_u32s, m.
 fn Unpacked_set_f_uint32(m: Unpacked&, v: const u32[:]) { m.f_uint32 = pb_set_run(pb_u32s, m.f_uint32, v); }
 
 fn Unpacked_clear_f_uint32(m: Unpacked&) { m.f_uint32 = pb_resize(pb_u32s, m.f_uint32, 0); }
+
+// The number of values of f_uint64.
+fn Unpacked_f_uint64_len(m: Unpacked&) -> i64 { return m.f_uint64.len; }
 
 // The values of f_uint64, in pb_u64s: valid until it is next changed or m is
 // cleared.
@@ -1270,6 +1329,9 @@ fn Unpacked_set_f_uint64(m: Unpacked&, v: const u64[:]) { m.f_uint64 = pb_set_ru
 
 fn Unpacked_clear_f_uint64(m: Unpacked&) { m.f_uint64 = pb_resize(pb_u64s, m.f_uint64, 0); }
 
+// The number of values of f_sint32.
+fn Unpacked_f_sint32_len(m: Unpacked&) -> i64 { return m.f_sint32.len; }
+
 // The values of f_sint32, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_sint32(m: Unpacked&) -> i32[:] { return pb_run(pb_i32s, m.f_sint32); }
@@ -1283,6 +1345,9 @@ fn Unpacked_add_f_sint32(m: Unpacked&, v: i32) { m.f_sint32 = pb_add(pb_i32s, m.
 fn Unpacked_set_f_sint32(m: Unpacked&, v: const i32[:]) { m.f_sint32 = pb_set_run(pb_i32s, m.f_sint32, v); }
 
 fn Unpacked_clear_f_sint32(m: Unpacked&) { m.f_sint32 = pb_resize(pb_i32s, m.f_sint32, 0); }
+
+// The number of values of f_sint64.
+fn Unpacked_f_sint64_len(m: Unpacked&) -> i64 { return m.f_sint64.len; }
 
 // The values of f_sint64, in pb_i64s: valid until it is next changed or m is
 // cleared.
@@ -1298,6 +1363,9 @@ fn Unpacked_set_f_sint64(m: Unpacked&, v: const i64[:]) { m.f_sint64 = pb_set_ru
 
 fn Unpacked_clear_f_sint64(m: Unpacked&) { m.f_sint64 = pb_resize(pb_i64s, m.f_sint64, 0); }
 
+// The number of values of f_fixed32.
+fn Unpacked_f_fixed32_len(m: Unpacked&) -> i64 { return m.f_fixed32.len; }
+
 // The values of f_fixed32, in pb_u32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_fixed32(m: Unpacked&) -> u32[:] { return pb_run(pb_u32s, m.f_fixed32); }
@@ -1311,6 +1379,9 @@ fn Unpacked_add_f_fixed32(m: Unpacked&, v: u32) { m.f_fixed32 = pb_add(pb_u32s, 
 fn Unpacked_set_f_fixed32(m: Unpacked&, v: const u32[:]) { m.f_fixed32 = pb_set_run(pb_u32s, m.f_fixed32, v); }
 
 fn Unpacked_clear_f_fixed32(m: Unpacked&) { m.f_fixed32 = pb_resize(pb_u32s, m.f_fixed32, 0); }
+
+// The number of values of f_fixed64.
+fn Unpacked_f_fixed64_len(m: Unpacked&) -> i64 { return m.f_fixed64.len; }
 
 // The values of f_fixed64, in pb_u64s: valid until it is next changed or m is
 // cleared.
@@ -1326,6 +1397,9 @@ fn Unpacked_set_f_fixed64(m: Unpacked&, v: const u64[:]) { m.f_fixed64 = pb_set_
 
 fn Unpacked_clear_f_fixed64(m: Unpacked&) { m.f_fixed64 = pb_resize(pb_u64s, m.f_fixed64, 0); }
 
+// The number of values of f_sfixed32.
+fn Unpacked_f_sfixed32_len(m: Unpacked&) -> i64 { return m.f_sfixed32.len; }
+
 // The values of f_sfixed32, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_sfixed32(m: Unpacked&) -> i32[:] { return pb_run(pb_i32s, m.f_sfixed32); }
@@ -1339,6 +1413,9 @@ fn Unpacked_add_f_sfixed32(m: Unpacked&, v: i32) { m.f_sfixed32 = pb_add(pb_i32s
 fn Unpacked_set_f_sfixed32(m: Unpacked&, v: const i32[:]) { m.f_sfixed32 = pb_set_run(pb_i32s, m.f_sfixed32, v); }
 
 fn Unpacked_clear_f_sfixed32(m: Unpacked&) { m.f_sfixed32 = pb_resize(pb_i32s, m.f_sfixed32, 0); }
+
+// The number of values of f_sfixed64.
+fn Unpacked_f_sfixed64_len(m: Unpacked&) -> i64 { return m.f_sfixed64.len; }
 
 // The values of f_sfixed64, in pb_i64s: valid until it is next changed or m is
 // cleared.
@@ -1354,6 +1431,9 @@ fn Unpacked_set_f_sfixed64(m: Unpacked&, v: const i64[:]) { m.f_sfixed64 = pb_se
 
 fn Unpacked_clear_f_sfixed64(m: Unpacked&) { m.f_sfixed64 = pb_resize(pb_i64s, m.f_sfixed64, 0); }
 
+// The number of values of f_float.
+fn Unpacked_f_float_len(m: Unpacked&) -> i64 { return m.f_float.len; }
+
 // The values of f_float, in pb_f32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_float(m: Unpacked&) -> f32[:] { return pb_run(pb_f32s, m.f_float); }
@@ -1367,6 +1447,9 @@ fn Unpacked_add_f_float(m: Unpacked&, v: f32) { m.f_float = pb_add(pb_f32s, m.f_
 fn Unpacked_set_f_float(m: Unpacked&, v: const f32[:]) { m.f_float = pb_set_run(pb_f32s, m.f_float, v); }
 
 fn Unpacked_clear_f_float(m: Unpacked&) { m.f_float = pb_resize(pb_f32s, m.f_float, 0); }
+
+// The number of values of f_double.
+fn Unpacked_f_double_len(m: Unpacked&) -> i64 { return m.f_double.len; }
 
 // The values of f_double, in pb_f64s: valid until it is next changed or m is
 // cleared.
@@ -1382,6 +1465,9 @@ fn Unpacked_set_f_double(m: Unpacked&, v: const f64[:]) { m.f_double = pb_set_ru
 
 fn Unpacked_clear_f_double(m: Unpacked&) { m.f_double = pb_resize(pb_f64s, m.f_double, 0); }
 
+// The number of values of f_bool.
+fn Unpacked_f_bool_len(m: Unpacked&) -> i64 { return m.f_bool.len; }
+
 // The values of f_bool, in pb_bools: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_bool(m: Unpacked&) -> bool[:] { return pb_run(pb_bools, m.f_bool); }
@@ -1396,6 +1482,9 @@ fn Unpacked_set_f_bool(m: Unpacked&, v: const bool[:]) { m.f_bool = pb_set_run(p
 
 fn Unpacked_clear_f_bool(m: Unpacked&) { m.f_bool = pb_resize(pb_bools, m.f_bool, 0); }
 
+// The number of values of f_enum.
+fn Unpacked_f_enum_len(m: Unpacked&) -> i64 { return m.f_enum.len; }
+
 // The values of f_enum, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Unpacked_f_enum(m: Unpacked&) -> i32[:] { return pb_run(pb_i32s, m.f_enum); }
@@ -1409,6 +1498,9 @@ fn Unpacked_add_f_enum(m: Unpacked&, v: i32) { m.f_enum = pb_add(pb_i32s, m.f_en
 fn Unpacked_set_f_enum(m: Unpacked&, v: const i32[:]) { m.f_enum = pb_set_run(pb_i32s, m.f_enum, v); }
 
 fn Unpacked_clear_f_enum(m: Unpacked&) { m.f_enum = pb_resize(pb_i32s, m.f_enum, 0); }
+
+// The number of values of far.
+fn Unpacked_far_len(m: Unpacked&) -> i64 { return m.far.len; }
 
 // The values of far, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -1534,6 +1626,9 @@ recursive fn Tree_copy(dst: Tree&, src: Tree&) {
     if pb_f2 { Tree_copy(Tree_mutable_next(dst), pb_f2); }
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
+
+// The number of values of values.
+fn Tree_values_len(m: Tree&) -> i64 { return m.values.len; }
 
 // The values of values, in pb_i32s: valid until it is next changed or m is
 // cleared.

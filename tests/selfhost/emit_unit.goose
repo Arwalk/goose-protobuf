@@ -411,7 +411,62 @@ fn fields_of_an_imported_type_are_qualified() {
     expect_has(out, "q_r::Other_In_pool.alloc_ref(q_r::Other_In { .. })");
 }
 
+fn repeated_strings_and_messages_have_no_plain_getter() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let m .= add_message(file, "M");
+    add_field(m, "s", 1, LABEL_REPEATED, TYPE_STRING);
+    add_field(m, "b", 2, LABEL_REPEATED, TYPE_BYTES);
+    add_message_field(m, "c", 3, LABEL_REPEATED, ".M");
+    add_field(m, "n", 4, LABEL_REPEATED, TYPE_INT32);
+    let out = generated_text(file);
+    expect_lacks(out, "fn M_s(");
+    expect_lacks(out, "fn M_b(");
+    expect_lacks(out, "fn M_c(");
+    expect_has(out, "fn M_s_len(m: M&) -> i64");
+    expect_has(out, "fn M_b_len(m: M&) -> i64");
+    expect_has(out, "fn M_c_len(m: M&) -> i64");
+    expect_has(out, "fn M_n_len(m: M&) -> i64");
+    expect_has(out, "fn M_n(m: M&) -> i32[:]");
+}
+
+fn a_map_has_no_plain_getter() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let m .= add_message(file, "M");
+    let entry .= add_map_entry(m, "XEntry");
+    add_field(entry, "key", 1, LABEL_OPTIONAL, TYPE_STRING);
+    add_field(entry, "value", 2, LABEL_OPTIONAL, TYPE_INT32);
+    add_message_field(m, "x", 1, LABEL_REPEATED, ".M.XEntry");
+    let out = generated_text(file);
+    expect_lacks(out, "fn M_x(");
+    expect_has(out, "fn M_x_len(m: M&) -> i64");
+    expect_has(out, "fn M_x_key_at(m: M&, i: i64) -> u8[:]");
+    expect_has(out, "fn M_x_value_at(m: M&, i: i64) -> i32");
+}
+
+fn the_index_accessors_are_claimed() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let m .= add_message(file, "M");
+    add_field(m, "s", 1, LABEL_REPEATED, TYPE_STRING);
+    add_field(m, "s_len", 2, LABEL_OPTIONAL, TYPE_STRING);
+    expect_str(collision_of(file), "t.proto: accessor s_len of M and accessor s_len of M both map to the Goose name M_s_len");
+    reset_generator();
+    let file2 .= add_file("t.proto", "", "proto3");
+    let m2 .= add_message(file2, "M");
+    let entry .= add_map_entry(m2, "XEntry");
+    add_field(entry, "key", 1, LABEL_OPTIONAL, TYPE_STRING);
+    add_field(entry, "value", 2, LABEL_OPTIONAL, TYPE_INT32);
+    add_message_field(m2, "x", 1, LABEL_REPEATED, ".M.XEntry");
+    add_field(m2, "x_key_at", 2, LABEL_OPTIONAL, TYPE_STRING);
+    expect_str(collision_of(file2), "t.proto: accessor x_key_at of M and accessor x_key_at of M both map to the Goose name M_x_key_at");
+}
+
 fn main() {
+    repeated_strings_and_messages_have_no_plain_getter();
+    a_map_has_no_plain_getter();
+    the_index_accessors_are_claimed();
     nested_and_top_level_names_collide();
     nested_names_equal_to_generated_names_are_escaped();
     a_top_level_name_equal_to_a_generated_name_collides();

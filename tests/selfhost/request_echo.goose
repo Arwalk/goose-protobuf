@@ -13,8 +13,8 @@ fn main() {
     read_stdin(input);
     let err = google_protobuf_compiler::CodeGeneratorRequest_decode(input, req);
     if err != PB_OK { abort(str("decode error ", err)); }
-    let files = google_protobuf_compiler::CodeGeneratorRequest_proto_file(req).len;
-    let targets = google_protobuf_compiler::CodeGeneratorRequest_file_to_generate(req).len;
+    let files = google_protobuf_compiler::CodeGeneratorRequest_proto_file_len(req);
+    let targets = google_protobuf_compiler::CodeGeneratorRequest_file_to_generate_len(req);
     if files == 0 || targets == 0 { abort("no files in the request"); }
     write_stderr(str(targets, " to generate, ", files, " files\n"));
     var out: u8[>..] = [];

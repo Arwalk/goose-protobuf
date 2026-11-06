@@ -21,7 +21,7 @@ fn main() {
     }
     var m = maps::Maps { .. };
     if maps::Maps_decode(b, m) != PB_OK { abort("decode"); }
-    if maps::Maps_uu(m).len != n { abort(str(maps::Maps_uu(m).len, " entries")); }
+    if maps::Maps_uu_len(m) != n { abort(str(maps::Maps_uu_len(m), " entries")); }
     let v, found = maps::Maps_uu_get(m, 2654435761);
     if !found || v != 1 { abort("first key"); }
     maps::Maps_clear(m);

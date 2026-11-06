@@ -68,10 +68,11 @@ fn accessors_depend_on_kind_and_presence() {
     expect(field_accessors(KIND_STRING, true).len == 4, "a string with presence");
     expect(field_accessors(KIND_STRING, false).len == 2, "a string without");
     expect(field_accessors(KIND_MESSAGE, true).len == 4, "a message");
-    expect(field_accessors(KIND_REPEATED, false).len == 5, "a repeated scalar");
+    expect(field_accessors(KIND_REPEATED, false).len == 6, "a repeated scalar");
+    expect(field_accessors(KIND_REPEATED_STRING, false).len == 5, "a repeated string");
     expect(field_accessors(KIND_REPEATED_MESSAGE, false).len == 4, "a repeated message");
     expect(field_accessors(KIND_ONEOF_SCALAR, true).len == 4, "a oneof scalar");
-    expect(field_accessors(KIND_MAP, false).len == 6, "a map");
+    expect(field_accessors(KIND_MAP, false).len == 8, "a map");
 }
 
 fn well_known_file(name: const u8[:], package: const u8[:]) -> FileDesc& {

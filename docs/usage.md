@@ -180,17 +180,22 @@ fn show(p: people::Person&) {
     guard home else { return; }
     print("city ", people::Address_city(home));
 
-    // Repeated fields: _at reads one, and the plain getter is a view of all.
-    print("email ", people::Person_emails_at(p, 0));
+    // Repeated fields: _len counts them and _at reads one. Numbers, bools and
+    // enums also have a plain getter, a view of all; strings, bytes and messages
+    // do not.
+    for i in people::Person_emails_len(p) { print("email ", people::Person_emails_at(p, i)); }
     var total = 0;
     for s in people::Person_scores(p) { total += s; }
     print("total ", total);
 
     // Maps: _get gives the value and whether it was found. Entries keep their
     // insertion order; the same key on the wire keeps the place of the first
-    // and the value of the last.
+    // and the value of the last. _len, _key_at and _value_at go through them.
     let visits, found = people::Person_counts_get(p, "visits");
     if found { print("visits ", visits); }
+    for i in people::Person_counts_len(p) {
+        print(people::Person_counts_key_at(p, i), " = ", people::Person_counts_value_at(p, i));
+    }
 
     // A oneof is an ADT in the record field of its name.
     match p.contact {
@@ -255,6 +260,7 @@ city London
 email ada@example.org
 total 30
 visits 3
+visits = 3
 phone 555-0100
 Ada
 true

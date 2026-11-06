@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -566,6 +568,9 @@ fn Lists_copy(dst: Lists&, src: Lists&) {
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 
+// The number of values of ints.
+fn Lists_ints_len(m: Lists&) -> i64 { return m.ints.len; }
+
 // The values of ints, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Lists_ints(m: Lists&) -> i32[:] { return pb_run(pb_i32s, m.ints); }
@@ -579,6 +584,9 @@ fn Lists_add_ints(m: Lists&, v: i32) { m.ints = pb_add(pb_i32s, m.ints, v); }
 fn Lists_set_ints(m: Lists&, v: const i32[:]) { m.ints = pb_set_run(pb_i32s, m.ints, v); }
 
 fn Lists_clear_ints(m: Lists&) { m.ints = pb_resize(pb_i32s, m.ints, 0); }
+
+// The number of values of packed_ints.
+fn Lists_packed_ints_len(m: Lists&) -> i64 { return m.packed_ints.len; }
 
 // The values of packed_ints, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -594,8 +602,8 @@ fn Lists_set_packed_ints(m: Lists&, v: const i32[:]) { m.packed_ints = pb_set_ru
 
 fn Lists_clear_packed_ints(m: Lists&) { m.packed_ints = pb_resize(pb_i32s, m.packed_ints, 0); }
 
-// The spans of strs, in pb_spans: its .len is the number of values.
-fn Lists_strs(m: Lists&) -> pb_Span[:] { return pb_run(pb_spans, m.strs); }
+// The number of values of strs.
+fn Lists_strs_len(m: Lists&) -> i64 { return m.strs.len; }
 
 // The contents of value i of strs, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -609,8 +617,8 @@ fn Lists_set_strs(m: Lists&, i: i64, v: const u8[:]) { pb_spans_set(m.strs, i, v
 
 fn Lists_clear_strs(m: Lists&) { m.strs = pb_spans_free(m.strs); }
 
-// The spans of byts, in pb_spans: its .len is the number of values.
-fn Lists_byts(m: Lists&) -> pb_Span[:] { return pb_run(pb_spans, m.byts); }
+// The number of values of byts.
+fn Lists_byts_len(m: Lists&) -> i64 { return m.byts.len; }
 
 // The contents of value i of byts, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -624,8 +632,8 @@ fn Lists_set_byts(m: Lists&, i: i64, v: const u8[:]) { pb_spans_set(m.byts, i, v
 
 fn Lists_clear_byts(m: Lists&) { m.byts = pb_spans_free(m.byts); }
 
-// The links of subs, in Sub_links: its .len is the number of messages.
-fn Lists_subs(m: Lists&) -> Sub_Ref[:] { return pb_run(Sub_links, m.subs); }
+// The number of messages of subs.
+fn Lists_subs_len(m: Lists&) -> i64 { return m.subs.len; }
 
 // Message i of subs. Valid until it or m is cleared.
 fn Lists_subs_at(m: Lists&, i: i64) -> Sub& {
@@ -654,6 +662,9 @@ fn Lists_clear_subs(m: Lists&) {
     m.subs = pb_resize(Sub_links, m.subs, 0);
 }
 
+// The number of values of colors.
+fn Lists_colors_len(m: Lists&) -> i64 { return m.colors.len; }
+
 // The values of colors, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Lists_colors(m: Lists&) -> i32[:] { return pb_run(pb_i32s, m.colors); }
@@ -667,6 +678,9 @@ fn Lists_add_colors(m: Lists&, v: i32) { m.colors = pb_add(pb_i32s, m.colors, v)
 fn Lists_set_colors(m: Lists&, v: const i32[:]) { m.colors = pb_set_run(pb_i32s, m.colors, v); }
 
 fn Lists_clear_colors(m: Lists&) { m.colors = pb_resize(pb_i32s, m.colors, 0); }
+
+// The number of values of packed_colors.
+fn Lists_packed_colors_len(m: Lists&) -> i64 { return m.packed_colors.len; }
 
 // The values of packed_colors, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -682,6 +696,9 @@ fn Lists_set_packed_colors(m: Lists&, v: const i32[:]) { m.packed_colors = pb_se
 
 fn Lists_clear_packed_colors(m: Lists&) { m.packed_colors = pb_resize(pb_i32s, m.packed_colors, 0); }
 
+// The number of values of doubles.
+fn Lists_doubles_len(m: Lists&) -> i64 { return m.doubles.len; }
+
 // The values of doubles, in pb_f64s: valid until it is next changed or m is
 // cleared.
 fn Lists_doubles(m: Lists&) -> f64[:] { return pb_run(pb_f64s, m.doubles); }
@@ -695,6 +712,9 @@ fn Lists_add_doubles(m: Lists&, v: f64) { m.doubles = pb_add(pb_f64s, m.doubles,
 fn Lists_set_doubles(m: Lists&, v: const f64[:]) { m.doubles = pb_set_run(pb_f64s, m.doubles, v); }
 
 fn Lists_clear_doubles(m: Lists&) { m.doubles = pb_resize(pb_f64s, m.doubles, 0); }
+
+// The number of values of packed_doubles.
+fn Lists_packed_doubles_len(m: Lists&) -> i64 { return m.packed_doubles.len; }
 
 // The values of packed_doubles, in pb_f64s: valid until it is next changed or m is
 // cleared.
@@ -710,6 +730,9 @@ fn Lists_set_packed_doubles(m: Lists&, v: const f64[:]) { m.packed_doubles = pb_
 
 fn Lists_clear_packed_doubles(m: Lists&) { m.packed_doubles = pb_resize(pb_f64s, m.packed_doubles, 0); }
 
+// The number of values of zigs.
+fn Lists_zigs_len(m: Lists&) -> i64 { return m.zigs.len; }
+
 // The values of zigs, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Lists_zigs(m: Lists&) -> i32[:] { return pb_run(pb_i32s, m.zigs); }
@@ -724,6 +747,9 @@ fn Lists_set_zigs(m: Lists&, v: const i32[:]) { m.zigs = pb_set_run(pb_i32s, m.z
 
 fn Lists_clear_zigs(m: Lists&) { m.zigs = pb_resize(pb_i32s, m.zigs, 0); }
 
+// The number of values of bools.
+fn Lists_bools_len(m: Lists&) -> i64 { return m.bools.len; }
+
 // The values of bools, in pb_bools: valid until it is next changed or m is
 // cleared.
 fn Lists_bools(m: Lists&) -> bool[:] { return pb_run(pb_bools, m.bools); }
@@ -737,6 +763,9 @@ fn Lists_add_bools(m: Lists&, v: bool) { m.bools = pb_add(pb_bools, m.bools, v);
 fn Lists_set_bools(m: Lists&, v: const bool[:]) { m.bools = pb_set_run(pb_bools, m.bools, v); }
 
 fn Lists_clear_bools(m: Lists&) { m.bools = pb_resize(pb_bools, m.bools, 0); }
+
+// The number of values of fars.
+fn Lists_fars_len(m: Lists&) -> i64 { return m.fars.len; }
 
 // The values of fars, in pb_i32s: valid until it is next changed or m is
 // cleared.
@@ -1341,10 +1370,15 @@ fn Maps_fold_maps(m: Maps&) {
     m.colors = Maps_ColorsEntry_fold(m.colors);
 }
 
-// The entries of counts, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_counts(m: Maps&) -> Maps_CountsEntry[:] { return pb_run(Maps_CountsEntry_entries, m.counts); }
+// The number of entries of counts.
+fn Maps_counts_len(m: Maps&) -> i64 { return m.counts.len; }
+
+// The key of entry i of counts, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_counts_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_CountsEntry_entries, m.counts)[i].key); }
+
+// The value of entry i of counts.
+fn Maps_counts_value_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_CountsEntry_entries, m.counts)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_counts_get(m: Maps&, k: const u8[:]) -> i32, bool {
@@ -1389,10 +1423,15 @@ fn Maps_clear_counts(m: Maps&) {
     m.counts = pb_resize(Maps_CountsEntry_entries, m.counts, 0);
 }
 
-// The entries of names, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_names(m: Maps&) -> Maps_NamesEntry[:] { return pb_run(Maps_NamesEntry_entries, m.names); }
+// The number of entries of names.
+fn Maps_names_len(m: Maps&) -> i64 { return m.names.len; }
+
+// The key of entry i of names, in insertion order.
+fn Maps_names_key_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_NamesEntry_entries, m.names)[i].key; }
+
+// The value of entry i of names. Valid until the map next changes or m is
+// cleared.
+fn Maps_names_value_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_NamesEntry_entries, m.names)[i].value); }
 
 // The value with key k and true, or the default and false. Valid until the
 // map next changes or m is cleared.
@@ -1438,10 +1477,20 @@ fn Maps_clear_names(m: Maps&) {
     m.names = pb_resize(Maps_NamesEntry_entries, m.names, 0);
 }
 
-// The entries of subs, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_subs(m: Maps&) -> Maps_SubsEntry[:] { return pb_run(Maps_SubsEntry_entries, m.subs); }
+// The number of entries of subs.
+fn Maps_subs_len(m: Maps&) -> i64 { return m.subs.len; }
+
+// The key of entry i of subs, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Maps_subs_key_at(m: Maps&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Maps_SubsEntry_entries, m.subs)[i].key); }
+
+// The value of entry i of subs. Valid until its entry is removed or m is
+// cleared.
+fn Maps_subs_value_at(m: Maps&, i: i64) -> Sub& {
+    let pb_l = pb_run(Maps_SubsEntry_entries, m.subs)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -1487,10 +1536,14 @@ fn Maps_clear_subs(m: Maps&) {
     m.subs = pb_resize(Maps_SubsEntry_entries, m.subs, 0);
 }
 
-// The entries of colors, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Maps_colors(m: Maps&) -> Maps_ColorsEntry[:] { return pb_run(Maps_ColorsEntry_entries, m.colors); }
+// The number of entries of colors.
+fn Maps_colors_len(m: Maps&) -> i64 { return m.colors.len; }
+
+// The key of entry i of colors, in insertion order.
+fn Maps_colors_key_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_ColorsEntry_entries, m.colors)[i].key; }
+
+// The value of entry i of colors.
+fn Maps_colors_value_at(m: Maps&, i: i64) -> i32 { return pb_run(Maps_ColorsEntry_entries, m.colors)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Maps_colors_get(m: Maps&, k: i32) -> i32, bool {
@@ -2498,8 +2551,8 @@ fn Reqs_clear_one(m: Reqs&) {
     m.one = Reqs_one.pb_none;
 }
 
-// The links of list, in ReqSub_links: its .len is the number of messages.
-fn Reqs_list(m: Reqs&) -> ReqSub_Ref[:] { return pb_run(ReqSub_links, m.list); }
+// The number of messages of list.
+fn Reqs_list_len(m: Reqs&) -> i64 { return m.list.len; }
 
 // Message i of list. Valid until it or m is cleared.
 fn Reqs_list_at(m: Reqs&, i: i64) -> ReqSub& {
@@ -2528,10 +2581,20 @@ fn Reqs_clear_list(m: Reqs&) {
     m.list = pb_resize(ReqSub_links, m.list, 0);
 }
 
-// The entries of by_name, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Reqs_by_name(m: Reqs&) -> Reqs_ByNameEntry[:] { return pb_run(Reqs_ByNameEntry_entries, m.by_name); }
+// The number of entries of by_name.
+fn Reqs_by_name_len(m: Reqs&) -> i64 { return m.by_name.len; }
+
+// The key of entry i of by_name, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Reqs_by_name_key_at(m: Reqs&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Reqs_ByNameEntry_entries, m.by_name)[i].key); }
+
+// The value of entry i of by_name. Valid until its entry is removed or m is
+// cleared.
+fn Reqs_by_name_value_at(m: Reqs&, i: i64) -> ReqSub& {
+    let pb_l = pb_run(Reqs_ByNameEntry_entries, m.by_name)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.

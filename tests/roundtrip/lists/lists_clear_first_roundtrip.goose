@@ -7,6 +7,6 @@ fn main() {
     var t = lists::Tree { .. };
     lists::Tree_add_children(t);
     lists::Tree_clear_children(t);
-    if lists::Tree_children(t).len != 0 { abort("clear_children"); }
+    if lists::Tree_children_len(t) != 0 { abort("clear_children"); }
     print("ok");
 }

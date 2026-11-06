@@ -50,9 +50,9 @@ fn the_last_value_wins_in_the_first_place() {
     maps::Maps_si_append(m, "c", 4);
     maps::Maps_si_append(m, "b", 5);
     // Until it is folded, a repeated key is there twice.
-    expect(maps::Maps_si(m).len == 5, "nothing folded yet");
+    expect(maps::Maps_si_len(m) == 5, "nothing folded yet");
     maps::Maps_fold_maps(m);
-    expect(maps::Maps_si(m).len == 3, "folded to three");
+    expect(maps::Maps_si_len(m) == 3, "folded to three");
     let va, fa = maps::Maps_si_get(m, "a");
     expect(fa && va == 3, "a has its last value");
     let vb, fb = maps::Maps_si_get(m, "b");
@@ -72,9 +72,9 @@ fn a_repeated_message_value_frees_the_earlier_one() {
     let v = maps::Maps_sm_get(m, "k");
     assert(v);
     expect(v.a == 2, "the last message");
-    expect(maps::Maps_sm(m).len == 1, "one entry");
+    expect(maps::Maps_sm_len(m) == 1, "one entry");
     maps::Maps_clear(m);
-    expect(maps::Maps_sm(m).len == 0, "cleared");
+    expect(maps::Maps_sm_len(m) == 0, "cleared");
 }
 
 fn it_goes_on_after_a_put_and_a_decode() {
@@ -88,7 +88,7 @@ fn it_goes_on_after_a_put_and_a_decode() {
     maps::Maps_encode(other, wire);
     // Decoding folds, so what was appended is settled with it.
     expect(maps::Maps_decode(wire, m) == PB_OK, "decodes");
-    expect(maps::Maps_si(m).len == 3, "a, b and c");
+    expect(maps::Maps_si_len(m) == 3, "a, b and c");
     let va, fa = maps::Maps_si_get(m, "a");
     expect(fa && va == 3, "a");
 }
@@ -100,9 +100,9 @@ fn many_entries_stay_quick() {
     for i in n { maps::Maps_ll_append(m, i, i * 2); }
     maps::Maps_ll_append(m, 5, -1);
     maps::Maps_fold_maps(m);
-    expect(maps::Maps_ll(m).len == n, "all the keys, once");
-    expect(maps::Maps_ll(m)[5].value == -1, "the last value, in its place");
-    expect(maps::Maps_ll(m)[n - 1].key == n - 1, "the order they came in");
+    expect(maps::Maps_ll_len(m) == n, "all the keys, once");
+    expect(maps::Maps_ll_value_at(m, 5) == -1, "the last value, in its place");
+    expect(maps::Maps_ll_key_at(m, n - 1) == n - 1, "the order they came in");
 }
 
 fn main() {

@@ -1,8 +1,8 @@
 # 0012: what is public, and how versions move
 
 - Status: accepted by the project owner, who made a raised tool pin a major after
-  1.0. The accessors of repeated string, bytes and message fields and of maps are
-  changing as this record's public table says, in gpb-ky7.15.
+  1.0. gpb-ky7.15 gave repeated string, bytes and message fields and maps the
+  accessors in this record's public table, without a plain getter.
 - Date: 2026-11-06
 - Bead: gpb-ky7.1
 - Builds on: [0005](0005-runtime-distribution.md) (one tag for everything),

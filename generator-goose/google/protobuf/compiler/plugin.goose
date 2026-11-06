@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -430,8 +432,8 @@ fn CodeGeneratorRequest_is_initialized(m: CodeGeneratorRequest&) -> bool {
     return true;
 }
 
-// The spans of file_to_generate, in pb_spans: its .len is the number of values.
-fn CodeGeneratorRequest_file_to_generate(m: CodeGeneratorRequest&) -> pb_Span[:] { return pb_run(pb_spans, m.file_to_generate); }
+// The number of values of file_to_generate.
+fn CodeGeneratorRequest_file_to_generate_len(m: CodeGeneratorRequest&) -> i64 { return m.file_to_generate.len; }
 
 // The contents of value i of file_to_generate, in pb_bytes: valid until it is next
 // set or m is cleared.
@@ -463,8 +465,8 @@ fn CodeGeneratorRequest_clear_parameter(m: CodeGeneratorRequest&) {
     m.pb_has0 &= 0xfffffffe;
 }
 
-// The links of proto_file, in google_protobuf::FileDescriptorProto_links: its .len is the number of messages.
-fn CodeGeneratorRequest_proto_file(m: CodeGeneratorRequest&) -> google_protobuf::FileDescriptorProto_Ref[:] { return pb_run(google_protobuf::FileDescriptorProto_links, m.proto_file); }
+// The number of messages of proto_file.
+fn CodeGeneratorRequest_proto_file_len(m: CodeGeneratorRequest&) -> i64 { return m.proto_file.len; }
 
 // Message i of proto_file. Valid until it or m is cleared.
 fn CodeGeneratorRequest_proto_file_at(m: CodeGeneratorRequest&, i: i64) -> google_protobuf::FileDescriptorProto& {
@@ -493,8 +495,8 @@ fn CodeGeneratorRequest_clear_proto_file(m: CodeGeneratorRequest&) {
     m.proto_file = pb_resize(google_protobuf::FileDescriptorProto_links, m.proto_file, 0);
 }
 
-// The links of source_file_descriptors, in google_protobuf::FileDescriptorProto_links: its .len is the number of messages.
-fn CodeGeneratorRequest_source_file_descriptors(m: CodeGeneratorRequest&) -> google_protobuf::FileDescriptorProto_Ref[:] { return pb_run(google_protobuf::FileDescriptorProto_links, m.source_file_descriptors); }
+// The number of messages of source_file_descriptors.
+fn CodeGeneratorRequest_source_file_descriptors_len(m: CodeGeneratorRequest&) -> i64 { return m.source_file_descriptors.len; }
 
 // Message i of source_file_descriptors. Valid until it or m is cleared.
 fn CodeGeneratorRequest_source_file_descriptors_at(m: CodeGeneratorRequest&, i: i64) -> google_protobuf::FileDescriptorProto& {
@@ -754,8 +756,8 @@ fn CodeGeneratorResponse_clear_maximum_edition(m: CodeGeneratorResponse&) {
     m.pb_has0 &= 0xfffffff7;
 }
 
-// The links of file, in CodeGeneratorResponse_File_links: its .len is the number of messages.
-fn CodeGeneratorResponse_file(m: CodeGeneratorResponse&) -> CodeGeneratorResponse_File_Ref[:] { return pb_run(CodeGeneratorResponse_File_links, m.file); }
+// The number of messages of file.
+fn CodeGeneratorResponse_file_len(m: CodeGeneratorResponse&) -> i64 { return m.file.len; }
 
 // Message i of file. Valid until it or m is cleared.
 fn CodeGeneratorResponse_file_at(m: CodeGeneratorResponse&, i: i64) -> CodeGeneratorResponse_File& {

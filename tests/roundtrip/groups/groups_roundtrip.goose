@@ -47,7 +47,7 @@ fn check_all() {
     let bi = grp::G_One_inner(bo);
     guard bi else { fail_at("all", "inner"); return; }
     if bi.b != 2 || grp::G_One_Inner_s(bi)[0] != 'x' { fail_at("all", "inner values"); }
-    if grp::G_many(b).len != 3 || grp::G_many_at(b, 2).c != 4 || grp::G_Many_has_c(grp::G_many_at(b, 1)) { fail_at("all", "many"); }
+    if grp::G_many_len(b) != 3 || grp::G_many_at(b, 2).c != 4 || grp::G_Many_has_c(grp::G_many_at(b, 1)) { fail_at("all", "many"); }
     if !grp::G_has_pg(b) { fail_at("all", "pg"); }
     if b.after != 8 { fail_at("all", "after"); }
     if !grp::G_has_far(b) { fail_at("all", "far"); }

@@ -81,10 +81,10 @@ fn check_enums() {
     if ed2::Enums_decode(member, m) != PB_OK || ed2::Enums_has_closed_member(m) || m.pb_unknown.len != 2 { fail_at("enums", "member"); }
     ed2::Enums_clear(m);
     let entry: u8[6] = [0x2a, 4, 0x08, 1, 0x10, 9];
-    if ed2::Enums_decode(entry, m) != PB_OK || ed2::Enums_closed_map(m).len != 0 || m.pb_unknown.len != 6 { fail_at("enums", "closed map"); }
+    if ed2::Enums_decode(entry, m) != PB_OK || ed2::Enums_closed_map_len(m) != 0 || m.pb_unknown.len != 6 { fail_at("enums", "closed map"); }
     ed2::Enums_clear(m);
     let open_entry: u8[6] = [0x32, 4, 0x08, 1, 0x10, 9];
-    if ed2::Enums_decode(open_entry, m) != PB_OK || ed2::Enums_open_map(m).len != 1 || m.pb_unknown.len != 0 { fail_at("enums", "open map"); }
+    if ed2::Enums_decode(open_entry, m) != PB_OK || ed2::Enums_open_map_len(m) != 1 || m.pb_unknown.len != 0 { fail_at("enums", "open map"); }
     ed2::Enums_clear(m);
 }
 
@@ -158,7 +158,7 @@ fn check_delimited() {
     if ed2::Delimited_size_of(m) != want.len { fail_at("delimited", "size_of"); }
     ed2::Delimited_clear(m);
     if ed2::Delimited_decode(want, m) != PB_OK || m.pb_unknown.len != 0 { fail_at("delimited", "decode"); }
-    if ed2::Delimited_list_delimited(m).len != 2 || !ed2::Delimited_has_member_delimited(m) { fail_at("delimited", "values"); }
+    if ed2::Delimited_list_delimited_len(m) != 2 || !ed2::Delimited_has_member_delimited(m) { fail_at("delimited", "values"); }
     ed2::Delimited_clear(m);
 
     // The other member of the oneof is length-prefixed, as the field says.
@@ -188,7 +188,7 @@ fn check_file_features() {
     if m.pb_unknown.len != 0 { fail_at("file", "kept as unknown"); }
     if m.implicit_f != 1 || m.closed != edf::ClosedByFile_CB_ONE || edf::All_expanded(m).len != 2 { fail_at("file", "values"); }
     if !edf::All_has_explicit_f(m) || m.explicit_f != 0 || edf::All_packed_f(m).len != 2 { fail_at("file", "overrides"); }
-    if edf::All_subs(m).len != 1 || m.open != edf::Inherited_I_TWO { fail_at("file", "map, enum"); }
+    if edf::All_subs_len(m) != 1 || m.open != edf::Inherited_I_TWO { fail_at("file", "map, enum"); }
     var out: u8[>..] = [];
     edf::All_encode(m, out);
     if out != want { fail_at("file", "re-encoding differs"); }

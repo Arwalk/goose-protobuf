@@ -35,11 +35,11 @@ fn check_order() {
     put_si(b, "a", 6);
     var m = maps::Maps { .. };
     if maps::Maps_decode(b, m) != PB_OK { fail_at("order", "decode"); }
-    let v = maps::Maps_si(m);
-    if v.len != 3 { fail_at("order", str(v.len, " entries")); return; }
-    if maps::Maps_SiEntry_key(v[0]) != "a" || v[0].value != 6 { fail_at("order", "first"); }
-    if maps::Maps_SiEntry_key(v[1]) != "b" || v[1].value != 5 { fail_at("order", "second"); }
-    if maps::Maps_SiEntry_key(v[2]) != "c" || v[2].value != 4 { fail_at("order", "third"); }
+    let n = maps::Maps_si_len(m);
+    if n != 3 { fail_at("order", str(n, " entries")); return; }
+    if maps::Maps_si_key_at(m, 0) != "a" || maps::Maps_si_value_at(m, 0) != 6 { fail_at("order", "first"); }
+    if maps::Maps_si_key_at(m, 1) != "b" || maps::Maps_si_value_at(m, 1) != 5 { fail_at("order", "second"); }
+    if maps::Maps_si_key_at(m, 2) != "c" || maps::Maps_si_value_at(m, 2) != 4 { fail_at("order", "third"); }
     maps::Maps_clear(m);
 }
 
@@ -134,12 +134,12 @@ fn check_model() {
             }
             if maps::Maps_decode(b, m) != PB_OK { fail_at("model", "decode"); }
         }
-        let view = maps::Maps_si(m);
-        if view.len != model_keys.len { fail_at("model", str(view.len, " entries, want ", model_keys.len)); }
+        let n = maps::Maps_si_len(m);
+        if n != model_keys.len { fail_at("model", str(n, " entries, want ", model_keys.len)); }
         else {
-            for i in view.len {
-                if maps::Maps_SiEntry_key(view[i]) != str("key", model_keys[i]) { fail_at("model", "order"); break; }
-                if view[i].value != model_values[i] as! i32 { fail_at("model", "value"); break; }
+            for i in n {
+                if maps::Maps_si_key_at(m, i) != str("key", model_keys[i]) { fail_at("model", "order"); break; }
+                if maps::Maps_si_value_at(m, i) != model_values[i] as! i32 { fail_at("model", "value"); break; }
             }
         }
         maps::Maps_clear(m);
@@ -155,11 +155,11 @@ fn check_existing() {
     put_si(b, "x", 3);
     put_si(b, "z", 4);
     if maps::Maps_decode(b, m) != PB_OK { fail_at("existing", "decode"); }
-    let v = maps::Maps_si(m);
-    if v.len != 3 { fail_at("existing", str(v.len, " entries")); return; }
-    if maps::Maps_SiEntry_key(v[0]) != "z" || v[0].value != 4 { fail_at("existing", "z"); }
-    if maps::Maps_SiEntry_key(v[1]) != "y" || v[1].value != 2 { fail_at("existing", "y"); }
-    if maps::Maps_SiEntry_key(v[2]) != "x" || v[2].value != 3 { fail_at("existing", "x"); }
+    let n = maps::Maps_si_len(m);
+    if n != 3 { fail_at("existing", str(n, " entries")); return; }
+    if maps::Maps_si_key_at(m, 0) != "z" || maps::Maps_si_value_at(m, 0) != 4 { fail_at("existing", "z"); }
+    if maps::Maps_si_key_at(m, 1) != "y" || maps::Maps_si_value_at(m, 1) != 2 { fail_at("existing", "y"); }
+    if maps::Maps_si_key_at(m, 2) != "x" || maps::Maps_si_value_at(m, 2) != 3 { fail_at("existing", "x"); }
     // get_ and put_ work on what was decoded.
     let got, found = maps::Maps_si_get(m, "z");
     if !found || got != 4 { fail_at("existing", "get"); }
@@ -188,10 +188,10 @@ fn check_nested() {
     }
     var m = maps::Maps { .. };
     if maps::Maps_decode(b, m) != PB_OK { fail_at("nested", "decode"); }
-    if maps::Maps_self(m).len != 1 { fail_at("nested", "outer keys"); }
+    if maps::Maps_self_len(m) != 1 { fail_at("nested", "outer keys"); }
     let k = maps::Maps_self_get(m, "k");
     guard k else { fail_at("nested", "value"); return; }
-    if maps::Maps_si(k).len != 1 { fail_at("nested", "inner keys"); }
+    if maps::Maps_si_len(k) != 1 { fail_at("nested", "inner keys"); }
     let v, found = maps::Maps_si_get(k, "n");
     if !found || v != 2 { fail_at("nested", "inner value"); }
     maps::Maps_clear(m);
@@ -221,7 +221,7 @@ fn check_reach() {
     if maps::Holder_decode(b, h) != PB_OK { fail_at("reach", "singular decode"); }
     let s = maps::Holder_one(h);
     guard s else { fail_at("reach", "singular"); return; }
-    if maps::Maps_si(s).len != 2 { fail_at("reach", str("singular: ", maps::Maps_si(s).len, " entries")); }
+    if maps::Maps_si_len(s) != 2 { fail_at("reach", str("singular: ", maps::Maps_si_len(s), " entries")); }
     let v, found = maps::Maps_si_get(s, "a");
     if !found || v != 3 { fail_at("reach", "singular value"); }
     maps::Holder_clear(h);
@@ -234,9 +234,9 @@ fn check_reach() {
     put_field(r, 0x12, both);
     put_field(r, 0x12, one);
     if maps::Holder_decode(r, h) != PB_OK { fail_at("reach", "repeated decode"); }
-    if maps::Holder_many(h).len != 2 { fail_at("reach", "repeated elements"); }
-    if maps::Maps_si(maps::Holder_many_at(h, 0)).len != 2 { fail_at("reach", "repeated: not folded"); }
-    if maps::Maps_si(maps::Holder_many_at(h, 1)).len != 1 { fail_at("reach", "repeated: second"); }
+    if maps::Holder_many_len(h) != 2 { fail_at("reach", "repeated elements"); }
+    if maps::Maps_si_len(maps::Holder_many_at(h, 0)) != 2 { fail_at("reach", "repeated: not folded"); }
+    if maps::Maps_si_len(maps::Holder_many_at(h, 1)) != 1 { fail_at("reach", "repeated: second"); }
     maps::Holder_clear(h);
 
     // A oneof member, across occurrences.
@@ -246,7 +246,7 @@ fn check_reach() {
     if maps::Holder_decode(o, h) != PB_OK { fail_at("reach", "member decode"); }
     let mem = maps::Holder_member(h);
     guard mem else { fail_at("reach", "member"); return; }
-    if maps::Maps_si(mem).len != 2 { fail_at("reach", "member: not folded"); }
+    if maps::Maps_si_len(mem) != 2 { fail_at("reach", "member: not folded"); }
     maps::Holder_clear(h);
 
     // A message of an imported file: Struct's fields, field 1 of it.
@@ -258,7 +258,7 @@ fn check_reach() {
     if maps::Holder_decode(i, h) != PB_OK { fail_at("reach", "imported decode"); }
     let st = maps::Holder_imported(h);
     guard st else { fail_at("reach", "imported"); return; }
-    if google_protobuf::Struct_fields(st).len != 1 { fail_at("reach", "imported: not folded"); }
+    if google_protobuf::Struct_fields_len(st) != 1 { fail_at("reach", "imported: not folded"); }
     maps::Holder_clear(h);
 
     // A failed decode leaves a partial message, which clears, and a later
@@ -271,7 +271,7 @@ fn check_reach() {
     var m = maps::Maps { .. };
     if maps::Maps_decode(bad, m) != PB_ERR_TRUNCATED { fail_at("reach", "failed decode"); }
     if maps::Maps_decode(one, m) != PB_OK { fail_at("reach", "decode after a failure"); }
-    if maps::Maps_si(m).len != 2 { fail_at("reach", "not folded after a failure"); }
+    if maps::Maps_si_len(m) != 2 { fail_at("reach", "not folded after a failure"); }
     maps::Maps_clear(m);
 }
 

@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -1060,6 +1062,9 @@ fn Later_clear_mode(m: Later&) {
     m.pb_has0 &= 0xfffffffd;
 }
 
+// The number of values of list.
+fn Later_list_len(m: Later&) -> i64 { return m.list.len; }
+
 // The values of list, in pb_i32s: valid until it is next changed or m is
 // cleared.
 fn Later_list(m: Later&) -> i32[:] { return pb_run(pb_i32s, m.list); }
@@ -1094,10 +1099,15 @@ fn Later_has_member(m: Later&) -> bool { return match m.pick { member => true, _
 // Clears oneof pick if member is the member set.
 fn Later_clear_member(m: Later&) { if Later_has_member(m) { Later_clear_pick(m); } }
 
-// The entries of counts, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Later_counts(m: Later&) -> Later_CountsEntry[:] { return pb_run(Later_CountsEntry_entries, m.counts); }
+// The number of entries of counts.
+fn Later_counts_len(m: Later&) -> i64 { return m.counts.len; }
+
+// The key of entry i of counts, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Later_counts_key_at(m: Later&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Later_CountsEntry_entries, m.counts)[i].key); }
+
+// The value of entry i of counts.
+fn Later_counts_value_at(m: Later&, i: i64) -> i32 { return pb_run(Later_CountsEntry_entries, m.counts)[i].value; }
 
 // The value with key k and true, or the default and false.
 fn Later_counts_get(m: Later&, k: const u8[:]) -> i32, bool {

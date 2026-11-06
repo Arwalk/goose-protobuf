@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -344,8 +346,8 @@ fn Uses_clear_one(m: Uses&) {
     m.one.m .= null;
 }
 
-// The links of many, in req::Inner_links: its .len is the number of messages.
-fn Uses_many(m: Uses&) -> req::Inner_Ref[:] { return pb_run(req::Inner_links, m.many); }
+// The number of messages of many.
+fn Uses_many_len(m: Uses&) -> i64 { return m.many.len; }
 
 // Message i of many. Valid until it or m is cleared.
 fn Uses_many_at(m: Uses&, i: i64) -> req::Inner& {
@@ -374,10 +376,20 @@ fn Uses_clear_many(m: Uses&) {
     m.many = pb_resize(req::Inner_links, m.many, 0);
 }
 
-// The entries of by_name, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Uses_by_name(m: Uses&) -> Uses_ByNameEntry[:] { return pb_run(Uses_ByNameEntry_entries, m.by_name); }
+// The number of entries of by_name.
+fn Uses_by_name_len(m: Uses&) -> i64 { return m.by_name.len; }
+
+// The key of entry i of by_name, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Uses_by_name_key_at(m: Uses&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Uses_ByNameEntry_entries, m.by_name)[i].key); }
+
+// The value of entry i of by_name. Valid until its entry is removed or m is
+// cleared.
+fn Uses_by_name_value_at(m: Uses&, i: i64) -> req::Inner& {
+    let pb_l = pb_run(Uses_ByNameEntry_entries, m.by_name)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -823,8 +835,8 @@ recursive fn Plain_clear_free(m: Plain&) {
     m.free.m .= null;
 }
 
-// The links of more, in Plain_links: its .len is the number of messages.
-fn Plain_more(m: Plain&) -> Plain_Ref[:] { return pb_run(Plain_links, m.more); }
+// The number of messages of more.
+fn Plain_more_len(m: Plain&) -> i64 { return m.more.len; }
 
 // Message i of more. Valid until it or m is cleared.
 fn Plain_more_at(m: Plain&, i: i64) -> Plain& {

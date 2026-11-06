@@ -51,7 +51,8 @@ built from. It covers:
 - names that would clash with a generated function or accessor. A
   nested declaration whose path ends in a generated suffix (`_decode`,
   `_encode`, `_size_of`, `_clear`, `_set_<field>`, `_<field>_at`,
-  `_<field>_get`, `_<field>_put`, ...) is escaped, and so is a nested
+  `_<field>_len`, `_<field>_key_at`, `_<field>_value_at`, `_<field>_get`,
+  `_<field>_put`, ...) is escaped, and so is a nested
   name equal to an accessor of its parent (message `Node.children` next
   to field `children`).
 
@@ -138,15 +139,16 @@ the reserved list, now in `generator-goose/emit.goose`:
   if there is none; and `<M>_has_<f>` and `<M>_clear_<f>`. Its link is
   its presence, so it takes no has-bit.
 - A repeated scalar (gpb-gp4.1) has `<M>_<f>`, a view of its values;
-  `<M>_<f>_at`; `<M>_add_<f>`, which moves the values; `<M>_set_<f>`, a copy
-  of a whole slice; and `<M>_clear_<f>`.
-- A repeated string or bytes field (gpb-gp4.2) has `<M>_<f>`, a view of its
-  spans, whose `.len` counts the values; `<M>_<f>_at`, a value's contents;
-  `<M>_add_<f>`; `<M>_set_<f>(m, i, v)`, which replaces value i, as a slice
-  of slices cannot be passed; and `<M>_clear_<f>`.
-- A repeated message field (gpb-gp4.2) has `<M>_<f>`, a view of its links;
-  `<M>_<f>_at`; `<M>_add_<f>`, which returns the new message; and
-  `<M>_clear_<f>`. It has no set_.
+  `<M>_<f>_len`; `<M>_<f>_at`; `<M>_add_<f>`, which moves the values;
+  `<M>_set_<f>`, a copy of a whole slice; and `<M>_clear_<f>`.
+- A repeated string or bytes field (gpb-gp4.2) has `<M>_<f>_len`;
+  `<M>_<f>_at`, a value's contents; `<M>_add_<f>`; `<M>_set_<f>(m, i, v)`, which
+  replaces value i, as a slice of slices cannot be passed; and `<M>_clear_<f>`. It
+  has no plain getter, as a view of its spans would hand out an internal type
+  (gpb-ky7.15).
+- A repeated message field (gpb-gp4.2) has `<M>_<f>_len`; `<M>_<f>_at`;
+  `<M>_add_<f>`, which returns the new message; and `<M>_clear_<f>`. It has no
+  set_ and no plain getter.
 - A real oneof `o` (gpb-gp4.3) has the type `<M>_o` and record field `o`, an
   ADT to match on, whose variants are `pb_none`, which no field name can be, and
   the escaped name of each member, with its value in the payload field `v`;
@@ -156,8 +158,9 @@ the reserved list, now in `generator-goose/emit.goose`:
   plus `<M>_set_<f>`, or for a message `<M>_mutable_<f>`, which makes it the
   member set. Decoding reads a value before it replaces the member, so a
   value that fails to read replaces nothing.
-- A map field (gpb-gp4.4) has `<M>_<f>`, a view of its entries in insertion
-  order; `<M>_<f>_get(m, k)`, which gives the value and whether it was found, or
+- A map field (gpb-gp4.4) has `<M>_<f>_len`, and `<M>_<f>_key_at(m, i)` and
+  `<M>_<f>_value_at(m, i)`, which read its entries in insertion order, in place of
+  a plain getter (gpb-ky7.15); `<M>_<f>_get(m, k)`, which gives the value and whether it was found, or
   for a message value `S&?`; `<M>_<f>_put(m, k, v)`, or for a message value
   `<M>_<f>_put(m, k)`, which returns the value, added empty if there is none;
   `<M>_<f>_remove(m, k)`, true if it removed one; and `<M>_clear_<f>`. Its entry

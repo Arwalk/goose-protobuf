@@ -44,7 +44,7 @@ fn run_on_request() {
     if back != PB_OK { abort(str("the response does not decode: ", back)); }
 }
 
-fn file_count() -> i64 { return google_protobuf_compiler::CodeGeneratorResponse_file(res).len; }
+fn file_count() -> i64 { return google_protobuf_compiler::CodeGeneratorResponse_file_len(res); }
 
 fn expect_error(want: const u8[:]) {
     expect_str(google_protobuf_compiler::CodeGeneratorResponse_error(res), want);

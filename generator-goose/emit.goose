@@ -140,6 +140,7 @@ let KIND_MESSAGE = 3;
 let KIND_REPEATED = 4;
 let KIND_REPEATED_MESSAGE = 5;
 let KIND_MAP = 6;
+let KIND_REPEATED_STRING = 7;
 
 // One accessor of a field: `<path>_<prefix><field><suffix>`.
 struct Accessor { prefix: const u8[:], suffix: const u8[:] }
@@ -150,7 +151,10 @@ const has_acc = Accessor { prefix: "has_", suffix: "" };
 const clear_acc = Accessor { prefix: "clear_", suffix: "" };
 const mutable_acc = Accessor { prefix: "mutable_", suffix: "" };
 const at_acc = Accessor { prefix: "", suffix: "_at" };
+const len_acc = Accessor { prefix: "", suffix: "_len" };
 const add_acc = Accessor { prefix: "add_", suffix: "" };
+const key_at_acc = Accessor { prefix: "", suffix: "_key_at" };
+const value_at_acc = Accessor { prefix: "", suffix: "_value_at" };
 const map_get_acc = Accessor { prefix: "", suffix: "_get" };
 const map_put_acc = Accessor { prefix: "", suffix: "_put" };
 const map_remove_acc = Accessor { prefix: "", suffix: "_remove" };
@@ -162,9 +166,10 @@ const accessors_scalar_presence: Accessor[3] = [set_acc, has_acc, clear_acc];
 const accessors_oneof_scalar: Accessor[4] = [get_acc, set_acc, has_acc, clear_acc];
 const accessors_string: Accessor[2] = [get_acc, set_acc];
 const accessors_message: Accessor[4] = [get_acc, mutable_acc, has_acc, clear_acc];
-const accessors_repeated: Accessor[5] = [get_acc, at_acc, add_acc, set_acc, clear_acc];
-const accessors_repeated_message: Accessor[4] = [get_acc, at_acc, add_acc, clear_acc];
-const accessors_map: Accessor[6] = [get_acc, map_get_acc, map_put_acc, map_remove_acc, clear_acc, map_append_acc];
+const accessors_repeated: Accessor[6] = [get_acc, at_acc, len_acc, add_acc, set_acc, clear_acc];
+const accessors_repeated_string: Accessor[5] = [at_acc, len_acc, add_acc, set_acc, clear_acc];
+const accessors_repeated_message: Accessor[4] = [at_acc, len_acc, add_acc, clear_acc];
+const accessors_map: Accessor[8] = [len_acc, key_at_acc, value_at_acc, map_get_acc, map_put_acc, map_remove_acc, clear_acc, map_append_acc];
 
 // The accessors generated for a field. This table is the one source of
 // truth for accessor names: the emitters of each field kind use it, and
@@ -179,6 +184,7 @@ fn field_accessors(kind: i64, presence: bool) -> const Accessor[:] {
         KIND_STRING => if presence { accessors_oneof_scalar[..] } else { accessors_string[..] },
         KIND_MESSAGE => accessors_message[..],
         KIND_REPEATED => accessors_repeated[..],
+        KIND_REPEATED_STRING => accessors_repeated_string[..],
         KIND_REPEATED_MESSAGE => accessors_repeated_message[..],
         _ => accessors_map[..],
     };
@@ -586,9 +592,9 @@ var oneof_slots: i64[>..] = [];
 // a proto3 optional.
 fn real_oneof_slots(m: MessageDesc&) -> i64 {
     let at = oneof_slots.len;
-    let count = google_protobuf::DescriptorProto_oneof_decl(m).len;
+    let count = google_protobuf::DescriptorProto_oneof_decl_len(m);
     for i in count { oneof_slots.push(-1); }
-    for k in google_protobuf::DescriptorProto_field(m).len {
+    for k in google_protobuf::DescriptorProto_field_len(m) {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
         if is_real_oneof_member(fd) && fd.oneof_index >= 0 && fd.oneof_index < count { oneof_slots[at + fd.oneof_index] = 0; }
     }
@@ -619,7 +625,7 @@ fn repeated_scalar_of(ff: Features, fd: FieldDesc&) -> Scalar? {
 
 // The value field of the map entry `entry`.
 fn map_value_of(entry: MessageDesc&) -> FieldDesc& {
-    for k in google_protobuf::DescriptorProto_field(entry).len {
+    for k in google_protobuf::DescriptorProto_field_len(entry) {
         let e .= google_protobuf::DescriptorProto_field_at(entry, k);
         if e.number == 2 { return e; }
     }
@@ -628,7 +634,7 @@ fn map_value_of(entry: MessageDesc&) -> FieldDesc& {
 
 // The key field of the map entry `entry`.
 fn map_key_of(entry: MessageDesc&) -> FieldDesc& {
-    for k in google_protobuf::DescriptorProto_field(entry).len {
+    for k in google_protobuf::DescriptorProto_field_len(entry) {
         let e .= google_protobuf::DescriptorProto_field_at(entry, k);
         if e.number == 1 { return e; }
     }
@@ -638,7 +644,7 @@ fn map_key_of(entry: MessageDesc&) -> FieldDesc& {
 // The number of the value of `e` that the [default] of `fd` names, else of its
 // first.
 fn enum_default(e: EnumDesc&, fd: FieldDesc&) -> i32 {
-    let values = google_protobuf::EnumDescriptorProto_value(e).len;
+    let values = google_protobuf::EnumDescriptorProto_value_len(e);
     if google_protobuf::FieldDescriptorProto_has_default_value(fd) {
         let name = google_protobuf::FieldDescriptorProto_default_value(fd);
         for i in values {
@@ -717,7 +723,7 @@ fn c_unescape(text: const u8[:]) -> const u8[:] {
 // The condition on pb_v that it is a value of `e`, as sorted runs of values.
 fn known_values(e: EnumDesc&) -> const u8[:] {
     var values: i64[>..] = [];
-    for i in google_protobuf::EnumDescriptorProto_value(e).len {
+    for i in google_protobuf::EnumDescriptorProto_value_len(e) {
         values.push(google_protobuf::EnumDescriptorProto_value_at(e, i).number);
     }
     sort(values);
@@ -779,7 +785,8 @@ fn field_kind(m: MessageDesc&, full: const u8[:], fd: FieldDesc&) -> i64 {
     let is_msg = t == TYPE_MESSAGE || t == TYPE_GROUP;
     if field_is_repeated(fd) {
         if is_msg && is_map_entry(m, full, google_protobuf::FieldDescriptorProto_type_name(fd)) { return KIND_MAP; }
-        return if is_msg { KIND_REPEATED_MESSAGE } else { KIND_REPEATED };
+        if is_msg { return KIND_REPEATED_MESSAGE; }
+        return if t == TYPE_STRING || t == TYPE_BYTES { KIND_REPEATED_STRING } else { KIND_REPEATED };
     }
     if is_msg { return KIND_MESSAGE; }
     if t == TYPE_STRING || t == TYPE_BYTES { return KIND_STRING; }
@@ -791,7 +798,7 @@ fn is_map_entry(m: MessageDesc&, full: const u8[:], type_name: const u8[:]) -> b
     let tn = if starts_with(type_name, ".") { type_name[1..] } else { type_name };
     if !starts_with(tn, full) || tn.len <= full.len + 1 || tn[full.len] != '.' { return false; }
     let local = tn[full.len + 1..];
-    for k in google_protobuf::DescriptorProto_nested_type(m).len {
+    for k in google_protobuf::DescriptorProto_nested_type_len(m) {
         let n .= google_protobuf::DescriptorProto_nested_type_at(m, k);
         if message_name(n) == local { return is_map_entry_desc(n); }
     }
@@ -862,14 +869,14 @@ fn index_request() {
     claimed_files = new_map();
     required_answers = new_map();
     maps_answers = new_map();
-    for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file(request).len {
+    for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file_len(request) {
         let file .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, i);
         let inherited = features_of_file(file);
         let package = file_package(file);
-        for k in google_protobuf::FileDescriptorProto_enum_type(file).len {
+        for k in google_protobuf::FileDescriptorProto_enum_type_len(file) {
             index_enum(google_protobuf::FileDescriptorProto_enum_type_at(file, k), package, inherited);
         }
-        for k in google_protobuf::FileDescriptorProto_message_type(file).len {
+        for k in google_protobuf::FileDescriptorProto_message_type_len(file) {
             index_message(google_protobuf::FileDescriptorProto_message_type_at(file, k), package, inherited, i);
         }
     }
@@ -884,10 +891,10 @@ recursive fn index_message(m: MessageDesc&, scope: const u8[:], parent: Features
     let full = full_name(scope, message_name(m));
     map_put(message_files, full).index = file_at;
     let inherited = features_of_message(parent, m);
-    for i in google_protobuf::DescriptorProto_enum_type(m).len {
+    for i in google_protobuf::DescriptorProto_enum_type_len(m) {
         index_enum(google_protobuf::DescriptorProto_enum_type_at(m, i), full, inherited);
     }
-    for i in google_protobuf::DescriptorProto_nested_type(m).len {
+    for i in google_protobuf::DescriptorProto_nested_type_len(m) {
         index_message(google_protobuf::DescriptorProto_nested_type_at(m, i), full, inherited, file_at);
     }
 }
@@ -925,7 +932,7 @@ fn emit(fe: FileEmitter&) {
     w.append("import pb_wire;\n");
 
     claim_all(fe);
-    for i in google_protobuf::FileDescriptorProto_message_type(f).len {
+    for i in google_protobuf::FileDescriptorProto_message_type_len(f) {
         collect_imports(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i));
     }
     var imports: const u8[:][>..] = [];
@@ -939,10 +946,10 @@ fn emit(fe: FileEmitter&) {
     for i in imports { format(w, "import ", i, ";\n"); }
     emit_version_check(proto_name);
 
-    for i in google_protobuf::FileDescriptorProto_enum_type(f).len {
+    for i in google_protobuf::FileDescriptorProto_enum_type_len(f) {
         emit_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), package);
     }
-    for i in google_protobuf::FileDescriptorProto_message_type(f).len {
+    for i in google_protobuf::FileDescriptorProto_message_type_len(f) {
         emit_message(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package);
     }
 }
@@ -953,19 +960,19 @@ fn claim_all(fe: FileEmitter&) {
     let f .= fe.file;
     let package = file_package(f);
     let inherited = features_of_file(f);
-    let messages = google_protobuf::FileDescriptorProto_message_type(f).len;
+    let messages = google_protobuf::FileDescriptorProto_message_type_len(f);
     for i in messages { claim_generated(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
-    for i in google_protobuf::FileDescriptorProto_enum_type(f).len { claim_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package); }
+    for i in google_protobuf::FileDescriptorProto_enum_type_len(f) { claim_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package); }
     for i in messages { claim_message(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
 }
 
 // Records the files the stored fields of `m` and its nested messages
 // need. Importing only those lets a file build without the others.
 recursive fn collect_imports(fe: FileEmitter&, m: MessageDesc&) {
-    for i in google_protobuf::DescriptorProto_field(m).len {
+    for i in google_protobuf::DescriptorProto_field_len(m) {
         sub_message_of(fe, google_protobuf::DescriptorProto_field_at(m, i));
     }
-    for i in google_protobuf::DescriptorProto_nested_type(m).len {
+    for i in google_protobuf::DescriptorProto_nested_type_len(m) {
         collect_imports(fe, google_protobuf::DescriptorProto_nested_type_at(m, i));
     }
 }
@@ -1029,7 +1036,7 @@ recursive fn claim_generated(fe: FileEmitter&, m: MessageDesc&, prefix: const u8
             claim(fe, generated_name(path, op), keep(str("generated ", op, " of ", full)), true);
         }
     }
-    for k in google_protobuf::DescriptorProto_field(m).len {
+    for k in google_protobuf::DescriptorProto_field_len(m) {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
         let fname = field_name(fd);
         let kind = field_kind(m, full, fd);
@@ -1043,13 +1050,13 @@ recursive fn claim_generated(fe: FileEmitter&, m: MessageDesc&, prefix: const u8
     }
     // A oneof's type and its clear_. A field cannot have its name.
     let slots_at = real_oneof_slots(m);
-    for i in google_protobuf::DescriptorProto_oneof_decl(m).len {
+    for i in google_protobuf::DescriptorProto_oneof_decl_len(m) {
         if oneof_slots[slots_at + i] < 0 { continue; }
         let oname = google_protobuf::OneofDescriptorProto_name(google_protobuf::DescriptorProto_oneof_decl_at(m, i));
         claim(fe, generated_name(path, oname), keep(str("oneof ", oname, " of ", full)), true);
         claim(fe, accessor_name(path, oname, clear_acc), keep(str("accessor clear_", oname, " of ", full)), true);
     }
-    for k in google_protobuf::DescriptorProto_nested_type(m).len {
+    for k in google_protobuf::DescriptorProto_nested_type_len(m) {
         claim_generated(fe, google_protobuf::DescriptorProto_nested_type_at(m, k), path, full, own);
     }
 }
@@ -1062,7 +1069,7 @@ fn claim_enum(fe: FileEmitter&, e: EnumDesc&, prefix: const u8[:], scope: const 
     let full = full_name(scope, name);
     let goose_name = claim_decl(fe, path, full, prefix.len > 0);
     map_put(fe.decls, full).text = goose_name;
-    for i in google_protobuf::EnumDescriptorProto_value(e).len {
+    for i in google_protobuf::EnumDescriptorProto_value_len(e) {
         let vname = google_protobuf::EnumValueDescriptorProto_name(google_protobuf::EnumDescriptorProto_value_at(e, i));
         let vfull = full_name(full, vname);
         let const_name = claim_decl(fe, nested_path(path, vname), vfull, true);
@@ -1082,10 +1089,10 @@ recursive fn claim_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:
     map_put(fe.decls, full).text = goose_name;
     message_infos.push(MessageInfo { desc: m, path: path, goose_name: goose_name, ns: "", import_path: "", file: fe.file, features: own });
     map_put(fe.messages, full).index = message_infos.len - 1;
-    for i in google_protobuf::DescriptorProto_enum_type(m).len {
+    for i in google_protobuf::DescriptorProto_enum_type_len(m) {
         claim_enum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), path, full);
     }
-    for i in google_protobuf::DescriptorProto_nested_type(m).len {
+    for i in google_protobuf::DescriptorProto_nested_type_len(m) {
         claim_message(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full, own);
     }
 }
@@ -1177,7 +1184,7 @@ recursive fn search_answer(t: const u8[:], answers: u32, maps: bool) -> bool {
     open_answers.push(answer_at);
     let info = claimed_message(t);
     guard info else { return false; }
-    for k in google_protobuf::DescriptorProto_field(info.desc).len {
+    for k in google_protobuf::DescriptorProto_field_len(info.desc) {
         let fd .= google_protobuf::DescriptorProto_field_at(info.desc, k);
         if !maps && field_features(info.file, info.features, info.desc, fd).presence == PRESENCE_REQUIRED {
             answer.index = ANSWER_YES;
@@ -1295,7 +1302,7 @@ recursive fn find_cycles(fe: FileEmitter&, at: i64) {
     node.on_stack = true;
     cycle_stack.push(at);
     let desc .= message_infos[at].desc;
-    for k in google_protobuf::DescriptorProto_field(desc).len {
+    for k in google_protobuf::DescriptorProto_field_len(desc) {
         let t = same_file_message_type(fe, google_protobuf::DescriptorProto_field_at(desc, k));
         if t.len == 0 { continue; }
         let held = map_get(fe.messages, t);
@@ -1322,7 +1329,7 @@ recursive fn find_cycles(fe: FileEmitter&, at: i64) {
 fn emit_enum(fe: FileEmitter&, e: EnumDesc&, scope: const u8[:]) {
     let full = full_name(scope, enum_name(e));
     format(w, "\n// enum ", full, "\n");
-    for i in google_protobuf::EnumDescriptorProto_value(e).len {
+    for i in google_protobuf::EnumDescriptorProto_value_len(e) {
         let v .= google_protobuf::EnumDescriptorProto_value_at(e, i);
         let const_name = map_get(fe.decls, full_name(full, google_protobuf::EnumValueDescriptorProto_name(v)));
         assert(const_name);
@@ -1353,7 +1360,7 @@ recursive fn emit_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:]
     // The real oneofs of a stored message, in the order of oneof_decl.
     let oneofs_at = oneof_pool.len;
     let slots_at = real_oneof_slots(m);
-    for i in google_protobuf::DescriptorProto_oneof_decl(m).len {
+    for i in google_protobuf::DescriptorProto_oneof_decl_len(m) {
         if oneof_slots[slots_at + i] < 0 { continue; }
         let oname = google_protobuf::OneofDescriptorProto_name(google_protobuf::DescriptorProto_oneof_decl_at(m, i));
         let o .= oneof_pool.push(Oneof {
@@ -1363,7 +1370,7 @@ recursive fn emit_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:]
         });
         claim_record_field(fe, record_names, o.name, full);
     }
-    for k in google_protobuf::DescriptorProto_field(m).len {
+    for k in google_protobuf::DescriptorProto_field_len(m) {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
         let sub = sub_message_of(fe, fd);
         let entry = map_entry_of(fe, fd);
@@ -1426,10 +1433,10 @@ recursive fn emit_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:]
     for &f in fields { emit_accessors(fe, goose_name, path, f); }
     if is_entry { emit_map_entry_helpers(goose_name, path, fields); }
 
-    for i in google_protobuf::DescriptorProto_enum_type(m).len {
+    for i in google_protobuf::DescriptorProto_enum_type_len(m) {
         emit_enum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), full);
     }
-    for i in google_protobuf::DescriptorProto_nested_type(m).len {
+    for i in google_protobuf::DescriptorProto_nested_type_len(m) {
         emit_message(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full);
     }
 }
@@ -2429,6 +2436,14 @@ fn emit_map_entry_helpers(goose_name: const u8[:], path: const u8[:], fields: co
         "}\n");
 }
 
+// <field>_len, which counts what a repeated or map field holds.
+fn emit_len_accessor(goose_name: const u8[:], path: const u8[:], fname: const u8[:], f: Field&, what: const u8[:]) {
+    format(w,
+        "\n",
+        "// The number of ", what, " of ", fname, ".\n",
+        "fn ", accessor_name(path, fname, len_acc), "(m: ", goose_name, "&) -> i64 { return m.", f.name, ".len; }\n");
+}
+
 // The accessors of a map field. Entries live in a run that may move, so
 // a reference to one is good until the map next changes; a message value
 // has a slot of its own, and outlives other changes.
@@ -2440,12 +2455,44 @@ fn emit_map_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
     let key_type = scalar_set_type(scalar_of_type_req(key_fd));
     let find = sub_name(entry, "find");
     let slot = sub_name(entry, "slot");
+    emit_len_accessor(goose_name, path, fname, f, "entries");
+    let key_sc .= scalar_of_type_req(key_fd);
+    let entry_i = keep(str("pb_run(", pool, ", m.", f.name, ")[i]"));
     format(w,
         "\n",
-        "// The entries of ", fname, ", in insertion order: its .len is their number, and\n",
-        "// each has .key and .value, or the entry type's accessors for what is in a\n",
-        "// pool. Valid until the map next changes or m is cleared.\n",
-        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> ", entry.goose_name, "[:] { return pb_run(", pool, ", m.", f.name, "); }\n");
+        "// The key of entry i of ", fname, ", in insertion order.", if key_sc.size == SZ_BYTES { " Valid until the map next\n// changes or m is cleared." } else { "" }, "\n",
+        "fn ", accessor_name(path, fname, key_at_acc), "(m: ", goose_name, "&, i: i64) -> ");
+    if key_sc.size == SZ_BYTES {
+        format(w, "u8[:] { return pb_run(pb_bytes, ", entry_i, ".key); }\n");
+    } else {
+        format(w, key_sc.goose, " { return ", entry_i, ".key; }\n");
+    }
+    format(w, "\n");
+    let value_at = accessor_name(path, fname, value_at_acc);
+    let value_sub = sub_message_of(fe, value_fd);
+    if value_sub {
+        let vs .= value_sub;
+        format(w,
+            "// The value of entry i of ", fname, ". Valid until its entry is removed or m is\n",
+            "// cleared.\n",
+            "fn ", value_at, "(m: ", goose_name, "&, i: i64) -> ", vs.goose_name, "& {\n",
+            "    let pb_l = ", entry_i, ".value.m;\n",
+            "    assert(pb_l);\n",
+            "    return pb_l;\n",
+            "}\n");
+    } else {
+        let vsc .= scalar_of_type_req(value_fd);
+        if vsc.size == SZ_BYTES {
+            format(w,
+                "// The value of entry i of ", fname, ". Valid until the map next changes or m is\n",
+                "// cleared.\n",
+                "fn ", value_at, "(m: ", goose_name, "&, i: i64) -> u8[:] { return pb_run(pb_bytes, ", entry_i, ".value); }\n");
+        } else {
+            format(w,
+                "// The value of entry i of ", fname, ".\n",
+                "fn ", value_at, "(m: ", goose_name, "&, i: i64) -> ", vsc.goose, " { return ", entry_i, ".value; }\n");
+        }
+    }
     let get = accessor_name(path, fname, map_get_acc);
     let put = accessor_name(path, fname, map_put_acc);
     let sub_opt = sub_message_of(fe, value_fd);
@@ -2688,10 +2735,8 @@ fn emit_oneof_accessors(goose_name: const u8[:], path: const u8[:], f: Field&, o
 // The accessors of a repeated string or bytes field.
 fn emit_repeated_string_accessors(goose_name: const u8[:], path: const u8[:], f: Field&) {
     let fname = field_name(f.fd);
+    emit_len_accessor(goose_name, path, fname, f, "values");
     format(w,
-        "\n",
-        "// The spans of ", fname, ", in pb_spans: its .len is the number of values.\n",
-        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> pb_Span[:] { return pb_run(pb_spans, m.", f.name, "); }\n",
         "\n",
         "// The contents of value i of ", fname, ", in pb_bytes: valid until it is next\n",
         "// set or m is cleared.\n",
@@ -2712,10 +2757,8 @@ fn emit_repeated_message_accessors(fe: FileEmitter&, goose_name: const u8[:], pa
     let fname = field_name(f.fd);
     let links = run_pool(f);
     let pool = sub_name(sub, "pool");
+    emit_len_accessor(goose_name, path, fname, f, "messages");
     format(w,
-        "\n",
-        "// The links of ", fname, ", in ", links, ": its .len is the number of messages.\n",
-        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> ", f.sc.goose, "[:] { return pb_run(", links, ", m.", f.name, "); }\n",
         "\n",
         "// Message i of ", fname, ". Valid until it or m is cleared.\n",
         "fn ", accessor_name(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> ", sub.goose_name, "& {\n",
@@ -2750,6 +2793,7 @@ fn emit_repeated_message_accessors(fe: FileEmitter&, goose_name: const u8[:], pa
 fn emit_repeated_accessors(goose_name: const u8[:], path: const u8[:], f: Field&) {
     let fname = field_name(f.fd);
     let pool = scalar_pool(f.sc);
+    emit_len_accessor(goose_name, path, fname, f, "values");
     format(w,
         "\n",
         "// The values of ", fname, ", in ", pool, ": valid until it is next changed or m is\n",
@@ -2828,10 +2872,10 @@ const api_comment = """
     //   M_f(m) -> S&?                sub-message fields: null if not set;
     //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
     //   M_has_f(m), M_clear_f(m)
-    //   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-    //   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-    //   M_clear_f(m)
-    //   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+    //   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+    //   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+    //   M_set_f(m, vs), M_clear_f(m)
+    //   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
     //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
     //                                add_ of a message returns it
     //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -2840,8 +2884,10 @@ const api_comment = """
     //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
     //                                or a variant f { v } per member
     //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-    //   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+    //   M_f_remove(m, k),            whether it was found (a message value:
     //   M_clear_f(m)                 S&?), put of a message returns it
+    //   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+    //   M_f_value_at(m, i)           order; a message value is never null
     //   M_f_append(m...)             map fields, many entries: put with no key
     //                                check, then M_fold_maps(m) before reading
     //   M_encode(m, out)             appends M_size_of(m) bytes to out

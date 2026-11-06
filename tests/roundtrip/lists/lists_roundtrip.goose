@@ -26,23 +26,23 @@ fn check_lists(name: u8[:], input: const u8[:], want: const u8[:]) {
     if !bytes_eq(out, want) { fail_at(name, "encoding differs from protoc"); }
     if lists::Lists_size_of(m) != want.len { fail_at(name, str("size_of ", lists::Lists_size_of(m), " want ", want.len)); }
     lists::Lists_clear(m);
-    if lists::Lists_size_of(m) != 0 || lists::Lists_names(m).len != 0 { fail_at(name, "clear"); }
+    if lists::Lists_size_of(m) != 0 || lists::Lists_names_len(m) != 0 { fail_at(name, "clear"); }
 }
 
 fn check_values() {
     var m = lists::Lists { .. };
     if lists::Lists_decode(embed_file("many.bin"), m) != PB_OK { fail_at("values", "decode"); return; }
-    if lists::Lists_names(m).len != 5 { fail_at("values", "names: empty strings count"); }
+    if lists::Lists_names_len(m) != 5 { fail_at("values", "names: empty strings count"); }
     if !bytes_eq(lists::Lists_names_at(m, 0), "first") || lists::Lists_names_at(m, 1).len != 0
         || !bytes_eq(lists::Lists_names_at(m, 2), "héllo") || !bytes_eq(lists::Lists_names_at(m, 4), "last") {
         fail_at("values", "names out of order");
     }
     let raw: u8[2] = [0xff, 0xfe];
     if !bytes_eq(lists::Lists_blobs_at(m, 2), raw) { fail_at("values", "blobs"); }
-    if lists::Lists_items(m).len != 3 { fail_at("values", "items: empty messages count"); }
+    if lists::Lists_items_len(m) != 3 { fail_at("values", "items: empty messages count"); }
     let i0 .= lists::Lists_items_at(m, 0);
     if i0.id != 1 || !bytes_eq(lists::Item_label(i0), "one") { fail_at("values", "items[0]"); }
-    if lists::Item_tags(i0).len != 3 || !bytes_eq(lists::Item_tags_at(i0, 2), "y") { fail_at("values", "items[0].tags"); }
+    if lists::Item_tags_len(i0) != 3 || !bytes_eq(lists::Item_tags_at(i0, 2), "y") { fail_at("values", "items[0].tags"); }
     if lists::Lists_items_at(m, 1).id != 0 || lists::Lists_items_at(m, 2).id != 3 { fail_at("values", "items order"); }
     if lists::Lists_timeouts_at(m, 2).nanos != 3 { fail_at("values", "timeouts"); }
     if m.after != 7 { fail_at("values", "after"); }
@@ -87,9 +87,9 @@ fn check_built() {
     if !bytes_eq(lists::Lists_names_at(m, 4), "last") { fail_at("built", "set_ moved another value"); }
 
     lists::Lists_clear_items(m);
-    if lists::Lists_items(m).len != 0 { fail_at("built", "clear_items"); }
+    if lists::Lists_items_len(m) != 0 { fail_at("built", "clear_items"); }
     lists::Lists_clear_names(m);
-    if lists::Lists_names(m).len != 0 { fail_at("built", "clear_names"); }
+    if lists::Lists_names_len(m) != 0 { fail_at("built", "clear_names"); }
     lists::Lists_clear(m);
     if lists::Lists_size_of(m) != 0 { fail_at("built", "clear"); }
 }
@@ -137,7 +137,7 @@ fn check_interleaved() {
     }
     var m = lists::Lists { .. };
     if lists::Lists_decode(buf, m) != PB_OK { fail_at("interleaved", "decode"); return; }
-    if lists::Lists_names(m).len != 300 || lists::Lists_blobs(m).len != 300 { fail_at("interleaved", "lengths"); }
+    if lists::Lists_names_len(m) != 300 || lists::Lists_blobs_len(m) != 300 { fail_at("interleaved", "lengths"); }
     for i in 300 {
         if lists::Lists_names_at(m, i)[0] != (97 + i % 26) as! u8 { fail_at("interleaved", "names"); break; }
         if lists::Lists_blobs_at(m, i)[1] != 0xff { fail_at("interleaved", "blobs"); break; }
@@ -170,12 +170,12 @@ fn check_errors() {
     // Invalid UTF-8 in bytes is data.
     let b: u8[4] = [0x12, 0x02, 0xc0, 0x80];
     var m = lists::Lists { .. };
-    if lists::Lists_decode(b, m) != PB_OK || lists::Lists_blobs(m).len != 1 { fail_at("bytes", "rejected"); }
+    if lists::Lists_decode(b, m) != PB_OK || lists::Lists_blobs_len(m) != 1 { fail_at("bytes", "rejected"); }
     lists::Lists_clear(m);
 
     // Another wire type is an unknown field.
     let wrong: u8[2] = [0x08, 0x01];
-    if lists::Lists_decode(wrong, m) != PB_OK || m.pb_unknown.len != 2 || lists::Lists_names(m).len != 0 {
+    if lists::Lists_decode(wrong, m) != PB_OK || m.pb_unknown.len != 2 || lists::Lists_names_len(m) != 0 {
         fail_at("wire type", "not unknown");
     }
     lists::Lists_clear(m);
@@ -190,7 +190,7 @@ fn check_errors() {
 
 recursive fn depth_of(t: lists::Tree&) -> i64 {
     var deepest: i64 = 0;
-    for i in lists::Tree_children(t).len {
+    for i in lists::Tree_children_len(t) {
         let d = 1 + depth_of(lists::Tree_children_at(t, i));
         if d > deepest { deepest = d; }
     }
@@ -229,7 +229,7 @@ fn check_recursive() {
     let at101 = nest(101);
     if lists::Tree_decode(at101, t) != PB_ERR_DEPTH { fail_at("depth 101", "no error"); }
     lists::Tree_clear(t);
-    if lists::Tree_children(t).len != 0 { fail_at("depth 101", "clear"); }
+    if lists::Tree_children_len(t) != 0 { fail_at("depth 101", "clear"); }
 
     let fw = embed_file("forest.bin");
     var f = lists::Forest { .. };

@@ -15,10 +15,10 @@
 //   M_f(m) -> S&?                sub-message fields: null if not set;
 //   M_mutable_f(m) -> S&         mutable_ first sets an empty one
 //   M_has_f(m), M_clear_f(m)
-//   M_f(m) -> T[:], M_f_at(m, i) repeated numeric, bool and enum fields:
-//   M_add_f(m, v), M_set_f(m, vs), a view into a pool, and writers
-//   M_clear_f(m)
-//   M_f(m).len, M_f_at(m, i),    repeated string, bytes and message
+//   M_f(m) -> T[:], M_f_len(m),  repeated numeric, bool and enum fields:
+//   M_f_at(m, i), M_add_f(m, v), a view into a pool, and writers
+//   M_set_f(m, vs), M_clear_f(m)
+//   M_f_len(m), M_f_at(m, i),    repeated string, bytes and message
 //   M_add_f(m...), M_clear_f(m)  fields; M_set_f(m, i, v) for strings;
 //                                add_ of a message returns it
 //   M_f(m), M_set_f(m, v),       members of a oneof o: M_f reads the
@@ -27,8 +27,10 @@
 //   M_clear_o(m)                 m.o is an ADT M_o to match on: pb_none,
 //                                or a variant f { v } per member
 //   M_f_get(m, k), M_f_put(m...) map fields: get gives the value and
-//   M_f_remove(m, k), M_f(m),    whether it was found (a message value:
+//   M_f_remove(m, k),            whether it was found (a message value:
 //   M_clear_f(m)                 S&?), put of a message returns it
+//   M_f_len(m), M_f_key_at(m, i) map fields, entry by entry in insertion
+//   M_f_value_at(m, i)           order; a message value is never null
 //   M_f_append(m...)             map fields, many entries: put with no key
 //                                check, then M_fold_maps(m) before reading
 //   M_encode(m, out)             appends M_size_of(m) bytes to out
@@ -161,10 +163,20 @@ recursive fn Struct_fold_maps(m: Struct&) {
     for pb_i in m.fields_.len { Struct_FieldsEntry_fold_maps(pb_run(Struct_FieldsEntry_entries, m.fields_)[pb_i]); }
 }
 
-// The entries of fields, in insertion order: its .len is their number, and
-// each has .key and .value, or the entry type's accessors for what is in a
-// pool. Valid until the map next changes or m is cleared.
-fn Struct_fields(m: Struct&) -> Struct_FieldsEntry[:] { return pb_run(Struct_FieldsEntry_entries, m.fields_); }
+// The number of entries of fields.
+fn Struct_fields_len(m: Struct&) -> i64 { return m.fields_.len; }
+
+// The key of entry i of fields, in insertion order. Valid until the map next
+// changes or m is cleared.
+fn Struct_fields_key_at(m: Struct&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(Struct_FieldsEntry_entries, m.fields_)[i].key); }
+
+// The value of entry i of fields. Valid until its entry is removed or m is
+// cleared.
+fn Struct_fields_value_at(m: Struct&, i: i64) -> Value& {
+    let pb_l = pb_run(Struct_FieldsEntry_entries, m.fields_)[i].value.m;
+    assert(pb_l);
+    return pb_l;
+}
 
 // The value with key k, or null if there is none. Valid until its entry
 // is removed or m is cleared.
@@ -921,8 +933,8 @@ recursive fn ListValue_fold_maps(m: ListValue&) {
     }
 }
 
-// The links of values, in Value_links: its .len is the number of messages.
-fn ListValue_values(m: ListValue&) -> Value_Ref[:] { return pb_run(Value_links, m.values); }
+// The number of messages of values.
+fn ListValue_values_len(m: ListValue&) -> i64 { return m.values.len; }
 
 // Message i of values. Valid until it or m is cleared.
 fn ListValue_values_at(m: ListValue&, i: i64) -> Value& {
