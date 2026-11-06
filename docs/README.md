@@ -30,7 +30,7 @@ text goes. A document marked *planned* does not exist yet.
 |---|---|
 | [CONTRIBUTING.md](../CONTRIBUTING.md) | Build and test the project, find your way around it, and commit |
 | [TOOLCHAIN.md](../TOOLCHAIN.md) | See which version of each tool is pinned, why, and how to change a pin |
-| [docs/decisions/](decisions/) | Understand why a design is the way it is |
+| [docs/decisions/](decisions/README.md) | Understand why a design is the way it is, and whether it still holds |
 | [RELEASING.md](../RELEASING.md) | Cut a release (project owner) |
 
 ### Agents

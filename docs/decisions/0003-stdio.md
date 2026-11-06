@@ -108,7 +108,8 @@ Reasons:
   is no new limit, because the conformance suite doesn't support Windows
   and CI runs on Linux and macOS (TOOLCHAIN.md). macOS has not been run
   yet. The same code should work there, and the CI bead should run the
-  driver on macOS.
+  driver on macOS. (Since superseded: CI runs the stdio check on macOS, and the owner
+  reported its first run green on 2026-11-06.)
 - **No stdio for stdin.** Mixing `read_stdin` or `read_line` with the shim
   would lose bytes into the FILE buffer. Only the shim reads stdin in the
   testee.

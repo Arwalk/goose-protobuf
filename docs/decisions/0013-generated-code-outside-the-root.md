@@ -1,6 +1,8 @@
 # 0013: generated code outside the root directory
 
-- Status: proposed for the project owner; nothing depends on it yet
+- Status: proposed for the project owner. (Since superseded: "nothing depends on it
+  yet" no longer holds, as the usage guide shows this form and the consumer test holds
+  it, so a different answer would change both.)
 - Date: 2026-11-06
 - Bead: gpb-ky7.6
 - Toolchain: Goose v2026.3, protoc 36.2

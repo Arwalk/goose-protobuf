@@ -2,7 +2,8 @@
 
 - Status: accepted. The owner chose to publish from this repository
   (gpb-dx9.6), and that is done. It will be hosted on GitHub; the owner adds the
-remote and makes the releases, when the project is ready (gpb-dx9.1).
+remote and makes the releases, when the project is ready (gpb-dx9.1). (Since
+  superseded: the remote is `Arwalk/goose-protobuf`.)
 - Date: 2026-11-04
 - Bead: gpb-wof.5
 - Toolchain: Goose v2026.3 (`goose runtime 4d3da949e563`), linux-x64
@@ -68,6 +69,8 @@ So publishing from this repository takes the entry file and `update = none`,
 and **both are in place**. The second has a cost here: a plain
 `git submodule update --init` skips the submodule, so the scripts, CI, the
 README and the usage guide (`docs/usage.md`) say `--checkout`.
+(Since superseded: the guides no longer mention the submodule, so it is the scripts,
+CI and `CONTRIBUTING.md` that say so.)
 
 The rejected alternative was a separate repository holding only
 `pb_wire.goose` at its root, which has no such costs but has to be kept in

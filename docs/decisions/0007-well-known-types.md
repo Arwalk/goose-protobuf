@@ -69,6 +69,8 @@ Phase 3 lands), and generated code cannot drift from the generator. Anything
 special goes in a hand-written file beside the generated one, which is `DO NOT
 EDIT`. Nothing of the kind exists yet, as no such rule is in scope. If a type
 ever needs what a sibling file cannot do, the generator can leave that one out.
+(Since superseded: Phase 3 has landed, so the layout no longer moves for that reason.
+Generated code still cannot drift, as `scripts/wkt.sh` checks it.)
 
 ## Consequences
 
