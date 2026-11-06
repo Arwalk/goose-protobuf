@@ -1,5 +1,5 @@
 # CI: generator build and tests, golden tests and Goose unit tests on Linux
-# and macOS. Every step runs a script that also runs locally (AGENTS.md).
+# and macOS. Every step runs a script that also runs locally (CONTRIBUTING.md).
 # Pins live in TOOLCHAIN.md; the conformance job is gpb-iip.9.
 name: ci
 

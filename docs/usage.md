@@ -281,7 +281,5 @@ true
 
 ## Working on this repository
 
-The protobuf submodule, which only the conformance tests use, is left out of a
-plain `git submodule update --init`, so that package users do not fetch it. Use
-`git submodule update --init --checkout`. [AGENTS.md](../AGENTS.md) lists the
-build and test commands. Design decisions are in [docs/decisions/](decisions/).
+[CONTRIBUTING.md](../CONTRIBUTING.md) has the build and test commands, and the
+design decisions are in [docs/decisions/](decisions/).

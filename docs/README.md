@@ -27,7 +27,7 @@ text goes. A document marked *planned* does not exist yet.
 
 | Document | Read it to |
 |---|---|
-| `CONTRIBUTING.md` *(planned)* | Build and test the project, find your way around it, and commit |
+| [CONTRIBUTING.md](../CONTRIBUTING.md) | Build and test the project, find your way around it, and commit |
 | [TOOLCHAIN.md](../TOOLCHAIN.md) | See which version of each tool is pinned, why, and how to change a pin |
 | [docs/decisions/](decisions/) | Understand why a design is the way it is |
 | `RELEASING.md` *(planned)* | Cut a release (project owner) |
