@@ -200,9 +200,9 @@ enough on Ubuntu, as the runtime is a package of its own.
   `conformance/failure_list_goose.txt` or `conformance/failure_list_recommended.txt`
   to make CI pass. A newly failing test is a bug.
 - **Spike conclusions** go in `docs/decisions/` as `NNNN-short-title.md`.
-- **Work is tracked in beads**, in the owner's local database, which is not in this
-  repository, so a `gpb-` id in a document or commit cannot be looked up from a
-  clone. There are no TODO comments or lists without a bead id.
+- **Work is tracked in beads**, in a database kept apart from the repository's files.
+  To look up a `gpb-` id in a document or commit, run `bd bootstrap` in a clone. There
+  are no TODO comments or lists without a bead id.
 
 ## Changing the plugin and runtime version check
 

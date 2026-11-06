@@ -53,7 +53,7 @@
 # Optional JSONL auto-export for viewers, interchange, and issue-level migration.
 # Disabled by default; enable only when an integration needs fresh .beads/issues.jsonl.
 # Use relative paths under .beads/ for JSONL import/export filenames.
-# Off: the owner keeps the backlog local, in the Dolt database, and out of git.
+# Off: the backlog lives in the Dolt database, and syncs through its remote.
 export:
     auto: false
     git-add: false
@@ -62,6 +62,8 @@ export:
 
 sync:
     remote: "git+https://github.com/Arwalk/goose-protobuf"
+dolt:
+    auto-push: false
 
 # Integration settings (access with 'bd config get/set')
 # Non-secret keys (stored in the database):
