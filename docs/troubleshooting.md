@@ -190,10 +190,13 @@ if there is no `-I`. Add the directory that holds the file. The well-known types
 ### A newer edition is refused
 
 ```text
-is a file using edition 2024, which isn't supported by code generator protoc-gen-goose.
+is a file using edition 2026, which isn't supported by code generator protoc-gen-goose.
 ```
 
-Editions up to 2023 are supported ([limitations](limitations.md)).
+Editions up to 2024 are supported ([limitations](limitations.md)).
+
+If `protoc` itself says that edition 2024 is later than its maximum, your `protoc` is
+older than 32.0, which edition 2024 files need.
 
 ### Two names map to one
 

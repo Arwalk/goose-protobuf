@@ -12,7 +12,7 @@ What you need to generate Goose code from `.proto` files and to build it.
 
 Each release is tested with these versions, and other versions may not work. The
 script below installs protoc 36.2, but one you already have is fine if it is in this
-range.
+range. Files of edition 2024 need protoc 32.0 or later.
 
 On Linux, Goose needs glibc 2.35 or later and `libc6-dev`.
 

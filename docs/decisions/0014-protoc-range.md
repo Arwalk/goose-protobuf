@@ -30,6 +30,9 @@ release that takes editions without a flag, and CI runs the first release of the
 the last release of each major and the pin. Linux only: the plugin sees the same bytes
 on every platform.
 
+(Since then, [decision 0016](0016-edition-2024.md) added edition 2024, which needs protoc
+32.0, so a file of that edition needs more than this floor.)
+
 Older releases are not supported, although proto2 and proto3 happen to work on the two
 measured. Newer ones are untested until the pin moves.
 

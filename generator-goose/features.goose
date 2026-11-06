@@ -112,6 +112,8 @@ fn features_child(parent: Features, set: FeatureSet?) -> Features {
 // tests/selfhost/feature_defaults_unit.goose these values against that file.
 let proto2_defaults = Features { presence: PRESENCE_EXPLICIT, closed_enum: true, packed_repeated: false, verify_utf8: false, delimited: false };
 let proto3_defaults = Features { presence: PRESENCE_IMPLICIT, closed_enum: false, packed_repeated: true, verify_utf8: true, delimited: false };
+// Edition 2024 adds defaults only for what protoc enforces itself (enforce_naming_style,
+// default_symbol_visibility), so it resolves to these too.
 let edition_2023_defaults = Features { presence: PRESENCE_EXPLICIT, closed_enum: false, packed_repeated: true, verify_utf8: true, delimited: false };
 
 // True for a file of syntax "editions", whose features are its own.

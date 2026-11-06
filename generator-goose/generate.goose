@@ -76,7 +76,7 @@ fn run_plugin(input: const u8[:], out: u8[>..]&) -> i32 {
     let editions = google_protobuf_compiler::CodeGeneratorResponse_Feature_FEATURE_SUPPORTS_EDITIONS as u64;
     google_protobuf_compiler::CodeGeneratorResponse_set_supported_features(response, proto3_optional | editions);
     google_protobuf_compiler::CodeGeneratorResponse_set_minimum_edition(response, google_protobuf::Edition_EDITION_PROTO2);
-    google_protobuf_compiler::CodeGeneratorResponse_set_maximum_edition(response, google_protobuf::Edition_EDITION_2023);
+    google_protobuf_compiler::CodeGeneratorResponse_set_maximum_edition(response, google_protobuf::Edition_EDITION_2024);
     if !generate() { google_protobuf_compiler::CodeGeneratorResponse_clear_file(response); }
     google_protobuf_compiler::CodeGeneratorResponse_encode(response, out);
     return PB_OK;

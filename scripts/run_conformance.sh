@@ -2,7 +2,7 @@
 # Run the protobuf conformance suite against a Goose testee binary.
 # Usage: scripts/run_conformance.sh [testee-binary] [runner args...]
 #   scripts/run_conformance.sh                        # build + run default testee
-#   scripts/run_conformance.sh --maximum_edition 2023 # same, with runner flags
+#   scripts/run_conformance.sh --maximum_edition 2024 # same, with runner flags
 #   scripts/run_conformance.sh build/testee --test <name> --enforce_recommended
 # With no testee (or when the first argument is a flag), the default testee
 # conformance/testee.goose is built to build/testee first, with

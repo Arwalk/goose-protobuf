@@ -1,0 +1,16 @@
+// Imported by editions_2024.proto: only an exported type is reachable from there.
+edition = "2024";
+
+package ed24dep;
+
+export message Shared {
+  int32 a = 1;
+}
+
+local message OnlyHere {
+  int32 b = 1;
+}
+
+message UsesLocal {
+  OnlyHere inner = 1;
+}

@@ -12,6 +12,9 @@ set -uo pipefail
 root="$(cd "$(dirname "$0")/.." && pwd)"
 [ -d "$root/.tools/bin" ] && export PATH="$root/.tools/bin:$PATH"
 
+# The first release that takes edition 2024, whose tests are left out before it.
+first_2024=32
+
 versions="27.0 27.5 28.3 29.6 30.2 31.1 32.1 33.6 34.2 35.1 36.2"
 
 # The pinned version comes from scripts/install_toolchain.sh, with its own sum.
@@ -55,10 +58,27 @@ if [ -z "${PLUGIN:-}" ]; then
   export PLUGIN="$root/build/protoc-gen-goose"
 fi
 
+# without_2024: points the tests at copies of their inputs with no edition 2024 file.
+all_protos="${PROTO_DIR:-$root/tests/protos}"
+all_roundtrips="${ROUNDTRIP_DIR:-$root/tests/roundtrip}"
+restore_dirs() { export PROTO_DIR="$all_protos" ROUNDTRIP_DIR="$all_roundtrips"; }
+without_2024() {
+  rm -rf "$tmp/protos" "$tmp/roundtrips"
+  mkdir "$tmp/protos" "$tmp/roundtrips"
+  for f in "$all_protos"/*; do
+    case "$(basename "$f")" in editions_2024*) ;; *) ln -s "$f" "$tmp/protos/" ;; esac
+  done
+  for f in "$all_roundtrips"/*; do
+    case "$(basename "$f")" in editions_2024*) ;; *) ln -s "$f" "$tmp/roundtrips/" ;; esac
+  done
+  export PROTO_DIR="$tmp/protos" ROUNDTRIP_DIR="$tmp/roundtrips"
+}
+
 failed=()
 for v in ${*:-$versions}; do
   if ! dir="$(unpack "$v")"; then failed+=("$v"); continue; fi
   export PROTOC="$dir/bin/protoc" PROTOC_INCLUDE="$dir/include"
+  if [ "${v%%.*}" -lt "$first_2024" ]; then without_2024; else restore_dirs; fi
   bad=""
   for t in golden wkt roundtrip; do
     if ! "$root/scripts/$t.sh" >"$tmp/log" 2>&1; then

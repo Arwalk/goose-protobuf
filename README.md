@@ -69,7 +69,7 @@ Ada, 36, ada@example.org
 
 | | |
 |---|---|
-| Syntax | proto2, proto3, and editions up to 2023 |
+| Syntax | proto2, proto3, and editions up to 2024 |
 | Fields | Scalars, enums, strings, bytes, sub-messages, repeated fields (packed or not), maps, oneofs, groups |
 | Presence | `optional` and `required`, and defaults for unset fields |
 | Well-known types | `Any`, `Duration`, `Empty`, `FieldMask`, `Struct`, `Timestamp` and the wrappers, ready to import |

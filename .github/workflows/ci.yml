@@ -185,13 +185,13 @@ jobs:
 
       # Fails if any result does not match conformance/failure_list_goose.txt.
       - name: Conformance suite
-        run: scripts/run_conformance.sh --maximum_edition 2023
+        run: scripts/run_conformance.sh --maximum_edition 2024
 
       # Fails if any result does not match conformance/failure_list_recommended.txt.
       - name: Conformance suite, recommended tests too
         run: >-
           FAILURE_LIST=conformance/failure_list_recommended.txt
-          scripts/run_conformance.sh build/testee --maximum_edition 2023 --enforce_recommended
+          scripts/run_conformance.sh build/testee --maximum_edition 2024 --enforce_recommended
 
       - name: Testee and harness checks
         run: |
