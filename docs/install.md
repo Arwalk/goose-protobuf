@@ -21,7 +21,7 @@ On Linux, Goose needs glibc 2.35 or later and `libc6-dev`.
 | Linux x64 | Tested |
 | macOS arm64 | Tested by CI |
 | macOS x64 | The tools install, but CI does not run on it |
-| Windows x64 | Goose checks and round trips run in CI. [Its limits are below](#windows) |
+| Windows x64 | Tested by CI: goldens, unit tests and round trips. [Its limits are below](#windows) |
 
 ### Windows
 

@@ -46,4 +46,5 @@ and 23 round trips passed.
 
 Wine is not Windows, and clang with mingw is not MSVC. The `windows` job is the first
 thing to run on real Windows, with MSVC and Git Bash's path conversion. Until its
-first run is seen, treat this record's numbers as Wine's.
+first run is seen, treat this record's numbers as Wine's. (Since then: the owner reported
+the job green on real Windows on 2026-11-06.)
