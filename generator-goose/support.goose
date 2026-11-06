@@ -23,9 +23,10 @@ fn hex8(v: u32) -> const u8[:] {
     return keep(t);
 }
 
-// What a map holds for a key: `text`, `flag` and `index` mean what the map says.
+// A power of two, as mapBucket masks with it.
 let MAP_BUCKETS = 262144;
 
+// What a map holds for a key: `text`, `flag` and `index` mean what the map says.
 struct MapEntry {
     map: u32,
     key: const u8[:],
@@ -50,7 +51,7 @@ fn mapBucket(map: u32, key: const u8[:]) -> i64 {
     var h: u64 = 14695981039346656037;
     for c in key { h = (h ^ c) * 1099511628211; }
     h = (h ^ map) * 1099511628211;
-    return ((h ^ (h >> 32)) & 262143) as! i64;
+    return ((h ^ (h >> 32)) as! i64) & (MAP_BUCKETS - 1);
 }
 
 // The entry of `key` in `map`, or null.

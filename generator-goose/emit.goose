@@ -38,7 +38,9 @@ type Request = google_protobuf_compiler::CodeGeneratorRequest;
 // decoded, so the views and references taken from it stay valid.
 var request = Request { .. };
 
-// The text of the file being generated: `w` of the Zig emitter.
+// The text of the files generated so far: `w` of the Zig emitter. The response
+// keeps a copy of each, so the plugin holds its output twice. It cannot shrink, as
+// a global may hold a reference into a grow-only array.
 var w: u8[>..] = [];
 
 // Goose keywords and contextual keywords (Goose reference, Appendix A).
@@ -97,9 +99,8 @@ fn ident(name: const u8[:]) -> const u8[:] {
 
 // `a.b.c` -> `a_b_c`, escaped if the result is a keyword.
 fn namespaceName(package: const u8[:]) -> const u8[:] {
-    let joined = keep(package);
     var t: u8[>..] = [];
-    for c in joined { t.push(if c == '.' { '_' } else { c }); }
+    for c in package { t.push(if c == '.' { '_' } else { c }); }
     return ident(keep(t));
 }
 
