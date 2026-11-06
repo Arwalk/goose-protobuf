@@ -52,6 +52,10 @@ namespace foo_v1;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_foo_1v1 = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message foo.v1.Dotted
 struct Dotted {
     n: i32,

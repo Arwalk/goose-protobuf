@@ -52,6 +52,10 @@ namespace cycles;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_cycles = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message cycles.Node
 struct Node {
     v: i32,

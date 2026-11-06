@@ -54,6 +54,10 @@ import pb_wire;
 import pb_wire.wkt.duration;
 import pb_wire.wkt.struct_;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_maps = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // enum maps.Mode
 let Mode_MODE_UNSPECIFIED: i32 = 0;
 let Mode_MODE_ON: i32 = 1;

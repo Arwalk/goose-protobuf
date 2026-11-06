@@ -50,6 +50,10 @@
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_imports_1nopkg = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message NoPackage
 struct NoPackage {
     b: i32,

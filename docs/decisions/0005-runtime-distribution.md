@@ -91,7 +91,8 @@ documentation advises. Generated code and the runtime are only known to work
 from the same version. There is no version check: a mismatch shows up as a
 compile error on a missing `pb_` name when one was added or renamed, and not at
 all when behaviour alone changed, so the usage guide (gpb-dx9.4) has to say to
-keep them together.
+keep them together. (Since superseded: generated code now refers to a versioned
+name in the runtime, so a mismatch does not build, gpb-ky7.2.)
 
 ## Rejected
 

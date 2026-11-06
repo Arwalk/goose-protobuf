@@ -112,8 +112,9 @@ prints the same:
 hi x 3 in 6 bytes
 ```
 
-Whichever you choose, **keep the plugin and the runtime on the same version**. Build
-the plugin from the same release or commit as the runtime you import.
+Whichever you choose, **use one version of the plugin and the runtime**: build the
+plugin from the release or commit you import. Otherwise your program will not build,
+with an error naming `pb_plugin_and_runtime_versions_differ`.
 
 ## Next
 

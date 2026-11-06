@@ -52,6 +52,10 @@ namespace closed_e;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_closed_1enums = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // enum closed_e.Mode
 let Mode_MODE_SEVEN: i32 = 7;
 let Mode_MODE_ZERO: i32 = 0;

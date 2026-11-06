@@ -203,6 +203,24 @@ enough on Ubuntu, as the runtime is a package of its own.
 - **Work is tracked in beads** (`bd ready`, and see [AGENTS.md](AGENTS.md) for the
   workflow), with no TODO comments or lists without a bead id.
 
+## Changing the plugin and runtime version check
+
+Each generated file needs a name from the runtime,
+`pb_plugin_and_runtime_versions_differ_abi_N`, so a plugin and a runtime of different
+versions do not build together. Change `N` when generated code from before a change
+would no longer work with the runtime after it, and at least for each release in
+which `runtime/` or the generated code changed.
+
+The plugin is built on its own output, so changing both at once would leave it unable
+to build. In this order:
+
+1. In `runtime/pb_wire.goose`, add the new name beside the old one.
+2. In `generator-goose/emit.goose`, change `runtime_abi`.
+3. Run `scripts/regen_bindings.sh --update` until it reports no change, then
+   `scripts/golden.sh --update` and `scripts/wkt.sh --update`.
+4. Remove the old name, and run `scripts/regen_bindings.sh` to check that the plugin
+   still builds.
+
 ## Goose pitfalls
 
 - Goose `varint` is not the protobuf varint. Do zigzag and varint maths in `u64`,

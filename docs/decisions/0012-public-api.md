@@ -51,8 +51,8 @@ user's benefit. A name's being reachable does not make it public.
 ### Versions
 
 One tag, `vX.Y.Z`, names the plugin, the runtime and the well-known types, which are
-only known to work together (decision 0005). Upgrading means regenerating. The
-promise is about the code you write against generated names, not about keeping old
+only known to work together (decision 0005), and generated code does not build
+against a runtime of another version. Upgrading means regenerating. The promise is about the code you write against generated names, not about keeping old
 generated files working with a new runtime.
 
 | Bump | When |

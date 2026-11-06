@@ -53,6 +53,10 @@ namespace holder;
 import pb_wire;
 import required_p2;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_required = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message holder.Uses
 enum Uses_pick {
     pb_none,

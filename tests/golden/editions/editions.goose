@@ -53,6 +53,10 @@ namespace ed2;
 import pb_wire;
 import editions_file;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_editions = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // enum ed2.Open
 let Open_O_ZERO: i32 = 0;
 let Open_O_ONE: i32 = 1;

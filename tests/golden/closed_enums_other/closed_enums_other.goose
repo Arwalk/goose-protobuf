@@ -52,6 +52,10 @@ namespace other_e;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_closed_1enums_1other = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message other_e.Outer
 struct Outer {
     pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes

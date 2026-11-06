@@ -87,8 +87,10 @@ There are two other ways to provide it:
 - A copy next to your root file: run `scripts/vendor_runtime.sh <dir>` from this
   repository and leave out the `from` line, writing `import pb_wire;`.
 
-**Keep the plugin and the runtime on the same version.** Nothing checks this. A
-mismatch is a compile error if a `pb_` name changed, and otherwise goes unnoticed.
+**Use one version of the plugin and the runtime.** Generated code will not build
+against a runtime of another version, and the error names the problem:
+`unknown identifier: pb_plugin_and_runtime_versions_differ_abi_1`. Generate again
+with the plugin that matches the runtime you import.
 
 ### Well-known types
 

@@ -121,6 +121,24 @@ else
   fail "the package leaves the protobuf submodule out"
 fi
 
+# A runtime of another version: as this one, with its version name changed.
+consumer mismatch 'import pb_wire;'
+: >"$tmp/log"; vendor mismatch
+sed 's/_abi_[0-9]*/_abi_999/' "$tmp/mismatch/pb_wire.goose" > "$tmp/mismatch/pb_wire.new"
+mv "$tmp/mismatch/pb_wire.new" "$tmp/mismatch/pb_wire.goose"
+rejects mismatch 'unknown identifier: pb_plugin_and_runtime_versions_differ_abi_' \
+  "a runtime of another version does not build, and the name says why"
+
+# Files whose output paths are alike share the global namespace, and must not share
+# the name of their version check.
+consumer alike 'import pb_wire from "../goose-protobuf";'
+mkdir -p "$tmp/alike_gen/a"
+printf 'syntax = "proto3";\nmessage InPath { int32 n = 1; }\n' > "$tmp/alike_gen/a/b.proto"
+printf 'syntax = "proto3";\nmessage InName { int32 n = 1; }\n' > "$tmp/alike_gen/a_b.proto"
+(cd "$tmp/alike_gen" && protoc --goose_out="$tmp/alike" a/b.proto a_b.proto) >"$tmp/log" 2>&1
+printf 'import a.b;\nimport a_b;\n' >> "$tmp/alike/app.goose"
+builds alike "generated files with alike paths build together"
+
 consumer missing '// no pb_wire'
 rejects missing 'cannot find the module pb_wire' "no runtime is a clear error"
 

@@ -53,6 +53,10 @@ namespace copying;
 import pb_wire;
 import pb_wire.wkt.duration;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_copying = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message copying.Msg
 struct Msg {
     n: i32,

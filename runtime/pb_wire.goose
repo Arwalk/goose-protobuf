@@ -38,6 +38,11 @@ let PB_MAX_DEPTH = 100;     // protobuf's default recursion limit
 
 // ======================================================== internal from here
 
+// Generated code refers to this name, and to no other number, so a plugin and a
+// runtime of different versions do not build together. The name is what the user
+// sees when it is missing. To change the number, see CONTRIBUTING.md.
+let pb_plugin_and_runtime_versions_differ_abi_1 = true;
+
 // A decode window: buf[pos..end] is still to be read.
 struct pb_Reader { buf: const u8[:], pos: i64, end: i64, err: i32, depth: i32 }
 

@@ -892,6 +892,27 @@ recursive fn index_message(m: MessageDesc&, scope: const u8[:], parent: Features
     }
 }
 
+// The number in the name a generated file needs from the runtime, so that a plugin
+// and a runtime of different versions do not build together. To change it, see
+// CONTRIBUTING.md: the plugin is built on its own output.
+const runtime_abi = "1";
+
+// Refers to the runtime's name for this version. The `let` needs a name of its own,
+// as files of one package share a namespace, so it holds the file's output path:
+// `_` becomes `_1` and `/` becomes `_2`, so that no two paths give one name.
+fn emit_version_check(proto_name: const u8[:]) {
+    let out = output_name(proto_name);
+    var unique: u8[>..] = [];
+    for c in out[..out.len - 6] {
+        if c == '_' { unique.append("_1"); }
+        else if c == '/' { unique.append("_2"); }
+        else { unique.push(c); }
+    }
+    format(w, "\n// Unknown here? This file came from another version of protoc-gen-goose than the\n",
+        "// pb_wire you import. Use one version of both, and generate again.\n",
+        "let pb_version_check_", unique, " = pb_plugin_and_runtime_versions_differ_abi_", runtime_abi, ";\n");
+}
+
 fn emit(fe: FileEmitter&) {
     let f .= fe.file;
     let proto_name = file_name(f);
@@ -916,6 +937,7 @@ fn emit(fe: FileEmitter&) {
     }
     sort(imports) { a, b => compare(a, b) < 0 };
     for i in imports { format(w, "import ", i, ";\n"); }
+    emit_version_check(proto_name);
 
     for i in google_protobuf::FileDescriptorProto_enum_type(f).len {
         emit_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), package);

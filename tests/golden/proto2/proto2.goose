@@ -52,6 +52,10 @@ namespace p2;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_proto2 = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // enum p2.Mode
 let Mode_MODE_A: i32 = 0;
 let Mode_MODE_B: i32 = 1;

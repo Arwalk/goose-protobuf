@@ -52,6 +52,10 @@ namespace open_e;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_closed_1enums_1open = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // enum open_e.Open
 let Open_OPEN_ZERO: i32 = 0;
 let Open_OPEN_ONE: i32 = 1;

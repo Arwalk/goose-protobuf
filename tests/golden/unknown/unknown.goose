@@ -52,6 +52,10 @@ namespace unknown;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_unknown = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // message unknown.Known
 struct Known {
     a: i32,

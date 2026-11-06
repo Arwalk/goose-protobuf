@@ -52,6 +52,10 @@ namespace c2;
 
 import pb_wire;
 
+// Unknown here? This file came from another version of protoc-gen-goose than the
+// pb_wire you import. Use one version of both, and generate again.
+let pb_version_check_collections_1p2 = pb_plugin_and_runtime_versions_differ_abi_1;
+
 // enum c2.Color
 let Color_RED: i32 = 0;
 let Color_GREEN: i32 = 1;
