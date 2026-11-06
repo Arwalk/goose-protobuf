@@ -5,8 +5,8 @@ message. This takes about five minutes, most of it installing tools.
 
 ## Set up
 
-You need Goose and `protoc`, at the versions in [TOOLCHAIN.md](../TOOLCHAIN.md),
-and a C compiler, which `goose build` uses.
+You need Goose and `protoc`, at the versions in [the install guide](install.md), and
+a C compiler, which `goose build` uses.
 
 Clone this repository, then make an empty directory for your project next to it,
 as `../goose-protobuf`. If you do not have the tools, run

@@ -16,7 +16,7 @@ read here works. CI does this on every push.
   as `../goose-protobuf`.
 
 `scripts/install_toolchain.sh` installs the pinned protoc and Goose into
-`.tools/`. [TOOLCHAIN.md](../TOOLCHAIN.md) has the details.
+`.tools/`. [The install guide](install.md) has the details.
 
 Build the plugin from your project's directory:
 
