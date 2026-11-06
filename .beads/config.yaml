@@ -55,10 +55,13 @@
 # Use relative paths under .beads/ for JSONL import/export filenames.
 # Off: the owner keeps the backlog local, in the Dolt database, and out of git.
 export:
-  auto: false
-  git-add: false
+    auto: false
+    git-add: false
 # import:
 #   path: issues.jsonl
+
+sync:
+    remote: "git+https://github.com/Arwalk/goose-protobuf"
 
 # Integration settings (access with 'bd config get/set')
 # Non-secret keys (stored in the database):
