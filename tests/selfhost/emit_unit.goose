@@ -67,6 +67,52 @@ fn an_enum_value_collides() {
     expect_str(collision_of(file), "t.proto: E.X and E_X both map to the Goose name E_X");
 }
 
+fn an_enum_gets_a_name_function() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let e .= google_protobuf::FileDescriptorProto_add_enum_type(file);
+    google_protobuf::EnumDescriptorProto_set_name(e, "E");
+    add_enum_value(e, "ZERO", 0);
+    add_enum_value(e, "NEG", -1);
+    add_enum_value(e, "AGAIN", 0);
+    let out = generated_text(file);
+    expect_has(out, "fn E_name(v: i32) -> const u8[:] {\n    if v == 0 { return \"ZERO\"; }\n    if v == -1 { return \"NEG\"; }\n    return \"\";\n}\n");
+}
+
+fn an_enum_value_called_name_yields_to_the_name_function() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let e .= google_protobuf::FileDescriptorProto_add_enum_type(file);
+    google_protobuf::EnumDescriptorProto_set_name(e, "E");
+    add_enum_value(e, "name", 0);
+    let out = generated_text(file);
+    expect_has(out, "let E_name_: i32 = 0;\n");
+    expect_has(out, "fn E_name(v: i32) -> const u8[:] {\n    if v == 0 { return \"name\"; }\n");
+}
+
+fn a_nested_type_yields_to_the_name_function() {
+    reset_generator();
+    let file .= add_file("t.proto", "", "proto3");
+    let m .= add_message(file, "M");
+    let e .= google_protobuf::DescriptorProto_add_enum_type(m);
+    google_protobuf::EnumDescriptorProto_set_name(e, "E");
+    add_enum_value(e, "ZERO", 0);
+    add_nested(m, "E_name");
+    let out = generated_text(file);
+    expect_has(out, "struct M_E_name_ {\n");
+    expect_has(out, "fn M_E_name(v: i32) -> const u8[:] {\n");
+}
+
+fn a_top_level_name_equal_to_a_name_function_collides() {
+    reset_generator();
+    let file .= add_file("t.proto", "p", "proto3");
+    let e .= google_protobuf::FileDescriptorProto_add_enum_type(file);
+    google_protobuf::EnumDescriptorProto_set_name(e, "E");
+    add_enum_value(e, "ZERO", 0);
+    add_message(file, "E_name");
+    expect_str(collision_of(file), "t.proto: generated name of p.E and p.E_name both map to the Goose name E_name");
+}
+
 fn two_record_fields_with_one_name_collide() {
     reset_generator();
     let file .= add_file("t.proto", "", "proto2");
@@ -473,6 +519,10 @@ fn main() {
     two_accessors_with_one_name_collide();
     an_escaped_name_still_taken_collides();
     an_enum_value_collides();
+    an_enum_gets_a_name_function();
+    an_enum_value_called_name_yields_to_the_name_function();
+    a_nested_type_yields_to_the_name_function();
+    a_top_level_name_equal_to_a_name_function_collides();
     two_record_fields_with_one_name_collide();
     a_field_named_as_a_map_append_collides();
     an_imported_file_that_collides_is_reported();

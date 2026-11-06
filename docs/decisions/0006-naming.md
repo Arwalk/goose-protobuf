@@ -168,6 +168,11 @@ the reserved list, now in `generator-goose/emit.goose`:
   `_entries`, `_find`, `_slot`, `_place` and `_fold`. `<M>_fold_maps` (0008) is on
   any message that can reach a map; the name is claimed for every message.
 
+An enum `E` (gpb-ky7.17) has `E_name(v)`, which gives a value's name as the `.proto`
+writes it: the first declared for aliases, as protobuf does, and `""` for a value the
+enum does not declare. It is claimed with the generated names, so a value `name` is
+the constant `E_name_`, and so is a nested type of that path.
+
 A generated file imports the files whose types its stored fields use, as
 `import a.b_c;`, sorted, and writes their names as `ns::Name` (gpb-8qn.9).
 `::Name` is a type in no package seen from a file in one. Goose resolves

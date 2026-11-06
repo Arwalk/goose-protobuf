@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -61,6 +62,10 @@ let pb_version_check_extensions = pb_plugin_and_runtime_versions_differ_abi_1;
 
 // enum ext.Color
 let Color_RED: i32 = 1;
+fn Color_name(v: i32) -> const u8[:] {
+    if v == 1 { return "RED"; }
+    return "";
+}
 
 // message ext.Target
 struct Target {

@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -63,10 +64,21 @@ let pb_version_check_collections_1p2 = pb_plugin_and_runtime_versions_differ_abi
 let Color_RED: i32 = 0;
 let Color_GREEN: i32 = 1;
 let Color_BLUE: i32 = 5;
+fn Color_name(v: i32) -> const u8[:] {
+    if v == 0 { return "RED"; }
+    if v == 1 { return "GREEN"; }
+    if v == 5 { return "BLUE"; }
+    return "";
+}
 
 // enum c2.Far
 let Far_FAR_ONE: i32 = 1;
 let Far_FAR_TWO: i32 = 2;
+fn Far_name(v: i32) -> const u8[:] {
+    if v == 1 { return "FAR_ONE"; }
+    if v == 2 { return "FAR_TWO"; }
+    return "";
+}
 
 // message c2.Sub
 struct Sub {

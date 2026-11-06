@@ -947,7 +947,7 @@ fn emit(fe: FileEmitter&) {
     emit_version_check(proto_name);
 
     for i in google_protobuf::FileDescriptorProto_enum_type_len(f) {
-        emit_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), package);
+        emit_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package);
     }
     for i in google_protobuf::FileDescriptorProto_message_type_len(f) {
         emit_message(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package);
@@ -962,6 +962,7 @@ fn claim_all(fe: FileEmitter&) {
     let inherited = features_of_file(f);
     let messages = google_protobuf::FileDescriptorProto_message_type_len(f);
     for i in messages { claim_generated(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
+    for i in google_protobuf::FileDescriptorProto_enum_type_len(f) { claim_enum_generated(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package); }
     for i in google_protobuf::FileDescriptorProto_enum_type_len(f) { claim_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package); }
     for i in messages { claim_message(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
 }
@@ -1056,9 +1057,20 @@ recursive fn claim_generated(fe: FileEmitter&, m: MessageDesc&, prefix: const u8
         claim(fe, generated_name(path, oname), keep(str("oneof ", oname, " of ", full)), true);
         claim(fe, accessor_name(path, oname, clear_acc), keep(str("accessor clear_", oname, " of ", full)), true);
     }
+    for k in google_protobuf::DescriptorProto_enum_type_len(m) {
+        claim_enum_generated(fe, google_protobuf::DescriptorProto_enum_type_at(m, k), path, full);
+    }
     for k in google_protobuf::DescriptorProto_nested_type_len(m) {
         claim_generated(fe, google_protobuf::DescriptorProto_nested_type_at(m, k), path, full, own);
     }
+}
+
+// Claims the function generated for an enum, so that its values and any type
+// claimed later yield to it.
+fn claim_enum_generated(fe: FileEmitter&, e: EnumDesc&, prefix: const u8[:], scope: const u8[:]) {
+    let name = enum_name(e);
+    let full = full_name(scope, name);
+    claim(fe, generated_name(nested_path(prefix, name), "name"), keep(str("generated name of ", full)), true);
 }
 
 // Claims the names of an enum and its values, in the order they are
@@ -1326,15 +1338,27 @@ recursive fn find_cycles(fe: FileEmitter&, at: i64) {
     }
 }
 
-fn emit_enum(fe: FileEmitter&, e: EnumDesc&, scope: const u8[:]) {
+fn emit_enum(fe: FileEmitter&, e: EnumDesc&, prefix: const u8[:], scope: const u8[:]) {
     let full = full_name(scope, enum_name(e));
     format(w, "\n// enum ", full, "\n");
-    for i in google_protobuf::EnumDescriptorProto_value_len(e) {
+    let values = google_protobuf::EnumDescriptorProto_value_len(e);
+    for i in values {
         let v .= google_protobuf::EnumDescriptorProto_value_at(e, i);
         let const_name = map_get(fe.decls, full_name(full, google_protobuf::EnumValueDescriptorProto_name(v)));
         assert(const_name);
         format(w, "let ", const_name.text, ": i32 = ", v.number, ";\n");
     }
+    // The first value declared with a number names it, as in protobuf.
+    format(w, "fn ", generated_name(nested_path(prefix, enum_name(e)), "name"), "(v: i32) -> const u8[:] {\n");
+    for i in values {
+        let v .= google_protobuf::EnumDescriptorProto_value_at(e, i);
+        var aliased = false;
+        for k in i {
+            if google_protobuf::EnumDescriptorProto_value_at(e, k).number == v.number { aliased = true; }
+        }
+        if !aliased { format(w, "    if v == ", v.number, " { return \"", google_protobuf::EnumValueDescriptorProto_name(v), "\"; }\n"); }
+    }
+    format(w, "    return \"\";\n}\n");
 }
 
 recursive fn emit_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:]) {
@@ -1434,7 +1458,7 @@ recursive fn emit_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:]
     if is_entry { emit_map_entry_helpers(goose_name, path, fields); }
 
     for i in google_protobuf::DescriptorProto_enum_type_len(m) {
-        emit_enum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), full);
+        emit_enum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), path, full);
     }
     for i in google_protobuf::DescriptorProto_nested_type_len(m) {
         emit_message(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full);
@@ -2925,9 +2949,10 @@ const api_comment = """
     //                                in a message that can hold one)
     //   M_clear(m)                   frees what m owns, empties it
     //   M_copy(dst, src)             makes dst a deep copy of src
-    // Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-    // closed enum does not declare as an unknown field: the field stays as
-    // it was. Variable-size parts (unknown fields, strings and
+    // Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+    // name: the first declared if aliased, "" if it has none. Decoding keeps a
+    // value that a closed enum does not declare as an unknown field: the field
+    // stays as it was. Variable-size parts (unknown fields, strings and
     // bytes, sub-messages, repeated fields)
     // live in global pools (pb_bytes, M_pool, M_links): clear a message
     // to free them. Assigning a record copies spans, not their contents:

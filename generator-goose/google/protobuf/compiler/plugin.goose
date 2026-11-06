@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -796,6 +797,12 @@ fn CodeGeneratorResponse_clear_file(m: CodeGeneratorResponse&) {
 let CodeGeneratorResponse_Feature_FEATURE_NONE: i32 = 0;
 let CodeGeneratorResponse_Feature_FEATURE_PROTO3_OPTIONAL: i32 = 1;
 let CodeGeneratorResponse_Feature_FEATURE_SUPPORTS_EDITIONS: i32 = 2;
+fn CodeGeneratorResponse_Feature_name(v: i32) -> const u8[:] {
+    if v == 0 { return "FEATURE_NONE"; }
+    if v == 1 { return "FEATURE_PROTO3_OPTIONAL"; }
+    if v == 2 { return "FEATURE_SUPPORTS_EDITIONS"; }
+    return "";
+}
 
 // message google.protobuf.compiler.CodeGeneratorResponse.File
 struct CodeGeneratorResponse_File {

@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -74,11 +75,34 @@ let Edition_EDITION_99997_TEST_ONLY: i32 = 99997;
 let Edition_EDITION_99998_TEST_ONLY: i32 = 99998;
 let Edition_EDITION_99999_TEST_ONLY: i32 = 99999;
 let Edition_EDITION_MAX: i32 = 2147483647;
+fn Edition_name(v: i32) -> const u8[:] {
+    if v == 0 { return "EDITION_UNKNOWN"; }
+    if v == 900 { return "EDITION_LEGACY"; }
+    if v == 998 { return "EDITION_PROTO2"; }
+    if v == 999 { return "EDITION_PROTO3"; }
+    if v == 1000 { return "EDITION_2023"; }
+    if v == 1001 { return "EDITION_2024"; }
+    if v == 1002 { return "EDITION_2026"; }
+    if v == 9999 { return "EDITION_UNSTABLE"; }
+    if v == 1 { return "EDITION_1_TEST_ONLY"; }
+    if v == 2 { return "EDITION_2_TEST_ONLY"; }
+    if v == 99997 { return "EDITION_99997_TEST_ONLY"; }
+    if v == 99998 { return "EDITION_99998_TEST_ONLY"; }
+    if v == 99999 { return "EDITION_99999_TEST_ONLY"; }
+    if v == 2147483647 { return "EDITION_MAX"; }
+    return "";
+}
 
 // enum google.protobuf.SymbolVisibility
 let SymbolVisibility_VISIBILITY_UNSET: i32 = 0;
 let SymbolVisibility_VISIBILITY_LOCAL: i32 = 1;
 let SymbolVisibility_VISIBILITY_EXPORT: i32 = 2;
+fn SymbolVisibility_name(v: i32) -> const u8[:] {
+    if v == 0 { return "VISIBILITY_UNSET"; }
+    if v == 1 { return "VISIBILITY_LOCAL"; }
+    if v == 2 { return "VISIBILITY_EXPORT"; }
+    return "";
+}
 
 // message google.protobuf.FileDescriptorSet
 struct FileDescriptorSet {
@@ -2280,6 +2304,11 @@ fn ExtensionRangeOptions_clear_verification(m: ExtensionRangeOptions&) {
 // enum google.protobuf.ExtensionRangeOptions.VerificationState
 let ExtensionRangeOptions_VerificationState_DECLARATION: i32 = 0;
 let ExtensionRangeOptions_VerificationState_UNVERIFIED: i32 = 1;
+fn ExtensionRangeOptions_VerificationState_name(v: i32) -> const u8[:] {
+    if v == 0 { return "DECLARATION"; }
+    if v == 1 { return "UNVERIFIED"; }
+    return "";
+}
 
 // message google.protobuf.ExtensionRangeOptions.Declaration
 struct ExtensionRangeOptions_Declaration {
@@ -2897,11 +2926,38 @@ let FieldDescriptorProto_Type_TYPE_SFIXED32: i32 = 15;
 let FieldDescriptorProto_Type_TYPE_SFIXED64: i32 = 16;
 let FieldDescriptorProto_Type_TYPE_SINT32: i32 = 17;
 let FieldDescriptorProto_Type_TYPE_SINT64: i32 = 18;
+fn FieldDescriptorProto_Type_name(v: i32) -> const u8[:] {
+    if v == 1 { return "TYPE_DOUBLE"; }
+    if v == 2 { return "TYPE_FLOAT"; }
+    if v == 3 { return "TYPE_INT64"; }
+    if v == 4 { return "TYPE_UINT64"; }
+    if v == 5 { return "TYPE_INT32"; }
+    if v == 6 { return "TYPE_FIXED64"; }
+    if v == 7 { return "TYPE_FIXED32"; }
+    if v == 8 { return "TYPE_BOOL"; }
+    if v == 9 { return "TYPE_STRING"; }
+    if v == 10 { return "TYPE_GROUP"; }
+    if v == 11 { return "TYPE_MESSAGE"; }
+    if v == 12 { return "TYPE_BYTES"; }
+    if v == 13 { return "TYPE_UINT32"; }
+    if v == 14 { return "TYPE_ENUM"; }
+    if v == 15 { return "TYPE_SFIXED32"; }
+    if v == 16 { return "TYPE_SFIXED64"; }
+    if v == 17 { return "TYPE_SINT32"; }
+    if v == 18 { return "TYPE_SINT64"; }
+    return "";
+}
 
 // enum google.protobuf.FieldDescriptorProto.Label
 let FieldDescriptorProto_Label_LABEL_OPTIONAL: i32 = 1;
 let FieldDescriptorProto_Label_LABEL_REPEATED: i32 = 3;
 let FieldDescriptorProto_Label_LABEL_REQUIRED: i32 = 2;
+fn FieldDescriptorProto_Label_name(v: i32) -> const u8[:] {
+    if v == 1 { return "LABEL_OPTIONAL"; }
+    if v == 3 { return "LABEL_REPEATED"; }
+    if v == 2 { return "LABEL_REQUIRED"; }
+    return "";
+}
 
 // message google.protobuf.OneofDescriptorProto
 struct OneofDescriptorProto {
@@ -4890,6 +4946,12 @@ fn FileOptions_clear_uninterpreted_option(m: FileOptions&) {
 let FileOptions_OptimizeMode_SPEED: i32 = 1;
 let FileOptions_OptimizeMode_CODE_SIZE: i32 = 2;
 let FileOptions_OptimizeMode_LITE_RUNTIME: i32 = 3;
+fn FileOptions_OptimizeMode_name(v: i32) -> const u8[:] {
+    if v == 1 { return "SPEED"; }
+    if v == 2 { return "CODE_SIZE"; }
+    if v == 3 { return "LITE_RUNTIME"; }
+    return "";
+}
 
 // message google.protobuf.MessageOptions
 struct MessageOptions {
@@ -5829,16 +5891,34 @@ fn FieldOptions_clear_uninterpreted_option(m: FieldOptions&) {
 let FieldOptions_CType_STRING: i32 = 0;
 let FieldOptions_CType_CORD: i32 = 1;
 let FieldOptions_CType_STRING_PIECE: i32 = 2;
+fn FieldOptions_CType_name(v: i32) -> const u8[:] {
+    if v == 0 { return "STRING"; }
+    if v == 1 { return "CORD"; }
+    if v == 2 { return "STRING_PIECE"; }
+    return "";
+}
 
 // enum google.protobuf.FieldOptions.JSType
 let FieldOptions_JSType_JS_NORMAL: i32 = 0;
 let FieldOptions_JSType_JS_STRING: i32 = 1;
 let FieldOptions_JSType_JS_NUMBER: i32 = 2;
+fn FieldOptions_JSType_name(v: i32) -> const u8[:] {
+    if v == 0 { return "JS_NORMAL"; }
+    if v == 1 { return "JS_STRING"; }
+    if v == 2 { return "JS_NUMBER"; }
+    return "";
+}
 
 // enum google.protobuf.FieldOptions.OptionRetention
 let FieldOptions_OptionRetention_RETENTION_UNKNOWN: i32 = 0;
 let FieldOptions_OptionRetention_RETENTION_RUNTIME: i32 = 1;
 let FieldOptions_OptionRetention_RETENTION_SOURCE: i32 = 2;
+fn FieldOptions_OptionRetention_name(v: i32) -> const u8[:] {
+    if v == 0 { return "RETENTION_UNKNOWN"; }
+    if v == 1 { return "RETENTION_RUNTIME"; }
+    if v == 2 { return "RETENTION_SOURCE"; }
+    return "";
+}
 
 // enum google.protobuf.FieldOptions.OptionTargetType
 let FieldOptions_OptionTargetType_TARGET_TYPE_UNKNOWN: i32 = 0;
@@ -5851,6 +5931,19 @@ let FieldOptions_OptionTargetType_TARGET_TYPE_ENUM: i32 = 6;
 let FieldOptions_OptionTargetType_TARGET_TYPE_ENUM_ENTRY: i32 = 7;
 let FieldOptions_OptionTargetType_TARGET_TYPE_SERVICE: i32 = 8;
 let FieldOptions_OptionTargetType_TARGET_TYPE_METHOD: i32 = 9;
+fn FieldOptions_OptionTargetType_name(v: i32) -> const u8[:] {
+    if v == 0 { return "TARGET_TYPE_UNKNOWN"; }
+    if v == 1 { return "TARGET_TYPE_FILE"; }
+    if v == 2 { return "TARGET_TYPE_EXTENSION_RANGE"; }
+    if v == 3 { return "TARGET_TYPE_MESSAGE"; }
+    if v == 4 { return "TARGET_TYPE_FIELD"; }
+    if v == 5 { return "TARGET_TYPE_ONEOF"; }
+    if v == 6 { return "TARGET_TYPE_ENUM"; }
+    if v == 7 { return "TARGET_TYPE_ENUM_ENTRY"; }
+    if v == 8 { return "TARGET_TYPE_SERVICE"; }
+    if v == 9 { return "TARGET_TYPE_METHOD"; }
+    return "";
+}
 
 // message google.protobuf.FieldOptions.EditionDefault
 struct FieldOptions_EditionDefault {
@@ -7409,6 +7502,12 @@ fn MethodOptions_clear_uninterpreted_option(m: MethodOptions&) {
 let MethodOptions_IdempotencyLevel_IDEMPOTENCY_UNKNOWN: i32 = 0;
 let MethodOptions_IdempotencyLevel_NO_SIDE_EFFECTS: i32 = 1;
 let MethodOptions_IdempotencyLevel_IDEMPOTENT: i32 = 2;
+fn MethodOptions_IdempotencyLevel_name(v: i32) -> const u8[:] {
+    if v == 0 { return "IDEMPOTENCY_UNKNOWN"; }
+    if v == 1 { return "NO_SIDE_EFFECTS"; }
+    if v == 2 { return "IDEMPOTENT"; }
+    return "";
+}
 
 // message google.protobuf.UninterpretedOption
 struct UninterpretedOption {
@@ -8188,37 +8287,81 @@ let FeatureSet_FieldPresence_FIELD_PRESENCE_UNKNOWN: i32 = 0;
 let FeatureSet_FieldPresence_EXPLICIT: i32 = 1;
 let FeatureSet_FieldPresence_IMPLICIT: i32 = 2;
 let FeatureSet_FieldPresence_LEGACY_REQUIRED: i32 = 3;
+fn FeatureSet_FieldPresence_name(v: i32) -> const u8[:] {
+    if v == 0 { return "FIELD_PRESENCE_UNKNOWN"; }
+    if v == 1 { return "EXPLICIT"; }
+    if v == 2 { return "IMPLICIT"; }
+    if v == 3 { return "LEGACY_REQUIRED"; }
+    return "";
+}
 
 // enum google.protobuf.FeatureSet.EnumType
 let FeatureSet_EnumType_ENUM_TYPE_UNKNOWN: i32 = 0;
 let FeatureSet_EnumType_OPEN: i32 = 1;
 let FeatureSet_EnumType_CLOSED: i32 = 2;
+fn FeatureSet_EnumType_name(v: i32) -> const u8[:] {
+    if v == 0 { return "ENUM_TYPE_UNKNOWN"; }
+    if v == 1 { return "OPEN"; }
+    if v == 2 { return "CLOSED"; }
+    return "";
+}
 
 // enum google.protobuf.FeatureSet.RepeatedFieldEncoding
 let FeatureSet_RepeatedFieldEncoding_REPEATED_FIELD_ENCODING_UNKNOWN: i32 = 0;
 let FeatureSet_RepeatedFieldEncoding_PACKED: i32 = 1;
 let FeatureSet_RepeatedFieldEncoding_EXPANDED: i32 = 2;
+fn FeatureSet_RepeatedFieldEncoding_name(v: i32) -> const u8[:] {
+    if v == 0 { return "REPEATED_FIELD_ENCODING_UNKNOWN"; }
+    if v == 1 { return "PACKED"; }
+    if v == 2 { return "EXPANDED"; }
+    return "";
+}
 
 // enum google.protobuf.FeatureSet.Utf8Validation
 let FeatureSet_Utf8Validation_UTF8_VALIDATION_UNKNOWN: i32 = 0;
 let FeatureSet_Utf8Validation_VERIFY: i32 = 2;
 let FeatureSet_Utf8Validation_NONE: i32 = 3;
+fn FeatureSet_Utf8Validation_name(v: i32) -> const u8[:] {
+    if v == 0 { return "UTF8_VALIDATION_UNKNOWN"; }
+    if v == 2 { return "VERIFY"; }
+    if v == 3 { return "NONE"; }
+    return "";
+}
 
 // enum google.protobuf.FeatureSet.MessageEncoding
 let FeatureSet_MessageEncoding_MESSAGE_ENCODING_UNKNOWN: i32 = 0;
 let FeatureSet_MessageEncoding_LENGTH_PREFIXED: i32 = 1;
 let FeatureSet_MessageEncoding_DELIMITED: i32 = 2;
+fn FeatureSet_MessageEncoding_name(v: i32) -> const u8[:] {
+    if v == 0 { return "MESSAGE_ENCODING_UNKNOWN"; }
+    if v == 1 { return "LENGTH_PREFIXED"; }
+    if v == 2 { return "DELIMITED"; }
+    return "";
+}
 
 // enum google.protobuf.FeatureSet.JsonFormat
 let FeatureSet_JsonFormat_JSON_FORMAT_UNKNOWN: i32 = 0;
 let FeatureSet_JsonFormat_ALLOW: i32 = 1;
 let FeatureSet_JsonFormat_LEGACY_BEST_EFFORT: i32 = 2;
+fn FeatureSet_JsonFormat_name(v: i32) -> const u8[:] {
+    if v == 0 { return "JSON_FORMAT_UNKNOWN"; }
+    if v == 1 { return "ALLOW"; }
+    if v == 2 { return "LEGACY_BEST_EFFORT"; }
+    return "";
+}
 
 // enum google.protobuf.FeatureSet.EnforceNamingStyle
 let FeatureSet_EnforceNamingStyle_ENFORCE_NAMING_STYLE_UNKNOWN: i32 = 0;
 let FeatureSet_EnforceNamingStyle_STYLE2024: i32 = 1;
 let FeatureSet_EnforceNamingStyle_STYLE_LEGACY: i32 = 2;
 let FeatureSet_EnforceNamingStyle_STYLE2026: i32 = 3;
+fn FeatureSet_EnforceNamingStyle_name(v: i32) -> const u8[:] {
+    if v == 0 { return "ENFORCE_NAMING_STYLE_UNKNOWN"; }
+    if v == 1 { return "STYLE2024"; }
+    if v == 2 { return "STYLE_LEGACY"; }
+    if v == 3 { return "STYLE2026"; }
+    return "";
+}
 
 // message google.protobuf.FeatureSet.VisibilityFeature
 struct FeatureSet_VisibilityFeature {
@@ -8284,6 +8427,14 @@ let FeatureSet_VisibilityFeature_DefaultSymbolVisibility_EXPORT_ALL: i32 = 1;
 let FeatureSet_VisibilityFeature_DefaultSymbolVisibility_EXPORT_TOP_LEVEL: i32 = 2;
 let FeatureSet_VisibilityFeature_DefaultSymbolVisibility_LOCAL_ALL: i32 = 3;
 let FeatureSet_VisibilityFeature_DefaultSymbolVisibility_STRICT: i32 = 4;
+fn FeatureSet_VisibilityFeature_DefaultSymbolVisibility_name(v: i32) -> const u8[:] {
+    if v == 0 { return "DEFAULT_SYMBOL_VISIBILITY_UNKNOWN"; }
+    if v == 1 { return "EXPORT_ALL"; }
+    if v == 2 { return "EXPORT_TOP_LEVEL"; }
+    if v == 3 { return "LOCAL_ALL"; }
+    if v == 4 { return "STRICT"; }
+    return "";
+}
 
 // message google.protobuf.FeatureSet.ProtoLimitsFeature
 struct FeatureSet_ProtoLimitsFeature {
@@ -8347,6 +8498,12 @@ fn FeatureSet_ProtoLimitsFeature_copy(dst: FeatureSet_ProtoLimitsFeature&, src: 
 let FeatureSet_ProtoLimitsFeature_EnforceProtoLimits_PROTO_LIMITS_UNKNOWN: i32 = 0;
 let FeatureSet_ProtoLimitsFeature_EnforceProtoLimits_LEGACY_NO_EXPLICIT_LIMITS: i32 = 1;
 let FeatureSet_ProtoLimitsFeature_EnforceProtoLimits_PROTO_LIMITS2026: i32 = 2;
+fn FeatureSet_ProtoLimitsFeature_EnforceProtoLimits_name(v: i32) -> const u8[:] {
+    if v == 0 { return "PROTO_LIMITS_UNKNOWN"; }
+    if v == 1 { return "LEGACY_NO_EXPLICIT_LIMITS"; }
+    if v == 2 { return "PROTO_LIMITS2026"; }
+    return "";
+}
 
 // message google.protobuf.FeatureSetDefaults
 struct FeatureSetDefaults {
@@ -9470,3 +9627,9 @@ fn GeneratedCodeInfo_Annotation_clear_semantic(m: GeneratedCodeInfo_Annotation&)
 let GeneratedCodeInfo_Annotation_Semantic_NONE: i32 = 0;
 let GeneratedCodeInfo_Annotation_Semantic_SET: i32 = 1;
 let GeneratedCodeInfo_Annotation_Semantic_ALIAS: i32 = 2;
+fn GeneratedCodeInfo_Annotation_Semantic_name(v: i32) -> const u8[:] {
+    if v == 0 { return "NONE"; }
+    if v == 1 { return "SET"; }
+    if v == 2 { return "ALIAS"; }
+    return "";
+}

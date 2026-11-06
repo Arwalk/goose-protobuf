@@ -27,6 +27,7 @@ else is internal, and may change in any release.**
 | Surface | What |
 |---|---|
 | Generated names | The rules of decision 0006, and for each message: `_decode`, `_encode`, `_size_of`, `_clear`, `_copy`, `_is_initialized`, `_fold_maps` where a map exists, and the field accessors (`_set_`, `_has_`, `_clear_`, `_mutable_`, `_add_`, `_at`, `_len`, `_key_at`, `_value_at`, `_get`, `_put`, `_remove`, `_append` and the plain getter, which repeated string, bytes and message fields and maps do not have) |
+| Enum names | The constants of decision 0006, and `<enum>_name` for each enum |
 | Record fields | Those of scalar and enum fields, and a oneof's field with its member names, including `pb_none` |
 | Runtime | `PB_OK`, the `PB_ERR_*` codes with their values, `PB_MAX_DEPTH` and `pb_error_text` |
 | Packages | The package name `pb_wire`, and the paths `pb_wire.wkt.*` with the names in them |

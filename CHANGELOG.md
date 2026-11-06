@@ -23,6 +23,9 @@ generated code needs a runtime of the same version (`abi 1`, as
 - Windows x64, for the plugin and the runtime, with [some limits](docs/install.md#windows).
 - `M_f_len` and `M_f_at` for repeated fields, and `M_f_len`, `M_f_key_at` and
   `M_f_value_at` for maps, to go through them by index.
+- `E_name(v)` for each enum, which gives a value's name as text. It takes the suffix
+  `_name`, so a top-level `E_name` beside an enum `E`, or a field `E_name` of the
+  message that holds it, is now a clash.
 
 ### Breaking
 

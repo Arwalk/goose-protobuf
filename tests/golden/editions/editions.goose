@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -63,14 +64,29 @@ let pb_version_check_editions = pb_plugin_and_runtime_versions_differ_abi_1;
 // enum ed2.Open
 let Open_O_ZERO: i32 = 0;
 let Open_O_ONE: i32 = 1;
+fn Open_name(v: i32) -> const u8[:] {
+    if v == 0 { return "O_ZERO"; }
+    if v == 1 { return "O_ONE"; }
+    return "";
+}
 
 // enum ed2.Closed
 let Closed_C_ONE: i32 = 1;
 let Closed_C_FIVE: i32 = 5;
+fn Closed_name(v: i32) -> const u8[:] {
+    if v == 1 { return "C_ONE"; }
+    if v == 5 { return "C_FIVE"; }
+    return "";
+}
 
 // enum ed2.ClosedZero
 let ClosedZero_CZ_ZERO: i32 = 0;
 let ClosedZero_CZ_ONE: i32 = 1;
+fn ClosedZero_name(v: i32) -> const u8[:] {
+    if v == 0 { return "CZ_ZERO"; }
+    if v == 1 { return "CZ_ONE"; }
+    return "";
+}
 
 // message ed2.Sub
 struct Sub {

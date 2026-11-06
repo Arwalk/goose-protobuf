@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -62,10 +63,20 @@ let pb_version_check_editions_1file = pb_plugin_and_runtime_versions_differ_abi_
 // enum edf.Inherited
 let Inherited_I_ZERO: i32 = 0;
 let Inherited_I_TWO: i32 = 2;
+fn Inherited_name(v: i32) -> const u8[:] {
+    if v == 0 { return "I_ZERO"; }
+    if v == 2 { return "I_TWO"; }
+    return "";
+}
 
 // enum edf.ClosedByFile
 let ClosedByFile_CB_ZERO: i32 = 0;
 let ClosedByFile_CB_ONE: i32 = 1;
+fn ClosedByFile_name(v: i32) -> const u8[:] {
+    if v == 0 { return "CB_ZERO"; }
+    if v == 1 { return "CB_ONE"; }
+    return "";
+}
 
 // message edf.Sub
 struct Sub {

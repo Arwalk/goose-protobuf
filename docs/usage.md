@@ -107,8 +107,9 @@ way, with `struct.proto` as `pb_wire.wkt.struct_`. Their types are in the namesp
 
 A package becomes a namespace, with dots turned into underscores, so
 `foo.bar` is `foo_bar::`. A nested message `Outer.Inner` is `Outer_Inner`. Enum
-values are `i32` constants named after the enum and the value. Functions are
-named `<Message>_<operation>`.
+values are `i32` constants named after the enum and the value, so printing one shows
+its number, and `Role_name(v)` gives its name. Functions are named
+`<Message>_<operation>`.
 
 Messages are records whose variable-size contents live in shared pools, so make
 one with `{ .. }` and clear it when you are done:
@@ -189,6 +190,7 @@ the pool that holds them. Copy such bytes into a buffer of their own first.
 ```goose file=app.goose
 fn show(p: people::Person&) {
     print(people::Person_name(p), " is ", p.age);
+    print("role ", p.role, " is ", people::Role_name(p.role));
 
     // Fields that track presence.
     if people::Person_has_height(p) { print("height ", p.height); }
@@ -281,6 +283,7 @@ prints:
 ```text output
 true
 Ada is 36
+role 1 is ROLE_ADMIN
 height 170
 city London
 email ada@example.org

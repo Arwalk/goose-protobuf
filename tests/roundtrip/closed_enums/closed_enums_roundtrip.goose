@@ -53,6 +53,17 @@ fn main() {
     closed_e::M_clear(c);
     closed_e::M_clear(m);
 
+    // The name of a value: in any order, at both ends of the range, the first
+    // declared of an alias, and nothing for a value the enum does not declare.
+    if closed_e::Mode_name(closed_e::Mode_MODE_ZERO) != "MODE_ZERO" { fail_at("name", "zero"); }
+    if closed_e::Mode_name(7) != "MODE_SEVEN" { fail_at("name", "first declared"); }
+    if closed_e::Mode_name(closed_e::Mode_MODE_SIX_AGAIN) != "MODE_SIX" { fail_at("name", "alias"); }
+    if closed_e::Mode_name(-1) != "MODE_NEG" { fail_at("name", "negative"); }
+    if closed_e::Mode_name(closed_e::Mode_MODE_MIN) != "MODE_MIN" { fail_at("name", "minimum"); }
+    if closed_e::Mode_name(closed_e::Mode_MODE_MAX) != "MODE_MAX" { fail_at("name", "maximum"); }
+    if closed_e::Mode_name(5) != "" { fail_at("name", "undeclared"); }
+    if closed_e::M_Inner_name(closed_e::M_Inner_INNER_ONE) != "INNER_ONE" { fail_at("name", "nested"); }
+
     // The declared values, and their neighbours.
     let v0: u8[2] = [0x08, 0];
     check_mode("0", v0, true, 0);

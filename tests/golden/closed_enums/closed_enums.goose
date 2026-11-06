@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -68,6 +69,16 @@ let Mode_MODE_EIGHT: i32 = 8;
 let Mode_MODE_NEG: i32 = -1;
 let Mode_MODE_MIN: i32 = -2147483648;
 let Mode_MODE_MAX: i32 = 2147483647;
+fn Mode_name(v: i32) -> const u8[:] {
+    if v == 7 { return "MODE_SEVEN"; }
+    if v == 0 { return "MODE_ZERO"; }
+    if v == 6 { return "MODE_SIX"; }
+    if v == 8 { return "MODE_EIGHT"; }
+    if v == -1 { return "MODE_NEG"; }
+    if v == -2147483648 { return "MODE_MIN"; }
+    if v == 2147483647 { return "MODE_MAX"; }
+    return "";
+}
 
 // message closed_e.M
 struct M {
@@ -252,6 +263,10 @@ fn M_clear_open(m: M&) {
 
 // enum closed_e.M.Inner
 let M_Inner_INNER_ONE: i32 = 1;
+fn M_Inner_name(v: i32) -> const u8[:] {
+    if v == 1 { return "INNER_ONE"; }
+    return "";
+}
 
 // message closed_e.Req
 struct Req {

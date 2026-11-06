@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -119,6 +120,10 @@ fn Outer_copy(dst: Outer&, src: Outer&) {
 
 // enum goose.test.nested.Outer.State
 let Outer_State_STATE_UNSPECIFIED: i32 = 0;
+fn Outer_State_name(v: i32) -> const u8[:] {
+    if v == 0 { return "STATE_UNSPECIFIED"; }
+    return "";
+}
 
 // message goose.test.nested.Outer.Middle
 struct Outer_Middle {
@@ -181,6 +186,11 @@ fn Outer_Middle_copy(dst: Outer_Middle&, src: Outer_Middle&) {
 // enum goose.test.nested.Outer.Middle.Kind
 let Outer_Middle_Kind_KIND_UNSPECIFIED: i32 = 0;
 let Outer_Middle_Kind_KIND_LEAF: i32 = 1;
+fn Outer_Middle_Kind_name(v: i32) -> const u8[:] {
+    if v == 0 { return "KIND_UNSPECIFIED"; }
+    if v == 1 { return "KIND_LEAF"; }
+    return "";
+}
 
 // message goose.test.nested.Outer.Middle.Inner
 struct Outer_Middle_Inner {

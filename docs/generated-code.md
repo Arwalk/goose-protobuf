@@ -17,6 +17,7 @@ types of numbers follow protobuf's: `int32` is `i32`, `sint64` is `i64`, `fixed3
 | Package | One namespace, with dots turned into `_`. No package means the global namespace. | `foo.bar` is `foo_bar::` |
 | Message | A struct, with nested names joined by `_` | `Outer.Inner` is `Outer_Inner` |
 | Enum value | An `i32` constant, `<enum>_<VALUE>`, with no prefix removed | `Outer.Color.COLOR_RED` is `Outer_Color_COLOR_RED` |
+| Function of an enum | `<enum>_name` | `Outer_Color_name` |
 | Function of a message | `<message>_<operation>` | `Node_decode` |
 | Function of a field | `<message>_<field>` with the operation | `Node_set_name`, `Node_children_at` |
 | Record field | The field's name | `m.age` |
@@ -62,6 +63,18 @@ A message that can reach a proto2 `required` field also has:
 
 `pb_error_text(err)` gives an error code's meaning, for a message to a person. The
 codes are in [the usage guide](usage.md#decode).
+
+## Enums
+
+An enum value is an `i32`, so `print` shows its number, and a field holds any `i32`
+the wire sent if its enum is open. For an enum `E`, `E_name(v: i32) -> const u8[:]`
+gives the name of a value, as the `.proto` writes it:
+
+- A value with aliases gives the first one declared.
+- A value the enum does not declare gives `""`.
+
+The text is the program's own and stays valid. A value called `name` yields to this
+function, so `enum E { name = 0; }` has the constant `E_name_`.
 
 ## Numbers, bools and enums
 

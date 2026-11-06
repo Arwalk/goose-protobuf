@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -59,11 +60,26 @@ import pb_wire;
 // pb_wire you import. Use one version of both, and generate again.
 let pb_version_check_reserved = pb_plugin_and_runtime_versions_differ_abi_1;
 
+// enum reserved.Named
+let Named_name_: i32 = 0;
+fn Named_name(v: i32) -> const u8[:] {
+    if v == 0 { return "name"; }
+    return "";
+}
+
 // enum reserved.print
 let print_print_A: i32 = 0;
+fn print_name(v: i32) -> const u8[:] {
+    if v == 0 { return "print_A"; }
+    return "";
+}
 
 // enum reserved.E_set
 let E_set_x_: i32 = 0;
+fn E_set_name(v: i32) -> const u8[:] {
+    if v == 0 { return "x"; }
+    return "";
+}
 
 // message reserved.Outer
 struct Outer {
@@ -125,6 +141,10 @@ fn Outer_copy(dst: Outer&, src: Outer&) {
 
 // enum reserved.Outer.Ref
 let Outer_Ref_Ref_ZERO: i32 = 0;
+fn Outer_Ref_name(v: i32) -> const u8[:] {
+    if v == 0 { return "Ref_ZERO"; }
+    return "";
+}
 
 // message reserved.Outer.decode
 struct Outer_decode_ {
@@ -239,6 +259,64 @@ fn Outer_pool_clear(m: Outer_pool_&) {
 fn Outer_pool_copy(dst: Outer_pool_&, src: Outer_pool_&) {
     if dst .== src { return; }
     Outer_pool_clear(dst);
+    dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
+}
+
+// message reserved.Outer.Ref_name
+struct Outer_Ref_name_ {
+    pb_unknown: pb_Span,   // unknown fields: raw wire bytes in pb_bytes
+}
+
+// A link to a Outer_Ref_name_ in Outer_Ref_name_pool, for sub-message fields.
+struct Outer_Ref_name_Ref { m: Outer_Ref_name_&<u32 in Outer_Ref_name_pool>? }
+reusable var Outer_Ref_name_pool: Outer_Ref_name_[>..] = [];
+reusable[] var Outer_Ref_name_links: Outer_Ref_name_Ref[>..] = [];
+
+// Merges the fields in r's window into m; on failure r.err is set.
+// Fields it does not know, or with another wire type, are kept as
+// unknown fields.
+fn Outer_Ref_name_decode_from(r: pb_Reader&, m: Outer_Ref_name_&) {
+    var unknown_len: i64 = m.pb_unknown.len;
+    let unknown_had: i64 = unknown_len;
+    while r.pos < r.end {
+        let start = r.pos;
+        let tag = pb_read_tag(r);
+        if r.err != PB_OK { break; }
+        pb_unknown_append(r, start, tag, m.pb_unknown, unknown_len, unknown_had);
+    }
+    m.pb_unknown = pb_bytes_trim(m.pb_unknown, unknown_len);
+}
+
+// Merges buf into m. 0 on success, else a PB_ERR_* code; m then holds a
+// partial message, which the caller clears.
+fn Outer_Ref_name_decode(buf: const u8[:], m: Outer_Ref_name_&) -> i32 {
+    var r = pb_reader(buf);
+    Outer_Ref_name_decode_from(r, m);
+    return r.err;
+}
+
+// Appends m's wire encoding, Outer_Ref_name_size_of(m) bytes, to out.
+fn Outer_Ref_name_encode(m: Outer_Ref_name_&, out: u8[>..]&) {
+    out.append(pb_run(pb_bytes, m.pb_unknown));
+}
+
+// The size of m's wire encoding, in bytes.
+fn Outer_Ref_name_size_of(m: Outer_Ref_name_&) -> i64 {
+    var n: i64 = 0;
+    n += m.pb_unknown.len;
+    return n;
+}
+
+// Frees what m owns and resets it to the empty message.
+fn Outer_Ref_name_clear(m: Outer_Ref_name_&) {
+    m.pb_unknown = pb_bytes_free(m.pb_unknown);
+}
+
+// Makes dst a deep copy of src, freeing what dst owned. The two share
+// nothing afterwards. Neither may be a sub-message of the other.
+fn Outer_Ref_name_copy(dst: Outer_Ref_name_&, src: Outer_Ref_name_&) {
+    if dst .== src { return; }
+    Outer_Ref_name_clear(dst);
     dst.pb_unknown = pb_bytes_copy(src.pb_unknown);
 }
 

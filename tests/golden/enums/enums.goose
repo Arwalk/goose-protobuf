@@ -43,9 +43,10 @@
 //                                in a message that can hold one)
 //   M_clear(m)                   frees what m owns, empties it
 //   M_copy(dst, src)             makes dst a deep copy of src
-// Enum values are i32 constants E_VALUE. Decoding keeps a value that a
-// closed enum does not declare as an unknown field: the field stays as
-// it was. Variable-size parts (unknown fields, strings and
+// Enum values are i32 constants E_VALUE, and E_name(v) gives a value's
+// name: the first declared if aliased, "" if it has none. Decoding keeps a
+// value that a closed enum does not declare as an unknown field: the field
+// stays as it was. Variable-size parts (unknown fields, strings and
 // bytes, sub-messages, repeated fields)
 // live in global pools (pb_bytes, M_pool, M_links): clear a message
 // to free them. Assigning a record copies spans, not their contents:
@@ -64,11 +65,23 @@ let Sign_SIGN_ZERO: i32 = 0;
 let Sign_SIGN_NEG: i32 = -1;
 let Sign_SIGN_MIN: i32 = -2147483648;
 let Sign_SIGN_MAX: i32 = 2147483647;
+fn Sign_name(v: i32) -> const u8[:] {
+    if v == 0 { return "SIGN_ZERO"; }
+    if v == -1 { return "SIGN_NEG"; }
+    if v == -2147483648 { return "SIGN_MIN"; }
+    if v == 2147483647 { return "SIGN_MAX"; }
+    return "";
+}
 
 // enum goose.test.enums.Alias
 let Alias_ALIAS_A: i32 = 0;
 let Alias_ALIAS_B: i32 = 1;
 let Alias_ALIAS_ALSO_B: i32 = 1;
+fn Alias_name(v: i32) -> const u8[:] {
+    if v == 0 { return "ALIAS_A"; }
+    if v == 1 { return "ALIAS_B"; }
+    return "";
+}
 
 // message goose.test.enums.Holder
 struct Holder {
@@ -131,3 +144,8 @@ fn Holder_copy(dst: Holder&, src: Holder&) {
 // enum goose.test.enums.Holder.Local
 let Holder_Local_LOCAL_X: i32 = 0;
 let Holder_Local_LOCAL_Y: i32 = -7;
+fn Holder_Local_name(v: i32) -> const u8[:] {
+    if v == 0 { return "LOCAL_X"; }
+    if v == -7 { return "LOCAL_Y"; }
+    return "";
+}
