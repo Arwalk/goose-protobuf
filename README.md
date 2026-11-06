@@ -75,6 +75,20 @@ With no testee argument (or a flag first), `run_conformance.sh` builds
 builds `conformance/testee.goose` against them. It exits nonzero iff a test fails that is not in
 `conformance/failure_list_goose.txt`, or a listed test passes.
 
+Fuzzing runs the generated decoders under libFuzzer and AddressSanitizer, over the
+conformance suite's messages, so it needs the protobuf submodule too, and clang with
+its fuzzer runtime:
+
+```sh
+sudo apt-get install --no-install-recommends clang libclang-rt-dev   # Ubuntu
+scripts/fuzz.sh 120                                # builds + fuzzes for 120 seconds
+FUZZ_REBUILD=0 scripts/fuzz.sh 3600                # keeps the fuzz binary
+scripts/test_fuzz.sh                               # checks that a crash is reported
+```
+
+A crash exits nonzero and leaves its input in `build/fuzz/`. Plain clang is not enough
+on Ubuntu, as the runtime is a package of its own.
+
 ## License
 
 MIT, see [LICENSE](LICENSE).

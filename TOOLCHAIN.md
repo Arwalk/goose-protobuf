@@ -8,6 +8,7 @@ CI and, if needed, the golden files and the conformance failure list.
 | protobuf / protoc | v36.2 | `2c74169b3406` | Submodule `third_party/protobuf`. A pin change also regenerates the plugin's bindings: `scripts/regen_bindings.sh --update` |
 | Python protobuf | 7.36.2 | - | The release of protobuf v36.2, for `scripts/interop.sh`. The pure-Python wheel, so one sha256 on every platform |
 | Goose | v2026.3 | `8511ae34bdc9` | Latest release. `goose version` prints `goose runtime 4d3da949e563`, not the tag |
+| clang | 21.1.8 | - | For `scripts/fuzz.sh` only, with `libclang-rt-dev` for libFuzzer and ASan. Ubuntu 26.04's package, so not installed by `scripts/install_toolchain.sh` or CI |
 | beads (`bd`) | 1.3.2 | - | The version that created `.beads/` |
 
 ## Installing
