@@ -4,6 +4,7 @@
 
 import std;
 import pb_wire;
+import support;
 
 // Big natural numbers, little-endian u32 limbs, with no zero limb on top.
 fn bigTrim(a: u32[>..<]&) {
@@ -225,13 +226,19 @@ fn floatLiteral(is32: bool, text: const u8[:]) -> const u8[:] {
     if text == "inf" { return if is32 { "pb_f32_from_bits(0x7f800000)" } else { "pb_f64_from_bits(0x7ff0000000000000)" }; }
     if text == "-inf" { return if is32 { "pb_f32_from_bits(0xff800000)" } else { "pb_f64_from_bits(0xfff0000000000000)" }; }
     if text == "nan" { return if is32 { "pb_f32_from_bits(0x7fc00000)" } else { "pb_f64_from_bits(0x7ff8000000000000)" }; }
-    var digits: u8[>..] = [];
-    let ok, neg, exp10 = scanDecimal(text, digits);
+    var scanned: u8[>..] = [];
+    let ok, neg, exp10 = scanDecimal(text, scanned);
     if !ok { return text; }
-    // Past these, every float is 0 or inf, and the division need not be done.
+    var first = 0;
+    while first < scanned.len && scanned[first] == '0' { first += 1; }
+    let digits = scanned[first..];
+    // The value is below 10^magnitude and, with no leading zeros, at least a tenth
+    // of it. Past these, every float is 0 or inf, and the division need not be done.
     let magnitude = digits.len + exp10;
     var bits: u64 = 0;
-    if is32 {
+    if digits.len == 0 {
+        bits = 0;
+    } else if is32 {
         bits = if magnitude > 60 { 0x7f800000 } else if magnitude < -80 { 0 } else { nearestBits(digits, exp10, 23, 127) };
     } else {
         bits = if magnitude > 400 { 0x7ff0000000000000 } else if magnitude < -400 { 0 } else { nearestBits(digits, exp10, 52, 1023) };
