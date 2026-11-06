@@ -37,7 +37,7 @@ fn run_on_request() {
     var bytes: u8[>..] = [];
     google_protobuf_compiler::CodeGeneratorRequest_encode(req, bytes);
     var out: u8[>..] = [];
-    let err = runPlugin(bytes, out);
+    let err = run_plugin(bytes, out);
     if err != PB_OK { abort(str("runPlugin: ", err)); }
     google_protobuf_compiler::CodeGeneratorResponse_clear(res);
     let back = google_protobuf_compiler::CodeGeneratorResponse_decode(out, res);
@@ -63,7 +63,7 @@ fn nothing_to_generate() {
     google_protobuf_compiler::CodeGeneratorResponse_clear(response);
     var out: u8[>..] = [];
     let empty: u8[0] = [];
-    expect(runPlugin(empty[..], out) == PB_OK, "an empty request decodes");
+    expect(run_plugin(empty[..], out) == PB_OK, "an empty request decodes");
     // supported_features 3, minimum_edition 998, maximum_edition 1000.
     let want: u8[8] = [0x10, 0x03, 0x18, 0xe6, 0x07, 0x20, 0xe8, 0x07];
     expect(out == want[..], "the exact bytes of an empty response");
@@ -75,7 +75,7 @@ fn a_truncated_request_is_an_error() {
     var out: u8[>..] = [];
     // field 1 (file_to_generate), length 5, but only 1 byte follows.
     let cut: u8[3] = [0x0a, 0x05, 'a'];
-    expect(runPlugin(cut[..], out) == PB_ERR_TRUNCATED, "truncated");
+    expect(run_plugin(cut[..], out) == PB_ERR_TRUNCATED, "truncated");
     expect(out.len == 0, "nothing written");
 }
 

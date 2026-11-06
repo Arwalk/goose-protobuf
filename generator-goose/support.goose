@@ -23,7 +23,7 @@ fn hex8(v: u32) -> const u8[:] {
     return keep(t);
 }
 
-// A power of two, as mapBucket masks with it.
+// A power of two, as map_bucket masks with it.
 let MAP_BUCKETS = 262144;
 
 // What a map holds for a key: `text`, `flag` and `index` mean what the map says.
@@ -42,12 +42,12 @@ var map_buckets: u32[MAP_BUCKETS] = [0; MAP_BUCKETS];
 // The first entry of each map, as index + 1.
 var map_firsts: u32[>..] = [];
 
-fn newMap() -> u32 {
+fn new_map() -> u32 {
     map_firsts.push(0);
     return (map_firsts.len - 1) as! u32;
 }
 
-fn mapBucket(map: u32, key: const u8[:]) -> i64 {
+fn map_bucket(map: u32, key: const u8[:]) -> i64 {
     var h: u64 = 14695981039346656037;
     for c in key { h = (h ^ c) * 1099511628211; }
     h = (h ^ map) * 1099511628211;
@@ -55,8 +55,8 @@ fn mapBucket(map: u32, key: const u8[:]) -> i64 {
 }
 
 // The entry of `key` in `map`, or null.
-fn mapGet(map: u32, key: const u8[:]) -> MapEntry? {
-    var at: i64 = map_buckets[mapBucket(map, key)];
+fn map_get(map: u32, key: const u8[:]) -> MapEntry? {
+    var at: i64 = map_buckets[map_bucket(map, key)];
     while at != 0 {
         let e .= map_entries[at - 1];
         if e.map == map && e.key == key { return e; }
@@ -65,14 +65,14 @@ fn mapGet(map: u32, key: const u8[:]) -> MapEntry? {
     return null;
 }
 
-fn mapContains(map: u32, key: const u8[:]) -> bool {
-    return mapGet(map, key) != null;
+fn map_contains(map: u32, key: const u8[:]) -> bool {
+    return map_get(map, key) != null;
 }
 
 // The index in map_entries of the entry of `key` in `map`, added empty if there is
 // none: what a recursive function can keep, where it cannot keep a reference.
-fn mapPutIndex(map: u32, key: const u8[:]) -> i64 {
-    let b = mapBucket(map, key);
+fn map_put_index(map: u32, key: const u8[:]) -> i64 {
+    let b = map_bucket(map, key);
     var at: i64 = map_buckets[b];
     while at != 0 {
         let e .= map_entries[at - 1];
@@ -87,7 +87,7 @@ fn mapPutIndex(map: u32, key: const u8[:]) -> i64 {
 }
 
 // The entry of `key` in `map`, added empty if there is none.
-fn mapPut(map: u32, key: const u8[:]) -> MapEntry& {
-    let at = mapPutIndex(map, key);
+fn map_put(map: u32, key: const u8[:]) -> MapEntry& {
+    let at = map_put_index(map, key);
     return map_entries[at];
 }

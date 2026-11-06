@@ -8,7 +8,7 @@ import emit;
 import unit_support;
 
 fn test_features(file: FileDesc&, fd: FieldDesc&) -> Features {
-    return featuresOfField(file, featuresOfFile(file), fd);
+    return features_of_field(file, features_of_file(file), fd);
 }
 
 fn nested_and_top_level_names_collide() {
@@ -99,18 +99,18 @@ fn field_kinds_and_presence() {
     let int_f .= add_field(m, "d", 5, LABEL_OPTIONAL, TYPE_INT64);
     let opt_f .= add_field(m, "e", 6, LABEL_OPTIONAL, TYPE_INT64);
     google_protobuf::FieldDescriptorProto_set_proto3_optional(opt_f, true);
-    expect(fieldKind(m, "p.M", map_f) == KIND_MAP, "a map");
-    expect(fieldKind(m, "p.M", rep_f) == KIND_REPEATED_MESSAGE, "repeated messages");
-    expect(fieldKind(m, "p.M", msg_f) == KIND_MESSAGE, "a message");
-    expect(fieldKind(m, "p.M", str_f) == KIND_STRING, "bytes");
-    expect(fieldKind(m, "p.M", int_f) == KIND_SCALAR, "a scalar");
+    expect(field_kind(m, "p.M", map_f) == KIND_MAP, "a map");
+    expect(field_kind(m, "p.M", rep_f) == KIND_REPEATED_MESSAGE, "repeated messages");
+    expect(field_kind(m, "p.M", msg_f) == KIND_MESSAGE, "a message");
+    expect(field_kind(m, "p.M", str_f) == KIND_STRING, "bytes");
+    expect(field_kind(m, "p.M", int_f) == KIND_SCALAR, "a scalar");
 
     let p2 .= add_file("p2.proto", "", "");
-    expect(!hasPresence(test_features(file, int_f), int_f), "a proto3 scalar");
-    expect(hasPresence(test_features(file, opt_f), opt_f), "a proto3 optional");
-    expect(hasPresence(test_features(file, msg_f), msg_f), "a message");
-    expect(!hasPresence(test_features(file, rep_f), rep_f), "a repeated field");
-    expect(hasPresence(test_features(p2, int_f), int_f), "a proto2 scalar");
+    expect(!has_presence(test_features(file, int_f), int_f), "a proto3 scalar");
+    expect(has_presence(test_features(file, opt_f), opt_f), "a proto3 optional");
+    expect(has_presence(test_features(file, msg_f), msg_f), "a message");
+    expect(!has_presence(test_features(file, rep_f), rep_f), "a repeated field");
+    expect(has_presence(test_features(p2, int_f), int_f), "a proto2 scalar");
 }
 
 fn proto3_optional_has_a_bit_and_a_real_oneof_an_adt() {
@@ -123,7 +123,7 @@ fn proto3_optional_has_a_bit_and_a_real_oneof_an_adt() {
     google_protobuf::FieldDescriptorProto_set_oneof_index(o, 0);
     google_protobuf::FieldDescriptorProto_set_proto3_optional(o, true);
     google_protobuf::FieldDescriptorProto_set_oneof_index(add_field(m, "u", 2, LABEL_OPTIONAL, TYPE_INT32), 1);
-    let slots_at = realOneofSlots(m);
+    let slots_at = real_oneof_slots(m);
     expect(oneof_slots[slots_at] == -1, "a synthetic oneof");
     expect(oneof_slots[slots_at + 1] == 0, "a real oneof, the first");
     let out = generated_text(file);
@@ -146,7 +146,7 @@ fn each_member_goes_to_its_own_oneof() {
     google_protobuf::FieldDescriptorProto_set_oneof_index(o, 1);
     google_protobuf::FieldDescriptorProto_set_proto3_optional(o, true);
     google_protobuf::FieldDescriptorProto_set_oneof_index(add_field(m, "y", 3, LABEL_OPTIONAL, TYPE_INT32), 2);
-    let slots_at = realOneofSlots(m);
+    let slots_at = real_oneof_slots(m);
     expect(oneof_slots[slots_at] == 0, "the first real oneof");
     expect(oneof_slots[slots_at + 1] == -1, "the synthetic one");
     expect(oneof_slots[slots_at + 2] == 1, "the second real oneof");
@@ -163,12 +163,12 @@ fn repeated_scalars_of_proto2_are_unpacked() {
     set_field(plain, "a", 1, LABEL_REPEATED, TYPE_INT32);
     expect(!test_features(p2, plain).packed_repeated, "proto2");
     expect(test_features(ed, plain).packed_repeated, "editions");
-    expect(repeatedScalarOf(test_features(p2, plain), plain) != null, "stored in proto2");
-    expect(repeatedScalarOf(test_features(ed, plain), plain) != null, "stored in editions");
+    expect(repeated_scalar_of(test_features(p2, plain), plain) != null, "stored in proto2");
+    expect(repeated_scalar_of(test_features(ed, plain), plain) != null, "stored in editions");
 }
 
 fn read_of(ff: Features, fd: FieldDesc&) -> const u8[:] {
-    let sc = scalarOf(ff, fd);
+    let sc = scalar_of(ff, fd);
     guard sc else { return ""; }
     return sc.read;
 }
@@ -194,10 +194,10 @@ fn singular_fields_are_stored_and_messages_are_not_scalars() {
     expect_str(read_of(test_features(p2, r), r), int32_read);
     expect_str(read_of(test_features(p2, s), s), "pb_read_bytes(r, $)");
     expect_str(read_of(test_features(p2, e), e), int32_read);
-    expect(scalarOf(test_features(p2, g), g) == null, "a group is no scalar");
+    expect(scalar_of(test_features(p2, g), g) == null, "a group is no scalar");
     expect_str(read_of(test_features(ed, i), i), int32_read);
     expect_str(read_of(test_features(ed, s), s), "pb_read_string(r, $)");
-    expect(hasPresence(test_features(p2, i), i), "proto2 presence");
+    expect(has_presence(test_features(p2, i), i), "proto2 presence");
 }
 
 fn proto3_strings_are_validated_and_bytes_are_not() {
@@ -209,10 +209,10 @@ fn proto3_strings_are_validated_and_bytes_are_not() {
     set_field(b, "b", 2, LABEL_OPTIONAL, TYPE_BYTES);
     expect_str(read_of(test_features(p3, s), s), "pb_read_string(r, $)");
     expect_str(read_of(test_features(p3, b), b), "pb_read_bytes(r, $)");
-    let bytes_sc = scalarOf(test_features(p3, b), b);
+    let bytes_sc = scalar_of(test_features(p3, b), b);
     assert(bytes_sc);
-    expect_str(sc_setType(bytes_sc), "const u8[:]");
-    expect_str(sc_setType(sc_int32), "i32");
+    expect_str(scalar_set_type(bytes_sc), "const u8[:]");
+    expect_str(scalar_set_type(sc_int32), "i32");
 }
 
 fn a_nested_name_equal_to_a_oneof_name_is_escaped() {
@@ -341,39 +341,39 @@ fn repeated_messages_cycle_and_maps_store_a_run() {
 }
 
 fn defaults_are_literal_and_bytes_unescaped() {
-    expect_str(cUnescape("a\\001\\377\\\\\\\"\\n\\?\\x41"), "a\x01\xff\\\"\n?A");
-    expect_str(cUnescape("\\a\\b\\f\\r\\t\\v\\7\\18"), "\x07\x08\x0c\r\t\x0b\x07\x018");
+    expect_str(c_unescape("a\\001\\377\\\\\\\"\\n\\?\\x41"), "a\x01\xff\\\"\n?A");
+    expect_str(c_unescape("\\a\\b\\f\\r\\t\\v\\7\\18"), "\x07\x08\x0c\r\t\x0b\x07\x018");
     // What is cut short stays as it is.
-    expect_str(cUnescape("a\\"), "a\\");
+    expect_str(c_unescape("a\\"), "a\\");
     var named = FieldDesc { .. };
     google_protobuf::FieldDescriptorProto_set_type(named, TYPE_BYTES);
     google_protobuf::FieldDescriptorProto_set_default_value(named, "\\377");
-    expect(hasDefaultBytes(named), "a bytes default");
-    expect_str(defaultBytes(named), "\xff");
+    expect(has_default_bytes(named), "a bytes default");
+    expect_str(default_bytes(named), "\xff");
     var text = FieldDesc { .. };
     google_protobuf::FieldDescriptorProto_set_type(text, TYPE_STRING);
     google_protobuf::FieldDescriptorProto_set_default_value(text, "\\377");
-    expect_str(defaultBytes(text), "\\377");
+    expect_str(default_bytes(text), "\\377");
     var empty = FieldDesc { .. };
     google_protobuf::FieldDescriptorProto_set_type(empty, TYPE_STRING);
     google_protobuf::FieldDescriptorProto_set_default_value(empty, "");
-    expect(!hasDefaultBytes(empty), "an empty default is none");
+    expect(!has_default_bytes(empty), "an empty default is none");
 
     var e = EnumDesc { .. };
     add_enum_value(e, "A", 3);
     add_enum_value(e, "B", 1);
     var no_default = FieldDesc { .. };
-    expect(enumDefault(e, no_default) == 3, "the first value");
+    expect(enum_default(e, no_default) == 3, "the first value");
     var with_default = FieldDesc { .. };
     google_protobuf::FieldDescriptorProto_set_default_value(with_default, "B");
-    expect(enumDefault(e, with_default) == 1, "the value named");
+    expect(enum_default(e, with_default) == 1, "the value named");
 }
 
 fn a_closed_enum_is_checked_as_sorted_runs() {
     var e = EnumDesc { .. };
     const values: i32[7] = [7, 0, 6, 6, 8, -1, 3];
     for v in values { add_enum_value(e, "", v); }
-    expect_str(knownValues(e), "(pb_v >= -1 && pb_v <= 0) || pb_v == 3 || (pb_v >= 6 && pb_v <= 8)");
+    expect_str(known_values(e), "(pb_v >= -1 && pb_v <= 0) || pb_v == 3 || (pb_v >= 6 && pb_v <= 8)");
 }
 
 fn fields_of_an_imported_type_are_qualified() {

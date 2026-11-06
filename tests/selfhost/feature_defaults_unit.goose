@@ -32,7 +32,7 @@ fn check_feature(edition: i32, name: const u8[:], matches: bool) {
 fn check_edition(d: google_protobuf::FeatureSetDefaults_FeatureSetEditionDefault&, want: Features) {
     let overridable = google_protobuf::FeatureSetDefaults_FeatureSetEditionDefault_overridable_features(d);
     let fixed = google_protobuf::FeatureSetDefaults_FeatureSetEditionDefault_fixed_features(d);
-    let got = featuresChild(featuresChild(opposite_of(want), overridable), fixed);
+    let got = features_child(features_child(opposite_of(want), overridable), fixed);
     check_feature(d.edition, "field_presence", got.presence == want.presence);
     check_feature(d.edition, "enum_type", got.closed_enum == want.closed_enum);
     check_feature(d.edition, "repeated_field_encoding", got.packed_repeated == want.packed_repeated);

@@ -7,7 +7,7 @@ import pb_wire;
 import support;
 import generate;
 
-fn decodeErrorText(err: i32) -> const u8[:] {
+fn decode_error_text(err: i32) -> const u8[:] {
     if err == PB_ERR_TRUNCATED { return "truncated input"; }
     if err == PB_ERR_MALFORMED { return "malformed input"; }
     if err == PB_ERR_DEPTH { return "messages nested too deeply"; }
@@ -20,9 +20,9 @@ fn main() {
     var input: u8[>..] = [];
     read_stdin(input);
     var out: u8[>..] = [];
-    let err = runPlugin(input, out);
+    let err = run_plugin(input, out);
     if err != PB_OK {
-        write_stderr(str("protoc-gen-goose: failed to decode CodeGeneratorRequest: ", decodeErrorText(err), "\n"));
+        write_stderr(str("protoc-gen-goose: failed to decode CodeGeneratorRequest: ", decode_error_text(err), "\n"));
         exit(1);
     }
     write_stdout(out);

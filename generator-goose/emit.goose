@@ -1,10 +1,10 @@
 // Goose emitter: turns one FileDescriptorProto into one .goose file.
 //
-// Port of generator/src/emit.zig, function for function and with its names, which
-// is what makes a diff between the two easy to reason about. A field `f` of a
-// message comes in as a reference, an optional as a null, and an optional string
-// as an empty one; each of those is said where it is declared. The name rules are
-// final, docs/decisions/0006-naming.md; user code depends on them:
+// Port of generator/src/emit.zig, function for function, with its names in snake
+// case, which is what makes a diff between the two easy to reason about. A field
+// `f` of a message comes in as a reference, an optional as a null, and an optional
+// string as an empty one; each of those is said where it is declared. The name
+// rules are final, docs/decisions/0006-naming.md; user code depends on them:
 //   - package `a.b`        -> `namespace a_b;` (no package: global namespace)
 //   - message `Outer.Inner` -> struct `Outer_Inner`
 //   - enum value `RED` of enum `Outer.Color` -> `let Outer_Color_RED: i32`
@@ -39,7 +39,7 @@ type Request = google_protobuf_compiler::CodeGeneratorRequest;
 var request = Request { .. };
 
 // What holds for the whole request, whichever file is being generated, so that a
-// file and what it imports are each worked out once. See indexRequest.
+// file and what it imports are each worked out once. See index_request.
 var request_indexed = false;
 // Full name of a message -> the index of its file in proto_file.
 var message_files: u32 = 0;
@@ -47,7 +47,7 @@ var message_files: u32 = 0;
 var enum_index: u32 = 0;
 // Proto name of a file whose names are claimed -> its index in file_emitters.
 var claimed_files: u32 = 0;
-// Full name of a message -> what holdsRequired and holdsMaps have found.
+// Full name of a message -> what holds_required and holds_maps have found.
 var required_answers: u32 = 0;
 var maps_answers: u32 = 0;
 
@@ -68,7 +68,7 @@ const goose_keywords = [
     "fields", "types",
 ];
 
-fn isGooseKeyword(name: const u8[:]) -> bool {
+fn is_goose_keyword(name: const u8[:]) -> bool {
     for k in goose_keywords {
         if k == name { return true; }
     }
@@ -85,33 +85,33 @@ const goose_builtins = [
     "embed_shader",
 ];
 
-fn startsWith(s: const u8[:], prefix: const u8[:]) -> bool {
+fn starts_with(s: const u8[:], prefix: const u8[:]) -> bool {
     return s.len >= prefix.len && s[..prefix.len] == prefix;
 }
 
-fn endsWith(s: const u8[:], suffix: const u8[:]) -> bool {
+fn ends_with(s: const u8[:], suffix: const u8[:]) -> bool {
     return s.len >= suffix.len && s[s.len - suffix.len..] == suffix;
 }
 
 // True for names a generated declaration may not take as they are:
 // Goose keywords and builtins, and the `pb_`/`PB_` prefixes of the
 // pb_wire runtime (`pb_Span`, `PB_ERR_TRUNCATED`).
-fn isReserved(name: const u8[:]) -> bool {
-    if isGooseKeyword(name) { return true; }
+fn is_reserved(name: const u8[:]) -> bool {
+    if is_goose_keyword(name) { return true; }
     for b in goose_builtins {
         if b == name { return true; }
     }
-    return startsWith(name, "pb_") || startsWith(name, "PB_");
+    return starts_with(name, "pb_") || starts_with(name, "PB_");
 }
 
 // `name`, with a trailing `_` if it is reserved.
 fn ident(name: const u8[:]) -> const u8[:] {
-    if isReserved(name) { return keep(str(name, "_")); }
+    if is_reserved(name) { return keep(str(name, "_")); }
     return name;
 }
 
 // `a.b.c` -> `a_b_c`, escaped if the result is a keyword.
-fn namespaceName(package: const u8[:]) -> const u8[:] {
+fn namespace_name(package: const u8[:]) -> const u8[:] {
     var t: u8[>..] = [];
     for c in package { t.push(if c == '.' { '_' } else { c }); }
     return ident(keep(t));
@@ -119,7 +119,7 @@ fn namespaceName(package: const u8[:]) -> const u8[:] {
 
 // The unescaped path of a nested declaration: `prefix_name`, or `name` at
 // the top level. Its Goose name is ident() of it.
-fn nestedPath(prefix: const u8[:], name: const u8[:]) -> const u8[:] {
+fn nested_path(prefix: const u8[:], name: const u8[:]) -> const u8[:] {
     if prefix.len == 0 { return name; }
     return keep(str(prefix, "_", name));
 }
@@ -173,7 +173,7 @@ const accessors_map: Accessor[5] = [get_acc, map_get_acc, map_put_acc, map_remov
 // directly (`m.id`); without presence they are also written directly
 // (`m.id = 5`), so they have none. A scalar with presence is written
 // with `set_`, which also sets its has-bit.
-fn fieldAccessors(kind: i64, presence: bool) -> const Accessor[:] {
+fn field_accessors(kind: i64, presence: bool) -> const Accessor[:] {
     return match kind {
         KIND_SCALAR => if presence { accessors_scalar_presence[..] } else { accessors_scalar_presence[..0] },
         KIND_ONEOF_SCALAR => accessors_oneof_scalar[..],
@@ -187,25 +187,25 @@ fn fieldAccessors(kind: i64, presence: bool) -> const Accessor[:] {
 
 // The Goose name of a generated function or global of the message at
 // `path` (unescaped): `<path>_<op>`, escaped if reserved.
-fn generatedName(path: const u8[:], op: const u8[:]) -> const u8[:] {
+fn generated_name(path: const u8[:], op: const u8[:]) -> const u8[:] {
     return ident(keep(str(path, "_", op)));
 }
 
 // The Goose name of accessor `acc` of field `field` of the message at
 // `path` (unescaped).
-fn accessorName(path: const u8[:], field: const u8[:], acc: Accessor) -> const u8[:] {
+fn accessor_name(path: const u8[:], field: const u8[:], acc: Accessor) -> const u8[:] {
     return ident(keep(str(path, "_", acc.prefix, field, acc.suffix)));
 }
 
-fn isAlpha(c: u8) -> bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
-fn isDigit(c: u8) -> bool { return c >= '0' && c <= '9'; }
+fn is_alpha(c: u8) -> bool { return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z'); }
+fn is_digit(c: u8) -> bool { return c >= '0' && c <= '9'; }
 
 // The output file of a .proto, which `import a.b.c;` loads as a/b/c.goose:
 // `api/foo.v1.proto` -> `api/foo_v1.goose`. In each path segment, whatever
 // an identifier cannot hold becomes `_`, a leading digit gets a `_` before
 // it, and a reserved result is escaped.
-fn outputName(proto_name: const u8[:]) -> const u8[:] {
-    let stem = if endsWith(proto_name, ".proto") { proto_name[..proto_name.len - 6] } else { proto_name };
+fn output_name(proto_name: const u8[:]) -> const u8[:] {
+    let stem = if ends_with(proto_name, ".proto") { proto_name[..proto_name.len - 6] } else { proto_name };
     var out: u8[>..] = [];
     var start = 0;
     loop {
@@ -213,9 +213,9 @@ fn outputName(proto_name: const u8[:]) -> const u8[:] {
         while end < stem.len && stem[end] != '/' { end += 1; }
         var mangled: u8[>..] = [];
         for c in stem[start..end] {
-            mangled.push(if isAlpha(c) || isDigit(c) || c == '_' { c } else { '_' });
+            mangled.push(if is_alpha(c) || is_digit(c) || c == '_' { c } else { '_' });
         }
-        if mangled.len > 0 && isDigit(mangled[0]) { out.push('_'); }
+        if mangled.len > 0 && is_digit(mangled[0]) { out.push('_'); }
         out.append(ident(keep(mangled)));
         if end == stem.len { break; }
         out.push('/');
@@ -239,30 +239,30 @@ const well_known_files = [
     "google/protobuf/wrappers.proto",
 ];
 
-fn isWellKnown(file: FileDesc&) -> bool {
-    if filePackage(file) != "google.protobuf" { return false; }
+fn is_well_known(file: FileDesc&) -> bool {
+    if file_package(file) != "google.protobuf" { return false; }
     for name in well_known_files {
-        if fileName(file) == name { return true; }
+        if file_name(file) == name { return true; }
     }
     return false;
 }
 
 // A well-known type's file in this repository, which `import pb_wire.wkt.x;`
 // loads: `google/protobuf/any.proto` -> `wkt/any.goose`.
-fn wellKnownOutputName(proto_name: const u8[:]) -> const u8[:] {
+fn well_known_output_name(proto_name: const u8[:]) -> const u8[:] {
     var base = 0;
     for i in proto_name.len {
         if proto_name[i] == '/' { base = i + 1; }
     }
-    return keep(str("wkt/", outputName(proto_name[base..])));
+    return keep(str("wkt/", output_name(proto_name[base..])));
 }
 
 // How a generated file imports the file generated from `file`. Goose resolves
 // it from the root file's directory, or for pb_wire from the package.
-fn importPath(file: FileDesc&) -> const u8[:] {
-    let proto_name = fileName(file);
-    let well_known = isWellKnown(file);
-    let out = if well_known { wellKnownOutputName(proto_name) } else { outputName(proto_name) };
+fn import_path_of(file: FileDesc&) -> const u8[:] {
+    let proto_name = file_name(file);
+    let well_known = is_well_known(file);
+    let out = if well_known { well_known_output_name(proto_name) } else { output_name(proto_name) };
     var path: u8[>..] = [];
     if well_known { path.append("pb_wire."); }
     for c in out[..out.len - 6] { path.push(if c == '/' { '.' } else { c }); }
@@ -289,7 +289,7 @@ struct MessageInfo {
 // Message infos, which maps refer to by index.
 var message_infos: MessageInfo[>..] = [];
 
-fn infoOf(e: MapEntry&) -> MessageInfo& { return message_infos[e.index]; }
+fn info_of(e: MapEntry&) -> MessageInfo& { return message_infos[e.index]; }
 
 // An enum, and whether its features close it.
 struct EnumInfo {
@@ -330,18 +330,18 @@ struct Scalar {
 }
 
 // The default value of a numeric or bool type.
-fn sc_zero(sc: Scalar&) -> const u8[:] {
+fn scalar_zero(sc: Scalar&) -> const u8[:] {
     if sc.goose == "bool" { return "false"; }
     if sc.goose[0] == 'f' { return "0.0"; }
     return "0";
 }
 
-fn sc_setType(sc: Scalar&) -> const u8[:] {
+fn scalar_set_type(sc: Scalar&) -> const u8[:] {
     return if sc.set_type.len > 0 { sc.set_type } else { sc.goose };
 }
 
 // The pb_wire pool of a repeated field of this type (decision 0001).
-fn sc_pool(sc: Scalar&) -> const u8[:] {
+fn scalar_pool(sc: Scalar&) -> const u8[:] {
     if sc.goose == "i32" { return "pb_i32s"; }
     if sc.goose == "i64" { return "pb_i64s"; }
     if sc.goose == "u32" { return "pb_u32s"; }
@@ -353,16 +353,16 @@ fn sc_pool(sc: Scalar&) -> const u8[:] {
     abort(str("no pool for ", sc.goose));
 }
 
-fn varintScalar(goose: const u8[:], read: const u8[:], write: const u8[:], value: const u8[:]) -> Scalar {
+fn varint_scalar(goose: const u8[:], read: const u8[:], write: const u8[:], value: const u8[:]) -> Scalar {
     return Scalar { goose: goose, wire: 0, clear: "$ = 0", read: read, write: write, nonzero: "$ != 0", size: SZ_VARINT, write_value: value };
 }
 
-let sc_int32 = varintScalar("i32", "pb_u64_to_int32(pb_read_varint(r))", "pb_write_varint(out, pb_int32_to_u64($))", "pb_int32_to_u64($)");
-let sc_int64 = varintScalar("i64", "pb_u64_to_int64(pb_read_varint(r))", "pb_write_varint(out, pb_int64_to_u64($))", "pb_int64_to_u64($)");
-let sc_uint32 = varintScalar("u32", "pb_read_varint(r) as! u32", "pb_write_varint(out, $)", "$");
-let sc_uint64 = varintScalar("u64", "pb_read_varint(r)", "pb_write_varint(out, $)", "$");
-let sc_sint32 = varintScalar("i32", "pb_unzigzag32(pb_read_varint(r) as! u32)", "pb_write_varint(out, pb_zigzag32($))", "pb_zigzag32($)");
-let sc_sint64 = varintScalar("i64", "pb_unzigzag64(pb_read_varint(r))", "pb_write_varint(out, pb_zigzag64($))", "pb_zigzag64($)");
+let sc_int32 = varint_scalar("i32", "pb_u64_to_int32(pb_read_varint(r))", "pb_write_varint(out, pb_int32_to_u64($))", "pb_int32_to_u64($)");
+let sc_int64 = varint_scalar("i64", "pb_u64_to_int64(pb_read_varint(r))", "pb_write_varint(out, pb_int64_to_u64($))", "pb_int64_to_u64($)");
+let sc_uint32 = varint_scalar("u32", "pb_read_varint(r) as! u32", "pb_write_varint(out, $)", "$");
+let sc_uint64 = varint_scalar("u64", "pb_read_varint(r)", "pb_write_varint(out, $)", "$");
+let sc_sint32 = varint_scalar("i32", "pb_unzigzag32(pb_read_varint(r) as! u32)", "pb_write_varint(out, pb_zigzag32($))", "pb_zigzag32($)");
+let sc_sint64 = varint_scalar("i64", "pb_unzigzag64(pb_read_varint(r))", "pb_write_varint(out, pb_zigzag64($))", "pb_zigzag64($)");
 let sc_bool = Scalar { goose: "bool", wire: 0, clear: "$ = false", read: "pb_read_varint(r) != 0", write: "pb_write_varint(out, pb_bool_to_u64($))", nonzero: "$", size: SZ_FIXED, fixed: 1 };
 let sc_fixed32 = Scalar { goose: "u32", wire: 5, clear: "$ = 0", read: "pb_read_fixed32(r)", write: "pb_write_fixed32(out, $)", nonzero: "$ != 0", size: SZ_FIXED, fixed: 4 };
 let sc_sfixed32 = Scalar { goose: "i32", wire: 5, clear: "$ = 0", read: "pb_read_fixed32(r) as! i32", write: "pb_write_fixed32(out, $ as! u32)", nonzero: "$ != 0", size: SZ_FIXED, fixed: 4 };
@@ -434,33 +434,33 @@ struct Field {
 // Every message's stored fields, a run per message and one sorted by number.
 var field_pool: Field[>..] = [];
 
-fn fieldSub(f: Field&) -> MessageInfo& {
+fn field_sub(f: Field&) -> MessageInfo& {
     let s = f.sub;
     assert(s);
     return s;
 }
 
-fn fieldMap(f: Field&) -> MessageInfo& {
+fn field_map(f: Field&) -> MessageInfo& {
     let s = f.map;
     assert(s);
     return s;
 }
 
-fn fieldOneof(f: Field&) -> Oneof& {
+fn field_oneof(f: Field&) -> Oneof& {
     let s = f.oneof;
     assert(s);
     return s;
 }
 
-fn fieldExpr(f: Field&) -> const u8[:] { return keep(str("m.", f.name)); }
+fn field_expr(f: Field&) -> const u8[:] { return keep(str("m.", f.name)); }
 
-fn f_number(f: Field&) -> i64 { return f.fd.number; }
-fn f_tag(f: Field&) -> i64 { return (f_number(f) << 3) | f.sc.wire; }
-fn f_packedTag(f: Field&) -> i64 { return (f_number(f) << 3) | 2; }
+fn field_number(f: Field&) -> i64 { return f.fd.number; }
+fn field_tag(f: Field&) -> i64 { return (field_number(f) << 3) | f.sc.wire; }
+fn field_packed_tag(f: Field&) -> i64 { return (field_number(f) << 3) | 2; }
 
 // In decode_from, where a sub-message begins: its length, or for a group
 // the scan to its end tag, which checks that it matches and leaves r after.
-fn f_subOpen(f: Field&) -> const u8[:] {
+fn field_sub_open(f: Field&) -> const u8[:] {
     if f.delimited {
         return "            let pb_body = r.pos;\n            let pb_stop = pb_skip_group(r, tag);\n            if r.err != PB_OK { break; }\n            let pb_after = r.pos;\n";
     }
@@ -468,7 +468,7 @@ fn f_subOpen(f: Field&) -> const u8[:] {
 }
 
 // Narrows r to the sub-message's window.
-fn f_subWindow(f: Field&) -> const u8[:] {
+fn field_sub_window(f: Field&) -> const u8[:] {
     if f.delimited {
         return "            let pb_outer = r.end;\n            r.pos = pb_body;\n            r.end = pb_stop;\n            r.depth++;\n";
     }
@@ -476,7 +476,7 @@ fn f_subWindow(f: Field&) -> const u8[:] {
 }
 
 // Restores r after the sub-message's window.
-fn f_subClose(f: Field&) -> const u8[:] {
+fn field_sub_close(f: Field&) -> const u8[:] {
     if f.delimited {
         return "            r.depth--;\n            r.end = pb_outer;\n            r.pos = pb_after;\n";
     }
@@ -486,12 +486,12 @@ fn f_subClose(f: Field&) -> const u8[:] {
 // A span that owns nothing, for reading a value into a new run.
 const empty_span = "pb_Span { at: 0, len: 0 }";
 
-fn bitMask(b: i64) -> u32 {
+fn bit_mask(b: i64) -> u32 {
     let one: u32 = 1;
     return one << (b % 32);
 }
 
-fn varintSize(v: i64) -> i64 {
+fn varint_size(v: i64) -> i64 {
     var n = 1;
     var x = v;
     while x >= 0x80 {
@@ -512,43 +512,43 @@ fn subst(t: const u8[:], x: const u8[:]) -> const u8[:] {
 
 // The encode condition of a field: its has-bit if it has presence, else a
 // value other than the default.
-fn isSet(f: Field&, x: const u8[:]) -> const u8[:] {
-    if f.bit >= 0 { return keep(str("(m.pb_has", f.bit / 32, " & 0x", hex8(bitMask(f.bit)), ") != 0")); }
+fn is_set(f: Field&, x: const u8[:]) -> const u8[:] {
+    if f.bit >= 0 { return keep(str("(m.pb_has", f.bit / 32, " & 0x", hex8(bit_mask(f.bit)), ") != 0")); }
     return subst(f.sc.nonzero, x);
 }
 
 // The statements writing sub-message `l` of field `f`: length-delimited,
 // or between the tags of a group.
-fn subWrite(f: Field&, indent: const u8[:], l: const u8[:], size_of: const u8[:], encode: const u8[:]) -> const u8[:] {
+fn sub_write(f: Field&, indent: const u8[:], l: const u8[:], size_of: const u8[:], encode: const u8[:]) -> const u8[:] {
     if f.delimited {
-        return keep(str(indent, "pb_write_varint(out, ", f_tag(f), ");\n",
+        return keep(str(indent, "pb_write_varint(out, ", field_tag(f), ");\n",
             indent, encode, "(", l, ", out);\n",
-            indent, "pb_write_varint(out, ", f_tag(f) + 1, ");"));
+            indent, "pb_write_varint(out, ", field_tag(f) + 1, ");"));
     }
-    return keep(str(indent, "pb_write_varint(out, ", f_tag(f), ");\n",
+    return keep(str(indent, "pb_write_varint(out, ", field_tag(f), ");\n",
         indent, "pb_write_varint(out, ", size_of, "(", l, ") as! u64);\n",
         indent, encode, "(", l, ", out);"));
 }
 
 // The size of sub-message `l` of field `f`, with its tags.
-fn subSize(f: Field&, size_of: const u8[:], l: const u8[:]) -> const u8[:] {
-    let ts = varintSize(f_tag(f));
+fn sub_size(f: Field&, size_of: const u8[:], l: const u8[:]) -> const u8[:] {
+    let ts = varint_size(field_tag(f));
     if f.delimited { return keep(str(2 * ts, " + ", size_of, "(", l, ")")); }
     return keep(str(ts, " + pb_len_size(", size_of, "(", l, "))"));
 }
 
 // The full name of the message type of `fd`, singular or repeated, if it has
 // one, else "". A map field has its entry's.
-fn messageTypeOf(fd: FieldDesc&) -> const u8[:] {
-    let t = fieldType(fd);
+fn message_type_of(fd: FieldDesc&) -> const u8[:] {
+    let t = field_type(fd);
     if t != TYPE_MESSAGE && t != TYPE_GROUP { return ""; }
     let tn = google_protobuf::FieldDescriptorProto_type_name(fd);
-    return if startsWith(tn, ".") { tn[1..] } else { tn };
+    return if starts_with(tn, ".") { tn[1..] } else { tn };
 }
 
 // What <entry>_fold sorts the key of entry pb_r[pb_i] by. Only grouping
 // matters, so a signed key is simply widened, which keeps keys distinct.
-fn foldKey(sc: Scalar&) -> const u8[:] {
+fn fold_key(sc: Scalar&) -> const u8[:] {
     if sc.size == SZ_BYTES { return "pb_r[pb_i].key"; }
     if sc.goose == "bool" { return "pb_bool_to_u64(pb_r[pb_i].key)"; }
     if sc.goose[0] == 'u' { return "pb_r[pb_i].key"; }
@@ -556,42 +556,42 @@ fn foldKey(sc: Scalar&) -> const u8[:] {
 }
 
 // The field numbered `number` of a map entry.
-fn mapField(fields: const Field[:], number: i64) -> Field& {
+fn map_field(fields: const Field[:], number: i64) -> Field& {
     for &f in fields {
-        if f_number(f) == number { return f; }
+        if field_number(f) == number { return f; }
     }
     abort("a map entry without its field");
 }
 
 // The features of field `fd` of message `m` of `file`, where `m` has `own`.
-fn fieldFeatures(file: FileDesc&, own: Features, m: MessageDesc&, fd: FieldDesc&) -> Features {
-    if isRealOneofMember(fd) {
-        let parent = featuresOfOneof(own, google_protobuf::DescriptorProto_oneof_decl_at(m, fd.oneof_index));
-        return featuresOfField(file, parent, fd);
+fn field_features(file: FileDesc&, own: Features, m: MessageDesc&, fd: FieldDesc&) -> Features {
+    if is_real_oneof_member(fd) {
+        let parent = features_of_oneof(own, google_protobuf::DescriptorProto_oneof_decl_at(m, fd.oneof_index));
+        return features_of_field(file, parent, fd);
     }
-    return featuresOfField(file, own, fd);
+    return features_of_field(file, own, fd);
 }
 
 // True if `fd` is in a real oneof. A proto3 optional is in a synthetic one,
 // which is not an ADT: its field is stored like any other.
-fn isRealOneofMember(fd: FieldDesc&) -> bool {
+fn is_real_oneof_member(fd: FieldDesc&) -> bool {
     return google_protobuf::FieldDescriptorProto_has_oneof_index(fd) && !fd.proto3_optional;
 }
 
-// Runs of realOneofSlots, in a global pool as a local array could not stay in scope
+// Runs of real_oneof_slots, in a global pool as a local array could not stay in scope
 // across the recursion of the messages.
 var oneof_slots: i64[>..] = [];
 
 // Adds a run to oneof_slots and returns where it starts: for each oneof of `m` in
 // order, its place among the real ones, or -1 for a synthetic one, which holds only
 // a proto3 optional.
-fn realOneofSlots(m: MessageDesc&) -> i64 {
+fn real_oneof_slots(m: MessageDesc&) -> i64 {
     let at = oneof_slots.len;
     let count = google_protobuf::DescriptorProto_oneof_decl(m).len;
     for i in count { oneof_slots.push(-1); }
     for k in google_protobuf::DescriptorProto_field(m).len {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
-        if isRealOneofMember(fd) && fd.oneof_index >= 0 && fd.oneof_index < count { oneof_slots[at + fd.oneof_index] = 0; }
+        if is_real_oneof_member(fd) && fd.oneof_index >= 0 && fd.oneof_index < count { oneof_slots[at + fd.oneof_index] = 0; }
     }
     var next = 0;
     for i in count {
@@ -605,21 +605,21 @@ fn realOneofSlots(m: MessageDesc&) -> i64 {
 
 // The scalar storage of singular field `fd`, which has features `ff`, or null
 // if it is a message. A string is validated only if its features say so.
-fn scalarOf(ff: Features, fd: FieldDesc&) -> Scalar? {
-    if fieldIsRepeated(fd) { return null; }
-    if !ff.verify_utf8 && fieldType(fd) == TYPE_STRING { return sc_bytes; }
-    return scalarOfType(fd);
+fn scalar_of(ff: Features, fd: FieldDesc&) -> Scalar? {
+    if field_is_repeated(fd) { return null; }
+    if !ff.verify_utf8 && field_type(fd) == TYPE_STRING { return sc_bytes; }
+    return scalar_of_type(fd);
 }
 
-// The element storage of repeated non-message field `fd`, as for scalarOf.
-fn repeatedScalarOf(ff: Features, fd: FieldDesc&) -> Scalar? {
-    if !fieldIsRepeated(fd) { return null; }
-    if !ff.verify_utf8 && fieldType(fd) == TYPE_STRING { return sc_bytes; }
-    return scalarOfType(fd);
+// The element storage of repeated non-message field `fd`, as for scalar_of.
+fn repeated_scalar_of(ff: Features, fd: FieldDesc&) -> Scalar? {
+    if !field_is_repeated(fd) { return null; }
+    if !ff.verify_utf8 && field_type(fd) == TYPE_STRING { return sc_bytes; }
+    return scalar_of_type(fd);
 }
 
 // The value field of the map entry `entry`.
-fn mapValueOf(entry: MessageDesc&) -> FieldDesc& {
+fn map_value_of(entry: MessageDesc&) -> FieldDesc& {
     for k in google_protobuf::DescriptorProto_field(entry).len {
         let e .= google_protobuf::DescriptorProto_field_at(entry, k);
         if e.number == 2 { return e; }
@@ -628,7 +628,7 @@ fn mapValueOf(entry: MessageDesc&) -> FieldDesc& {
 }
 
 // The key field of the map entry `entry`.
-fn mapKeyOf(entry: MessageDesc&) -> FieldDesc& {
+fn map_key_of(entry: MessageDesc&) -> FieldDesc& {
     for k in google_protobuf::DescriptorProto_field(entry).len {
         let e .= google_protobuf::DescriptorProto_field_at(entry, k);
         if e.number == 1 { return e; }
@@ -638,7 +638,7 @@ fn mapKeyOf(entry: MessageDesc&) -> FieldDesc& {
 
 // The number of the value of `e` that the [default] of `fd` names, else of its
 // first.
-fn enumDefault(e: EnumDesc&, fd: FieldDesc&) -> i32 {
+fn enum_default(e: EnumDesc&, fd: FieldDesc&) -> i32 {
     let values = google_protobuf::EnumDescriptorProto_value(e).len;
     if google_protobuf::FieldDescriptorProto_has_default_value(fd) {
         let name = google_protobuf::FieldDescriptorProto_default_value(fd);
@@ -652,28 +652,28 @@ fn enumDefault(e: EnumDesc&, fd: FieldDesc&) -> i32 {
 }
 
 // True if the [default] of a string or bytes field `fd` is there and not empty.
-fn hasDefaultBytes(fd: FieldDesc&) -> bool {
+fn has_default_bytes(fd: FieldDesc&) -> bool {
     if !google_protobuf::FieldDescriptorProto_has_default_value(fd) { return false; }
     if google_protobuf::FieldDescriptorProto_default_value(fd).len == 0 { return false; }
-    let t = fieldType(fd);
+    let t = field_type(fd);
     return t == TYPE_STRING || t == TYPE_BYTES;
 }
 
-// The contents of the [default] of a string or bytes field, if hasDefaultBytes.
+// The contents of the [default] of a string or bytes field, if has_default_bytes.
 // protoc writes a bytes default C-escaped, a string one as it is.
-fn defaultBytes(fd: FieldDesc&) -> const u8[:] {
+fn default_bytes(fd: FieldDesc&) -> const u8[:] {
     let text = google_protobuf::FieldDescriptorProto_default_value(fd);
-    return if fieldType(fd) == TYPE_BYTES { cUnescape(text) } else { text };
+    return if field_type(fd) == TYPE_BYTES { c_unescape(text) } else { text };
 }
 
-fn hexDigit(c: u8) -> i64 {
+fn hex_digit(c: u8) -> i64 {
     if c >= '0' && c <= '9' { return c - '0'; }
     if c >= 'a' && c <= 'f' { return c - 'a' + 10; }
     if c >= 'A' && c <= 'F' { return c - 'A' + 10; }
     return -1;
 }
 
-fn cUnescape(text: const u8[:]) -> const u8[:] {
+fn c_unescape(text: const u8[:]) -> const u8[:] {
     var out: u8[>..] = [];
     var i = 0;
     while i < text.len {
@@ -703,8 +703,8 @@ fn cUnescape(text: const u8[:]) -> const u8[:] {
             out.push(v as! u8);
         } else if e == 'x' {
             var v: u32 = 0;
-            while i < text.len && hexDigit(text[i]) >= 0 {
-                v = v * 16 + (hexDigit(text[i]) as! u32);
+            while i < text.len && hex_digit(text[i]) >= 0 {
+                v = v * 16 + (hex_digit(text[i]) as! u32);
                 i += 1;
             }
             out.push(v as! u8);
@@ -716,7 +716,7 @@ fn cUnescape(text: const u8[:]) -> const u8[:] {
 }
 
 // The condition on pb_v that it is a value of `e`, as sorted runs of values.
-fn knownValues(e: EnumDesc&) -> const u8[:] {
+fn known_values(e: EnumDesc&) -> const u8[:] {
     var values: i64[>..] = [];
     for i in google_protobuf::EnumDescriptorProto_value(e).len {
         values.push(google_protobuf::EnumDescriptorProto_value_at(e, i).number);
@@ -739,16 +739,16 @@ fn knownValues(e: EnumDesc&) -> const u8[:] {
 }
 
 // True if `m` is the synthetic entry of a map field.
-fn isMapEntryDesc(m: MessageDesc&) -> bool {
+fn is_map_entry_desc(m: MessageDesc&) -> bool {
     let opts = google_protobuf::DescriptorProto_options(m);
     guard opts else { return false; }
     return google_protobuf::MessageOptions_has_map_entry(opts) && opts.map_entry;
 }
 
-fn isMapEntryType(info: MessageInfo&) -> bool { return isMapEntryDesc(info.desc); }
+fn is_map_entry_type(info: MessageInfo&) -> bool { return is_map_entry_desc(info.desc); }
 
-fn scalarOfType(fd: FieldDesc&) -> Scalar? {
-    let t = fieldType(fd);
+fn scalar_of_type(fd: FieldDesc&) -> Scalar? {
+    let t = field_type(fd);
     if t == TYPE_INT32 || t == TYPE_ENUM { return sc_int32; }
     if t == TYPE_INT64 { return sc_int64; }
     if t == TYPE_UINT32 { return sc_uint32; }
@@ -767,42 +767,42 @@ fn scalarOfType(fd: FieldDesc&) -> Scalar? {
     return null;
 }
 
-// scalarOfType(fd), of a field known to be a scalar.
-fn scalarOfTypeReq(fd: FieldDesc&) -> Scalar& {
-    let sc = scalarOfType(fd);
+// scalar_of_type(fd), of a field known to be a scalar.
+fn scalar_of_type_req(fd: FieldDesc&) -> Scalar& {
+    let sc = scalar_of_type(fd);
     assert(sc);
     return sc;
 }
 
 // The storage kind of field `fd` of message `m`, whose full name is `full`.
-fn fieldKind(m: MessageDesc&, full: const u8[:], fd: FieldDesc&) -> i64 {
+fn field_kind(m: MessageDesc&, full: const u8[:], fd: FieldDesc&) -> i64 {
     let t = if google_protobuf::FieldDescriptorProto_has_type(fd) { fd.type_ } else { TYPE_INT32 };
     let is_msg = t == TYPE_MESSAGE || t == TYPE_GROUP;
-    if fieldIsRepeated(fd) {
-        if is_msg && isMapEntry(m, full, google_protobuf::FieldDescriptorProto_type_name(fd)) { return KIND_MAP; }
+    if field_is_repeated(fd) {
+        if is_msg && is_map_entry(m, full, google_protobuf::FieldDescriptorProto_type_name(fd)) { return KIND_MAP; }
         return if is_msg { KIND_REPEATED_MESSAGE } else { KIND_REPEATED };
     }
     if is_msg { return KIND_MESSAGE; }
     if t == TYPE_STRING || t == TYPE_BYTES { return KIND_STRING; }
-    return if isRealOneofMember(fd) { KIND_ONEOF_SCALAR } else { KIND_SCALAR };
+    return if is_real_oneof_member(fd) { KIND_ONEOF_SCALAR } else { KIND_SCALAR };
 }
 
 // True if `type_name` (`.pkg.M.XEntry`) names a map entry nested in `m`.
-fn isMapEntry(m: MessageDesc&, full: const u8[:], type_name: const u8[:]) -> bool {
-    let tn = if startsWith(type_name, ".") { type_name[1..] } else { type_name };
-    if !startsWith(tn, full) || tn.len <= full.len + 1 || tn[full.len] != '.' { return false; }
+fn is_map_entry(m: MessageDesc&, full: const u8[:], type_name: const u8[:]) -> bool {
+    let tn = if starts_with(type_name, ".") { type_name[1..] } else { type_name };
+    if !starts_with(tn, full) || tn.len <= full.len + 1 || tn[full.len] != '.' { return false; }
     let local = tn[full.len + 1..];
     for k in google_protobuf::DescriptorProto_nested_type(m).len {
         let n .= google_protobuf::DescriptorProto_nested_type_at(m, k);
-        if messageName(n) == local { return isMapEntryDesc(n); }
+        if message_name(n) == local { return is_map_entry_desc(n); }
     }
     return false;
 }
 
 // True if singular field `fd`, with features `ff`, tracks presence: a message, a
 // oneof member (a proto3 `optional` is one), or as its features say.
-fn hasPresence(ff: Features, fd: FieldDesc&) -> bool {
-    if fieldIsRepeated(fd) { return false; }
+fn has_presence(ff: Features, fd: FieldDesc&) -> bool {
+    if field_is_repeated(fd) { return false; }
     let t = if google_protobuf::FieldDescriptorProto_has_type(fd) { fd.type_ } else { TYPE_INT32 };
     if t == TYPE_MESSAGE || t == TYPE_GROUP { return true; }
     if google_protobuf::FieldDescriptorProto_has_oneof_index(fd) || fd.proto3_optional { return true; }
@@ -833,7 +833,7 @@ struct FileEmitter {
     imports: u32,
     // How the codec functions of the current message are declared.
     fn_kw: const u8[:] = "fn",
-    // True once findCycles has been through the messages of this file.
+    // True once find_cycles has been through the messages of this file.
     cycles_found: bool = false,
 }
 
@@ -841,73 +841,73 @@ struct FileEmitter {
 // whose names one of those claims.
 var file_emitters: FileEmitter[>..] = [];
 
-fn newFileEmitter(file: FileDesc&) -> FileEmitter& {
+fn new_file_emitter(file: FileDesc&) -> FileEmitter& {
     let fe .= file_emitters.push(FileEmitter {
-        file: file, names: newMap(), message_paths: newMap(), decls: newMap(), messages: newMap(),
-        foreign: newMap(), imports: newMap(),
+        file: file, names: new_map(), message_paths: new_map(), decls: new_map(), messages: new_map(),
+        foreign: new_map(), imports: new_map(),
     });
-    mapPut(claimed_files, fileName(file)).index = file_emitters.len - 1;
+    map_put(claimed_files, file_name(file)).index = file_emitters.len - 1;
     return fe;
 }
 
 // Forgets what is known of the request, for a test that makes another.
-fn forgetRequest() {
+fn forget_request() {
     request_indexed = false;
 }
 
 // Indexes the messages and enums of every file of the request by full name.
-fn indexRequest() {
+fn index_request() {
     if request_indexed { return; }
     request_indexed = true;
-    message_files = newMap();
-    enum_index = newMap();
-    claimed_files = newMap();
-    required_answers = newMap();
-    maps_answers = newMap();
+    message_files = new_map();
+    enum_index = new_map();
+    claimed_files = new_map();
+    required_answers = new_map();
+    maps_answers = new_map();
     for i in google_protobuf_compiler::CodeGeneratorRequest_proto_file(request).len {
         let file .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, i);
-        let inherited = featuresOfFile(file);
-        let package = filePackage(file);
+        let inherited = features_of_file(file);
+        let package = file_package(file);
         for k in google_protobuf::FileDescriptorProto_enum_type(file).len {
-            indexEnum(google_protobuf::FileDescriptorProto_enum_type_at(file, k), package, inherited);
+            index_enum(google_protobuf::FileDescriptorProto_enum_type_at(file, k), package, inherited);
         }
         for k in google_protobuf::FileDescriptorProto_message_type(file).len {
-            indexMessage(google_protobuf::FileDescriptorProto_message_type_at(file, k), package, inherited, i);
+            index_message(google_protobuf::FileDescriptorProto_message_type_at(file, k), package, inherited, i);
         }
     }
 }
 
-fn indexEnum(e: EnumDesc&, scope: const u8[:], parent: Features) {
-    enum_infos.push(EnumInfo { desc: e, closed: featuresOfEnum(parent, e).closed_enum });
-    mapPut(enum_index, fullName(scope, enumName(e))).index = enum_infos.len - 1;
+fn index_enum(e: EnumDesc&, scope: const u8[:], parent: Features) {
+    enum_infos.push(EnumInfo { desc: e, closed: features_of_enum(parent, e).closed_enum });
+    map_put(enum_index, full_name(scope, enum_name(e))).index = enum_infos.len - 1;
 }
 
-recursive fn indexMessage(m: MessageDesc&, scope: const u8[:], parent: Features, file_at: i64) {
-    let full = fullName(scope, messageName(m));
-    mapPut(message_files, full).index = file_at;
-    let inherited = featuresOfMessage(parent, m);
+recursive fn index_message(m: MessageDesc&, scope: const u8[:], parent: Features, file_at: i64) {
+    let full = full_name(scope, message_name(m));
+    map_put(message_files, full).index = file_at;
+    let inherited = features_of_message(parent, m);
     for i in google_protobuf::DescriptorProto_enum_type(m).len {
-        indexEnum(google_protobuf::DescriptorProto_enum_type_at(m, i), full, inherited);
+        index_enum(google_protobuf::DescriptorProto_enum_type_at(m, i), full, inherited);
     }
     for i in google_protobuf::DescriptorProto_nested_type(m).len {
-        indexMessage(google_protobuf::DescriptorProto_nested_type_at(m, i), full, inherited, file_at);
+        index_message(google_protobuf::DescriptorProto_nested_type_at(m, i), full, inherited, file_at);
     }
 }
 
 fn emit(fe: FileEmitter&) {
     let f .= fe.file;
-    let proto_name = fileName(f);
+    let proto_name = file_name(f);
     format(w, "// Code generated by protoc-gen-goose. DO NOT EDIT.\n// source: ", proto_name, "\n\n");
     w.append(api_comment);
-    let package = filePackage(f);
+    let package = file_package(f);
     if package.len > 0 {
-        format(w, "namespace ", namespaceName(package), ";\n\n");
+        format(w, "namespace ", namespace_name(package), ";\n\n");
     }
     w.append("import pb_wire;\n");
 
-    claimAll(fe);
+    claim_all(fe);
     for i in google_protobuf::FileDescriptorProto_message_type(f).len {
-        collectImports(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i));
+        collect_imports(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i));
     }
     var imports: const u8[:][>..] = [];
     var at = map_firsts[fe.imports];
@@ -920,56 +920,56 @@ fn emit(fe: FileEmitter&) {
     for i in imports { format(w, "import ", i, ";\n"); }
 
     for i in google_protobuf::FileDescriptorProto_enum_type(f).len {
-        emitEnum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), package);
+        emit_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), package);
     }
     for i in google_protobuf::FileDescriptorProto_message_type(f).len {
-        emitMessage(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package);
+        emit_message(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package);
     }
 }
 
 // Claims every name of the file, in the order the declarations are
 // emitted, so that generated names come first.
-fn claimAll(fe: FileEmitter&) {
+fn claim_all(fe: FileEmitter&) {
     let f .= fe.file;
-    let package = filePackage(f);
-    let inherited = featuresOfFile(f);
+    let package = file_package(f);
+    let inherited = features_of_file(f);
     let messages = google_protobuf::FileDescriptorProto_message_type(f).len;
-    for i in messages { claimGenerated(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
-    for i in google_protobuf::FileDescriptorProto_enum_type(f).len { claimEnum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package); }
-    for i in messages { claimMessage(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
+    for i in messages { claim_generated(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
+    for i in google_protobuf::FileDescriptorProto_enum_type(f).len { claim_enum(fe, google_protobuf::FileDescriptorProto_enum_type_at(f, i), "", package); }
+    for i in messages { claim_message(fe, google_protobuf::FileDescriptorProto_message_type_at(f, i), "", package, inherited); }
 }
 
 // Records the files the stored fields of `m` and its nested messages
 // need. Importing only those lets a file build without the others.
-recursive fn collectImports(fe: FileEmitter&, m: MessageDesc&) {
+recursive fn collect_imports(fe: FileEmitter&, m: MessageDesc&) {
     for i in google_protobuf::DescriptorProto_field(m).len {
-        subMessageOf(fe, google_protobuf::DescriptorProto_field_at(m, i));
+        sub_message_of(fe, google_protobuf::DescriptorProto_field_at(m, i));
     }
     for i in google_protobuf::DescriptorProto_nested_type(m).len {
-        collectImports(fe, google_protobuf::DescriptorProto_nested_type_at(m, i));
+        collect_imports(fe, google_protobuf::DescriptorProto_nested_type_at(m, i));
     }
 }
 
-fn fullName(scope: const u8[:], name: const u8[:]) -> const u8[:] {
+fn full_name(scope: const u8[:], name: const u8[:]) -> const u8[:] {
     if scope.len == 0 { return name; }
     return keep(str(scope, ".", name));
 }
 
 // Fails generating the file: the first error goes in CodeGeneratorResponse.error,
-// and generateFile reports it when it is done. The Zig emitter stops here, but a
-// long-distance return cannot leave the recursion of emitMessage, and what runs
+// and generate_file reports it when it is done. The Zig emitter stops here, but a
+// long-distance return cannot leave the recursion of emit_message, and what runs
 // after a collision can only add names no one will read.
 fn collide(message: const u8[:]) {
     if diag.len == 0 { diag = message; }
 }
 
 fn claim(fe: FileEmitter&, goose_name: const u8[:], what: const u8[:], generated: bool) {
-    let found = mapGet(fe.names, goose_name);
+    let found = map_get(fe.names, goose_name);
     if found {
-        collide(keep(str(fileName(fe.file), ": ", found.text, " and ", what, " both map to the Goose name ", goose_name)));
+        collide(keep(str(file_name(fe.file), ": ", found.text, " and ", what, " both map to the Goose name ", goose_name)));
         return;
     }
-    let e .= mapPut(fe.names, goose_name);
+    let e .= map_put(fe.names, goose_name);
     e.text = what;
     e.flag = generated;
 }
@@ -977,10 +977,10 @@ fn claim(fe: FileEmitter&, goose_name: const u8[:], what: const u8[:], generated
 // Claims the Goose name of a type or enum constant at `path` and
 // returns it. A nested declaration whose name is a generated name
 // gets a trailing `_`; a top-level one is a collision.
-fn claimDecl(fe: FileEmitter&, path: const u8[:], full: const u8[:], nested: bool) -> const u8[:] {
+fn claim_decl(fe: FileEmitter&, path: const u8[:], full: const u8[:], nested: bool) -> const u8[:] {
     var goose_name = ident(path);
     if nested {
-        let owner = mapGet(fe.names, goose_name);
+        let owner = map_get(fe.names, goose_name);
         if owner {
             if owner.flag { goose_name = keep(str(goose_name, "_")); }
         }
@@ -991,126 +991,126 @@ fn claimDecl(fe: FileEmitter&, path: const u8[:], full: const u8[:], nested: boo
 
 // Claims every function and global generated for `m` and its nested
 // messages, so that types and constants claimed later yield to them.
-recursive fn claimGenerated(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:], inherited: Features) {
-    let name = messageName(m);
-    let path = nestedPath(prefix, name);
-    let full = fullName(scope, name);
-    let own = featuresOfMessage(inherited, m);
-    let found = mapGet(fe.message_paths, path);
+recursive fn claim_generated(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:], inherited: Features) {
+    let name = message_name(m);
+    let path = nested_path(prefix, name);
+    let full = full_name(scope, name);
+    let own = features_of_message(inherited, m);
+    let found = map_get(fe.message_paths, path);
     if found {
-        collide(keep(str(fileName(fe.file), ": ", found.text, " and ", full, " both map to the Goose name ", ident(path))));
+        collide(keep(str(file_name(fe.file), ": ", found.text, " and ", full, " both map to the Goose name ", ident(path))));
     }
-    mapPut(fe.message_paths, path).text = full;
+    map_put(fe.message_paths, path).text = full;
     for op in message_ops {
-        claim(fe, generatedName(path, op), keep(str("generated ", op, " of ", full)), true);
+        claim(fe, generated_name(path, op), keep(str("generated ", op, " of ", full)), true);
     }
-    if isMapEntryDesc(m) {
+    if is_map_entry_desc(m) {
         for op in map_entry_ops {
-            claim(fe, generatedName(path, op), keep(str("generated ", op, " of ", full)), true);
+            claim(fe, generated_name(path, op), keep(str("generated ", op, " of ", full)), true);
         }
     }
     for k in google_protobuf::DescriptorProto_field(m).len {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
-        let fname = fieldName(fd);
-        let kind = fieldKind(m, full, fd);
+        let fname = field_name(fd);
+        let kind = field_kind(m, full, fd);
         // A map entry's fields have no presence, whatever the syntax.
-        for &acc in fieldAccessors(kind, hasPresence(fieldFeatures(fe.file, own, m, fd), fd) && !isMapEntryDesc(m)) {
-            claim(fe, accessorName(path, fname, acc), keep(str("accessor ", acc.prefix, fname, acc.suffix, " of ", full)), true);
+        for &acc in field_accessors(kind, has_presence(field_features(fe.file, own, m, fd), fd) && !is_map_entry_desc(m)) {
+            claim(fe, accessor_name(path, fname, acc), keep(str("accessor ", acc.prefix, fname, acc.suffix, " of ", full)), true);
         }
-        if hasDefaultBytes(fd) {
-            claim(fe, accessorName(path, fname, default_acc), keep(str("default of ", fname, " of ", full)), true);
+        if has_default_bytes(fd) {
+            claim(fe, accessor_name(path, fname, default_acc), keep(str("default of ", fname, " of ", full)), true);
         }
     }
     // A oneof's type and its clear_. A field cannot have its name.
-    let slots_at = realOneofSlots(m);
+    let slots_at = real_oneof_slots(m);
     for i in google_protobuf::DescriptorProto_oneof_decl(m).len {
         if oneof_slots[slots_at + i] < 0 { continue; }
         let oname = google_protobuf::OneofDescriptorProto_name(google_protobuf::DescriptorProto_oneof_decl_at(m, i));
-        claim(fe, generatedName(path, oname), keep(str("oneof ", oname, " of ", full)), true);
-        claim(fe, accessorName(path, oname, clear_acc), keep(str("accessor clear_", oname, " of ", full)), true);
+        claim(fe, generated_name(path, oname), keep(str("oneof ", oname, " of ", full)), true);
+        claim(fe, accessor_name(path, oname, clear_acc), keep(str("accessor clear_", oname, " of ", full)), true);
     }
     for k in google_protobuf::DescriptorProto_nested_type(m).len {
-        claimGenerated(fe, google_protobuf::DescriptorProto_nested_type_at(m, k), path, full, own);
+        claim_generated(fe, google_protobuf::DescriptorProto_nested_type_at(m, k), path, full, own);
     }
 }
 
 // Claims the names of an enum and its values, in the order they are
 // emitted.
-fn claimEnum(fe: FileEmitter&, e: EnumDesc&, prefix: const u8[:], scope: const u8[:]) {
-    let name = enumName(e);
-    let path = nestedPath(prefix, name);
-    let full = fullName(scope, name);
-    let goose_name = claimDecl(fe, path, full, prefix.len > 0);
-    mapPut(fe.decls, full).text = goose_name;
+fn claim_enum(fe: FileEmitter&, e: EnumDesc&, prefix: const u8[:], scope: const u8[:]) {
+    let name = enum_name(e);
+    let path = nested_path(prefix, name);
+    let full = full_name(scope, name);
+    let goose_name = claim_decl(fe, path, full, prefix.len > 0);
+    map_put(fe.decls, full).text = goose_name;
     for i in google_protobuf::EnumDescriptorProto_value(e).len {
         let vname = google_protobuf::EnumValueDescriptorProto_name(google_protobuf::EnumDescriptorProto_value_at(e, i));
-        let vfull = fullName(full, vname);
-        let const_name = claimDecl(fe, nestedPath(path, vname), vfull, true);
-        mapPut(fe.decls, vfull).text = const_name;
+        let vfull = full_name(full, vname);
+        let const_name = claim_decl(fe, nested_path(path, vname), vfull, true);
+        map_put(fe.decls, vfull).text = const_name;
     }
 }
 
 // Claims the names of a message and what is nested in it, in the
 // order they are emitted. Fields name their types through this, and
 // a type may be declared after the field that uses it.
-recursive fn claimMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:], inherited: Features) {
-    let name = messageName(m);
-    let path = nestedPath(prefix, name);
-    let full = fullName(scope, name);
-    let own = featuresOfMessage(inherited, m);
-    let goose_name = claimDecl(fe, path, full, prefix.len > 0);
-    mapPut(fe.decls, full).text = goose_name;
+recursive fn claim_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:], inherited: Features) {
+    let name = message_name(m);
+    let path = nested_path(prefix, name);
+    let full = full_name(scope, name);
+    let own = features_of_message(inherited, m);
+    let goose_name = claim_decl(fe, path, full, prefix.len > 0);
+    map_put(fe.decls, full).text = goose_name;
     message_infos.push(MessageInfo { desc: m, path: path, goose_name: goose_name, ns: "", import_path: "", file: fe.file, features: own });
-    mapPut(fe.messages, full).index = message_infos.len - 1;
+    map_put(fe.messages, full).index = message_infos.len - 1;
     for i in google_protobuf::DescriptorProto_enum_type(m).len {
-        claimEnum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), path, full);
+        claim_enum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), path, full);
     }
     for i in google_protobuf::DescriptorProto_nested_type(m).len {
-        claimMessage(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full, own);
+        claim_message(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full, own);
     }
 }
 
 // The message that field `fd` stores as a sub-message, or null if it
 // is not stored.
-fn subMessageOf(fe: FileEmitter&, fd: FieldDesc&) -> MessageInfo? {
-    let t = messageTypeOf(fd);
+fn sub_message_of(fe: FileEmitter&, fd: FieldDesc&) -> MessageInfo? {
+    let t = message_type_of(fd);
     if t.len == 0 { return null; }
-    let own = mapGet(fe.messages, t);
+    let own = map_get(fe.messages, t);
     if own {
-        let info .= infoOf(own);
-        if isMapEntryType(info) { return null; }
+        let info .= info_of(own);
+        if is_map_entry_type(info) { return null; }
         return info;
     }
-    return foreignMessage(fe, t);
+    return foreign_message(fe, t);
 }
 
 // The entry message of `fd`, if it is a map field this generator stores.
-fn mapEntryOf(fe: FileEmitter&, fd: FieldDesc&) -> MessageInfo? {
-    if !fieldIsRepeated(fd) { return null; }
-    let t = messageTypeOf(fd);
+fn map_entry_of(fe: FileEmitter&, fd: FieldDesc&) -> MessageInfo? {
+    if !field_is_repeated(fd) { return null; }
+    let t = message_type_of(fd);
     if t.len == 0 { return null; }
-    let own = mapGet(fe.messages, t);
+    let own = map_get(fe.messages, t);
     guard own else { return null; }
-    let info .= infoOf(own);
-    return if isMapEntryType(info) { info } else { null };
+    let info .= info_of(own);
+    return if is_map_entry_type(info) { info } else { null };
 }
 
 // The message of type `t`, in any file, with no qualifier: what it holds, not how
 // a file writes it. Claims the names of its file the first time, as generating that
 // file does, or null if no file declares it.
-fn claimedMessage(t: const u8[:]) -> MessageInfo? {
-    let home = mapGet(message_files, t);
+fn claimed_message(t: const u8[:]) -> MessageInfo? {
+    let home = map_get(message_files, t);
     guard home else { return null; }
     let file .= google_protobuf_compiler::CodeGeneratorRequest_proto_file_at(request, home.index);
-    var claimed = mapGet(claimed_files, fileName(file));
+    var claimed = map_get(claimed_files, file_name(file));
     if claimed == null {
-        claimAll(newFileEmitter(file));
-        claimed .= mapGet(claimed_files, fileName(file));
+        claim_all(new_file_emitter(file));
+        claimed .= map_get(claimed_files, file_name(file));
     }
     assert(claimed);
-    let found = mapGet(file_emitters[claimed.index].messages, t);
+    let found = map_get(file_emitters[claimed.index].messages, t);
     guard found else { return null; }
-    return infoOf(found);
+    return info_of(found);
 }
 
 // What a search has found about a message, in MapEntry.index of an answers map.
@@ -1123,22 +1123,22 @@ let ANSWER_OPEN = 3;
 
 // True if a message of type `t` can reach a required field that is stored, itself
 // or in what it holds, in any file: it then has is_initialized.
-fn holdsRequired(t: const u8[:]) -> bool {
-    return answerFor(t, required_answers, false);
+fn holds_required(t: const u8[:]) -> bool {
+    return answer_for(t, required_answers, false);
 }
 
 // True if a message of type `t` can reach a map field that is stored: it then has
 // fold_maps. An entry counts what its value holds, not itself.
-fn holdsMaps(t: const u8[:]) -> bool {
-    return answerFor(t, maps_answers, true);
+fn holds_maps(t: const u8[:]) -> bool {
+    return answer_for(t, maps_answers, true);
 }
 
 // The answer for `t`. A search stops at what it looks for, so it claims no more
 // files than it needs. Finding nothing settles every message it went through, as
 // they have seen all they can reach. Finding something settles only those on the
 // way to it: another may have stopped short at a message being searched.
-fn answerFor(t: const u8[:], answers: u32, maps: bool) -> bool {
-    let found = searchAnswer(t, answers, maps);
+fn answer_for(t: const u8[:], answers: u32, maps: bool) -> bool {
+    let found = search_answer(t, answers, maps);
     while open_answers.len > 0 {
         let e .= map_entries[open_answers.pop()];
         if e.index == ANSWER_OPEN { e.index = if found { ANSWER_UNKNOWN } else { ANSWER_NO }; }
@@ -1149,31 +1149,31 @@ fn answerFor(t: const u8[:], answers: u32, maps: bool) -> bool {
 // The map entries a search has gone through, by index in map_entries.
 var open_answers: i64[>..<] = [];
 
-recursive fn searchAnswer(t: const u8[:], answers: u32, maps: bool) -> bool {
-    let answer_at = mapPutIndex(answers, t);
+recursive fn search_answer(t: const u8[:], answers: u32, maps: bool) -> bool {
+    let answer_at = map_put_index(answers, t);
     let answer .= map_entries[answer_at];
     if answer.index != ANSWER_UNKNOWN { return answer.index == ANSWER_YES; }
     answer.index = ANSWER_OPEN;
     open_answers.push(answer_at);
-    let info = claimedMessage(t);
+    let info = claimed_message(t);
     guard info else { return false; }
     for k in google_protobuf::DescriptorProto_field(info.desc).len {
         let fd .= google_protobuf::DescriptorProto_field_at(info.desc, k);
-        if !maps && fieldFeatures(info.file, info.features, info.desc, fd).presence == PRESENCE_REQUIRED {
+        if !maps && field_features(info.file, info.features, info.desc, fd).presence == PRESENCE_REQUIRED {
             answer.index = ANSWER_YES;
             return true;
         }
-        let s = messageTypeOf(fd);
+        let s = message_type_of(fd);
         if s.len == 0 { continue; }
         if maps {
-            let sub = claimedMessage(s);
+            let sub = claimed_message(s);
             guard sub else { continue; }
-            if isMapEntryType(sub) {
+            if is_map_entry_type(sub) {
                 answer.index = ANSWER_YES;
                 return true;
             }
         }
-        if searchAnswer(s, answers, maps) {
+        if search_answer(s, answers, maps) {
             answer.index = ANSWER_YES;
             return true;
         }
@@ -1182,54 +1182,54 @@ recursive fn searchAnswer(t: const u8[:], answers: u32, maps: bool) -> bool {
 }
 
 // True if the message that stored field `f` holds has fold_maps.
-fn fieldHoldsMaps(f: Field&) -> bool {
-    let t = messageTypeOf(f.fd);
+fn field_holds_maps(f: Field&) -> bool {
+    let t = message_type_of(f.fd);
     if t.len == 0 { return false; }
-    return holdsMaps(t);
+    return holds_maps(t);
 }
 
 // True if the message that stored field `f` holds has is_initialized.
-fn fieldHoldsRequired(f: Field&) -> bool {
-    let t = messageTypeOf(f.fd);
+fn field_holds_required(f: Field&) -> bool {
+    let t = message_type_of(f.fd);
     if t.len == 0 { return false; }
-    return holdsRequired(t);
+    return holds_required(t);
 }
 
 // Message `t` of another file, as this file writes it, which it marks for import.
-fn foreignMessage(fe: FileEmitter&, t: const u8[:]) -> MessageInfo? {
-    let known = mapGet(fe.foreign, t);
-    if known { return infoOf(known); }
-    let info = claimedMessage(t);
+fn foreign_message(fe: FileEmitter&, t: const u8[:]) -> MessageInfo? {
+    let known = map_get(fe.foreign, t);
+    if known { return info_of(known); }
+    let info = claimed_message(t);
     guard info else { return null; }
-    let ns = qualifier(fe, filePackage(info.file));
-    let import_path = importPath(info.file);
+    let ns = qualifier(fe, file_package(info.file));
+    let import_path = import_path_of(info.file);
     message_infos.push(MessageInfo {
         desc: info.desc, path: info.path, goose_name: keep(str(ns, info.goose_name)),
         ns: ns, import_path: import_path, file: info.file, features: info.features,
     });
-    mapPut(fe.foreign, t).index = message_infos.len - 1;
-    mapPut(fe.imports, import_path);
+    map_put(fe.foreign, t).index = message_infos.len - 1;
+    map_put(fe.imports, import_path);
     return message_infos[message_infos.len - 1];
 }
 
 // What names in the namespace of `package` are written with from
 // this file.
 fn qualifier(fe: FileEmitter&, package: const u8[:]) -> const u8[:] {
-    if package == filePackage(fe.file) { return ""; }
+    if package == file_package(fe.file) { return ""; }
     if package.len == 0 { return "::"; }
-    return keep(str(namespaceName(package), "::"));
+    return keep(str(namespace_name(package), "::"));
 }
 
 // The name of generated function or global `op` of `sub`, as this file
 // writes it.
-fn subName(fe: FileEmitter&, sub: MessageInfo&, op: const u8[:]) -> const u8[:] {
-    return keep(str(sub.ns, generatedName(sub.path, op)));
+fn sub_name(sub: MessageInfo&, op: const u8[:]) -> const u8[:] {
+    return keep(str(sub.ns, generated_name(sub.path, op)));
 }
 
 // True if a message of type `full` can hold another of its type: its
 // codec functions are in a cycle, so they are `recursive fn`.
-fn isRecursive(fe: FileEmitter&, full: const u8[:]) -> bool {
-    let own = mapGet(fe.messages, full);
+fn is_recursive(fe: FileEmitter&, full: const u8[:]) -> bool {
+    let own = map_get(fe.messages, full);
     guard own else { return false; }
     if !fe.cycles_found {
         fe.cycles_found = true;
@@ -1237,7 +1237,7 @@ fn isRecursive(fe: FileEmitter&, full: const u8[:]) -> bool {
         var at = map_firsts[fe.messages];
         while at != 0 {
             let e .= map_entries[at - 1];
-            if cycle_nodes[e.index].order == 0 { findCycles(fe, e.index); }
+            if cycle_nodes[e.index].order == 0 { find_cycles(fe, e.index); }
             at = e.next_of_map;
         }
     }
@@ -1246,10 +1246,10 @@ fn isRecursive(fe: FileEmitter&, full: const u8[:]) -> bool {
 
 // The full name of the message in this file that `fd` holds, if it
 // is a field kind this generator stores, else "". A map field holds its entries.
-fn sameFileMessageType(fe: FileEmitter&, fd: FieldDesc&) -> const u8[:] {
-    let t = messageTypeOf(fd);
+fn same_file_message_type(fe: FileEmitter&, fd: FieldDesc&) -> const u8[:] {
+    let t = message_type_of(fd);
     if t.len == 0 { return ""; }
-    return if mapContains(fe.messages, t) { t } else { "" };
+    return if map_contains(fe.messages, t) { t } else { "" };
 }
 
 // A message of the file being generated, in Tarjan's search for strongly connected
@@ -1267,7 +1267,7 @@ var cycle_order: i64 = 0;
 
 // Finds the cycles through what the message at `at` of message_infos can reach, in
 // this file: a component of several messages, or one that holds itself, is a cycle.
-recursive fn findCycles(fe: FileEmitter&, at: i64) {
+recursive fn find_cycles(fe: FileEmitter&, at: i64) {
     let node .= cycle_nodes[at];
     cycle_order += 1;
     node.order = cycle_order;
@@ -1276,14 +1276,14 @@ recursive fn findCycles(fe: FileEmitter&, at: i64) {
     cycle_stack.push(at);
     let desc .= message_infos[at].desc;
     for k in google_protobuf::DescriptorProto_field(desc).len {
-        let t = sameFileMessageType(fe, google_protobuf::DescriptorProto_field_at(desc, k));
+        let t = same_file_message_type(fe, google_protobuf::DescriptorProto_field_at(desc, k));
         if t.len == 0 { continue; }
-        let held = mapGet(fe.messages, t);
+        let held = map_get(fe.messages, t);
         assert(held);
         if held.index == at { node.in_cycle = true; }
         let next .= cycle_nodes[held.index];
         if next.order == 0 {
-            findCycles(fe, held.index);
+            find_cycles(fe, held.index);
             if next.low < node.low { node.low = next.low; }
         } else if next.on_stack {
             if next.order < node.low { node.low = next.order; }
@@ -1299,81 +1299,81 @@ recursive fn findCycles(fe: FileEmitter&, at: i64) {
     }
 }
 
-fn emitEnum(fe: FileEmitter&, e: EnumDesc&, scope: const u8[:]) {
-    let full = fullName(scope, enumName(e));
+fn emit_enum(fe: FileEmitter&, e: EnumDesc&, scope: const u8[:]) {
+    let full = full_name(scope, enum_name(e));
     format(w, "\n// enum ", full, "\n");
     for i in google_protobuf::EnumDescriptorProto_value(e).len {
         let v .= google_protobuf::EnumDescriptorProto_value_at(e, i);
-        let const_name = mapGet(fe.decls, fullName(full, google_protobuf::EnumValueDescriptorProto_name(v)));
+        let const_name = map_get(fe.decls, full_name(full, google_protobuf::EnumValueDescriptorProto_name(v)));
         assert(const_name);
         format(w, "let ", const_name.text, ": i32 = ", v.number, ";\n");
     }
 }
 
-recursive fn emitMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:]) {
-    let name = messageName(m);
-    let path = nestedPath(prefix, name);
-    let full = fullName(scope, name);
-    let decl = mapGet(fe.decls, full);
+recursive fn emit_message(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:], scope: const u8[:]) {
+    let name = message_name(m);
+    let path = nested_path(prefix, name);
+    let full = full_name(scope, name);
+    let decl = map_get(fe.decls, full);
     assert(decl);
     let goose_name = decl.text;
     format(w, "\n// message ", full, "\n");
 
     // In a map entry, whose fields are encoded even at their defaults.
-    let is_entry = isMapEntryDesc(m);
-    let own_info = mapGet(fe.messages, full);
+    let is_entry = is_map_entry_desc(m);
+    let own_info = map_get(fe.messages, full);
     assert(own_info);
-    let own = infoOf(own_info).features;
+    let own = info_of(own_info).features;
     // The fields this generator stores; every other field is kept as an
     // unknown field. They and the oneofs are a run in a global pool, as a local
     // array could not stay in scope across the recursion at the end.
     let fields_at = field_pool.len;
-    let record_names = newMap();
+    let record_names = new_map();
     var bits = 0;
     // The real oneofs of a stored message, in the order of oneof_decl.
     let oneofs_at = oneof_pool.len;
-    let slots_at = realOneofSlots(m);
+    let slots_at = real_oneof_slots(m);
     for i in google_protobuf::DescriptorProto_oneof_decl(m).len {
         if oneof_slots[slots_at + i] < 0 { continue; }
         let oname = google_protobuf::OneofDescriptorProto_name(google_protobuf::DescriptorProto_oneof_decl_at(m, i));
         let o .= oneof_pool.push(Oneof {
             name: ident(oname),
-            type_name: generatedName(path, oname),
-            clear: accessorName(path, oname, clear_acc),
+            type_name: generated_name(path, oname),
+            clear: accessor_name(path, oname, clear_acc),
         });
-        claimRecordField(fe, record_names, o.name, full);
+        claim_record_field(fe, record_names, o.name, full);
     }
     for k in google_protobuf::DescriptorProto_field(m).len {
         let fd .= google_protobuf::DescriptorProto_field_at(m, k);
-        let sub = subMessageOf(fe, fd);
-        let entry = mapEntryOf(fe, fd);
-        let ff = fieldFeatures(fe.file, own, m, fd);
+        let sub = sub_message_of(fe, fd);
+        let entry = map_entry_of(fe, fd);
+        let ff = field_features(fe.file, own, m, fd);
         // A map's entries and what is in them are never delimited.
         let delimited = sub != null && !is_entry && ff.delimited;
         var sc_opt: Scalar? = null;
         if entry {
             sc_opt .= sc_map;
         } else if sub {
-            sc_opt .= refStorage(fe, sub, delimited);
+            sc_opt .= ref_storage(sub, delimited);
         } else {
-            sc_opt .= repeatedScalarOf(ff, fd);
-            if sc_opt == null { sc_opt .= scalarOf(ff, fd); }
+            sc_opt .= repeated_scalar_of(ff, fd);
+            if sc_opt == null { sc_opt .= scalar_of(ff, fd); }
         }
         guard sc_opt else { continue; }
-        let repeated = fieldIsRepeated(fd) && entry == null;
-        let rname = ident(fieldName(fd));
-        claimRecordField(fe, record_names, rname, full);
+        let repeated = field_is_repeated(fd) && entry == null;
+        let rname = ident(field_name(fd));
+        claim_record_field(fe, record_names, rname, full);
         var oneof: Oneof? = null;
-        if isRealOneofMember(fd) { oneof .= oneof_pool[oneofs_at + oneof_slots[slots_at + fd.oneof_index]]; }
+        if is_real_oneof_member(fd) { oneof .= oneof_pool[oneofs_at + oneof_slots[slots_at + fd.oneof_index]]; }
         var bit = -1;
-        if sub == null && !repeated && oneof == null && !is_entry && hasPresence(ff, fd) {
+        if sub == null && !repeated && oneof == null && !is_entry && has_presence(ff, fd) {
             bit = bits;
             bits += 1;
         }
-        let dflt = if is_entry || repeated || sub != null || entry != null { "" } else { defaultLiteral(fd) };
+        let dflt = if is_entry || repeated || sub != null || entry != null { "" } else { default_literal(fd) };
         var closed = "";
         if !is_entry {
-            closed = if entry { closedCheck(mapValueOf(entry.desc)) } else { closedCheck(fd) };
+            closed = if entry { closed_check(map_value_of(entry.desc)) } else { closed_check(fd) };
         }
         field_pool.push(Field {
             fd: fd, sc: sc_opt, name: rname, bit: bit, sub: sub, repeated: repeated, oneof: oneof, map: entry, always: is_entry, closed: closed, packs: ff.packed_repeated, required: ff.presence == PRESENCE_REQUIRED, delimited: delimited,
@@ -1387,58 +1387,58 @@ recursive fn emitMessage(fe: FileEmitter&, m: MessageDesc&, prefix: const u8[:],
     let by_number_at = field_pool.len;
     for &f in fields { field_pool.push(f); }
     let by_number = field_pool[by_number_at..];
-    sort(by_number) { a, b => f_number(a) < f_number(b) };
-    fe.fn_kw = if isRecursive(fe, full) { "recursive fn" } else { "fn" };
-    let checked = holdsRequired(full);
-    let folded = holdsMaps(full);
+    sort(by_number) { a, b => field_number(a) < field_number(b) };
+    fe.fn_kw = if is_recursive(fe, full) { "recursive fn" } else { "fn" };
+    let checked = holds_required(full);
+    let folded = holds_maps(full);
 
-    emitOneofTypes(fe, oneofs, fields);
-    emitRecord(fe, goose_name, fields, oneofs, has_words);
-    emitPools(fe, goose_name, path);
-    emitDecode(fe, goose_name, path, fields, checked, folded);
-    emitEncode(fe, goose_name, path, by_number);
-    emitSizeOf(fe, goose_name, path, by_number);
-    emitClear(fe, goose_name, path, fields, oneofs, has_words);
-    emitCopy(fe, goose_name, path, fields, oneofs, has_words);
-    if checked { emitIsInitialized(fe, goose_name, path, fields, has_words); }
-    if folded { emitFoldMaps(fe, goose_name, path, fields); }
-    for &o in oneofs { emitOneofClear(fe, goose_name, o, fields); }
-    for &f in fields { emitAccessors(fe, goose_name, path, f); }
-    if is_entry { emitMapEntryHelpers(fe, goose_name, path, fields); }
+    emit_oneof_types(oneofs, fields);
+    emit_record(goose_name, fields, oneofs, has_words);
+    emit_pools(goose_name, path);
+    emit_decode(fe, goose_name, path, fields, checked, folded);
+    emit_encode(fe, goose_name, path, by_number);
+    emit_size_of(fe, goose_name, path, by_number);
+    emit_clear(fe, goose_name, path, fields, oneofs, has_words);
+    emit_copy(fe, goose_name, path, fields, oneofs, has_words);
+    if checked { emit_is_initialized(fe, goose_name, path, fields, has_words); }
+    if folded { emit_fold_maps(fe, goose_name, path, fields); }
+    for &o in oneofs { emit_oneof_clear(fe, goose_name, o, fields); }
+    for &f in fields { emit_accessors(fe, goose_name, path, f); }
+    if is_entry { emit_map_entry_helpers(goose_name, path, fields); }
 
     for i in google_protobuf::DescriptorProto_enum_type(m).len {
-        emitEnum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), full);
+        emit_enum(fe, google_protobuf::DescriptorProto_enum_type_at(m, i), full);
     }
     for i in google_protobuf::DescriptorProto_nested_type(m).len {
-        emitMessage(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full);
+        emit_message(fe, google_protobuf::DescriptorProto_nested_type_at(m, i), path, full);
     }
 }
 
 // Claims a record field name of the message `full`.
-fn claimRecordField(fe: FileEmitter&, names: u32, rname: const u8[:], full: const u8[:]) {
-    if !mapContains(names, rname) {
-        mapPut(names, rname);
+fn claim_record_field(fe: FileEmitter&, names: u32, rname: const u8[:], full: const u8[:]) {
+    if !map_contains(names, rname) {
+        map_put(names, rname);
         return;
     }
-    collide(keep(str(fileName(fe.file), ": two fields of ", full, " map to the Goose record field ", rname)));
+    collide(keep(str(file_name(fe.file), ": two fields of ", full, " map to the Goose record field ", rname)));
 }
 
 // The condition on pb_v that a value of enum field `fd` is declared, if
 // its enum is closed, else "". The enum's own features decide that: a proto3 enum
 // stays open in a proto2 field. Written out, the check needs nothing of its file.
-fn closedCheck(fd: FieldDesc&) -> const u8[:] {
-    let found = enumOf(fd);
+fn closed_check(fd: FieldDesc&) -> const u8[:] {
+    let found = enum_of(fd);
     guard found else { return ""; }
     if !found.closed { return ""; }
-    return knownValues(found.desc);
+    return known_values(found.desc);
 }
 
 // The enum of field `fd`, in any file.
-fn enumOf(fd: FieldDesc&) -> EnumInfo? {
-    if fieldType(fd) != TYPE_ENUM { return null; }
+fn enum_of(fd: FieldDesc&) -> EnumInfo? {
+    if field_type(fd) != TYPE_ENUM { return null; }
     if !google_protobuf::FieldDescriptorProto_has_type_name(fd) { return null; }
     let tn = google_protobuf::FieldDescriptorProto_type_name(fd);
-    let found = mapGet(enum_index, if startsWith(tn, ".") { tn[1..] } else { tn });
+    let found = map_get(enum_index, if starts_with(tn, ".") { tn[1..] } else { tn });
     guard found else { return null; }
     return enum_infos[found.index];
 }
@@ -1446,13 +1446,13 @@ fn enumOf(fd: FieldDesc&) -> EnumInfo? {
 // The Goose expression of the default of singular field `fd`, if it is a
 // number, bool or enum whose default is not the one of its type, else "". An enum
 // with no [default] has its first value, which an open enum requires to be 0.
-fn defaultLiteral(fd: FieldDesc&) -> const u8[:] {
+fn default_literal(fd: FieldDesc&) -> const u8[:] {
     if !google_protobuf::FieldDescriptorProto_has_type(fd) { return ""; }
     let t = fd.type_;
     if t == TYPE_ENUM {
-        let found = enumOf(fd);
+        let found = enum_of(fd);
         guard found else { return ""; }
-        let number = enumDefault(found.desc, fd);
+        let number = enum_default(found.desc, fd);
         if number == 0 { return ""; }
         return keep(str(number));
     }
@@ -1460,14 +1460,14 @@ fn defaultLiteral(fd: FieldDesc&) -> const u8[:] {
     let text = google_protobuf::FieldDescriptorProto_default_value(fd);
     if t == TYPE_STRING || t == TYPE_BYTES || t == TYPE_MESSAGE || t == TYPE_GROUP { return ""; }
     if t == TYPE_BOOL { return if text == "true" { "true" } else { "" }; }
-    if t == TYPE_FLOAT { return floatLiteral(true, text); }
-    if t == TYPE_DOUBLE { return floatLiteral(false, text); }
+    if t == TYPE_FLOAT { return float_literal(true, text); }
+    if t == TYPE_DOUBLE { return float_literal(false, text); }
     return if text == "0" { "" } else { text };
 }
 
 // The global of a string or bytes field's [default], which reads as it
 // while the field is not set.
-fn emitDefaultBytes(fe: FileEmitter&, name: const u8[:], value: const u8[:]) {
+fn emit_default_bytes(name: const u8[:], value: const u8[:]) {
     format(w, "\nlet ", name, ": u8[", value.len, "] = [");
     for i in value.len {
         if i > 0 { w.append(", "); }
@@ -1479,24 +1479,24 @@ fn emitDefaultBytes(fe: FileEmitter&, name: const u8[:], value: const u8[:]) {
 // The storage of a sub-message field: a link, whose presence is the
 // field's. Only its type and wire type apply: the emitters handle
 // the rest of a field with `sub` set themselves.
-fn refStorage(fe: FileEmitter&, sub: MessageInfo&, delimited: bool) -> Scalar& {
+fn ref_storage(sub: MessageInfo&, delimited: bool) -> Scalar& {
     return ref_scalars.push(Scalar {
-        goose: subName(fe, sub, "Ref"),
+        goose: sub_name(sub, "Ref"),
         wire: if delimited { 3 } else { 2 },
         clear: "", read: "", write: "", nonzero: "", size: SZ_MESSAGE,
     });
 }
 
 // The pool that holds the run of repeated or map field `f`.
-fn runPool(fe: FileEmitter&, f: Field&) -> const u8[:] {
-    if f.map != null { return subName(fe, fieldMap(f), "entries"); }
-    if f.sub != null { return subName(fe, fieldSub(f), "links"); }
-    return sc_pool(f.sc);
+fn run_pool(f: Field&) -> const u8[:] {
+    if f.map != null { return sub_name(field_map(f), "entries"); }
+    if f.sub != null { return sub_name(field_sub(f), "links"); }
+    return scalar_pool(f.sc);
 }
 
 // The ADT of each oneof: a variant per member, its name the member's
 // record field name, and pb_none, which no field name can be.
-fn emitOneofTypes(fe: FileEmitter&, oneofs: const Oneof[:], fields: const Field[:]) {
+fn emit_oneof_types(oneofs: const Oneof[:], fields: const Field[:]) {
     for &o in oneofs {
         format(w,
             "enum ", o.type_name, " {\n",
@@ -1512,7 +1512,7 @@ fn emitOneofTypes(fe: FileEmitter&, oneofs: const Oneof[:], fields: const Field[
     }
 }
 
-fn emitRecord(fe: FileEmitter&, goose_name: const u8[:], fields: const Field[:], oneofs: const Oneof[:], has_words: i64) {
+fn emit_record(goose_name: const u8[:], fields: const Field[:], oneofs: const Oneof[:], has_words: i64) {
     format(w, "struct ", goose_name, " {\n");
     for &f in fields {
         if f.oneof != null {
@@ -1539,20 +1539,20 @@ fn emitRecord(fe: FileEmitter&, goose_name: const u8[:], fields: const Field[:],
 // The link type and pools of decision 0001: sub-messages of this type
 // live one per slot in M_pool, and repeated fields hold runs of links
 // in M_links.
-fn emitPools(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:]) {
-    let ref = generatedName(path, "Ref");
-    let pool = generatedName(path, "pool");
+fn emit_pools(goose_name: const u8[:], path: const u8[:]) {
+    let ref = generated_name(path, "Ref");
+    let pool = generated_name(path, "pool");
     format(w,
         "\n",
         "// A link to a ", goose_name, " in ", pool, ", for sub-message fields.\n",
         "struct ", ref, " { m: ", goose_name, "&<u32 in ", pool, ">? }\n",
         "reusable var ", pool, ": ", goose_name, "[>..] = [];\n",
-        "reusable[] var ", generatedName(path, "links"), ": ", ref, "[>..] = [];\n");
+        "reusable[] var ", generated_name(path, "links"), ": ", ref, "[>..] = [];\n");
 }
 
-fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], checked: bool, folded: bool) {
-    let decode = generatedName(path, "decode");
-    let decode_from = generatedName(path, "decode_from");
+fn emit_decode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], checked: bool, folded: bool) {
+    let decode = generated_name(path, "decode");
+    let decode_from = generated_name(path, "decode_from");
     format(w,
         "\n",
         "// Merges the fields in r's window into m; on failure r.err is set.\n",
@@ -1564,8 +1564,8 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
     for &f in fields {
         if f.repeated || f.map != null {
             format(w,
-                "    let pb_had", f_number(f), ": i64 = m.", f.name, ".len;\n",
-                "    var pb_len", f_number(f), ": i64 = pb_had", f_number(f), ";\n");
+                "    let pb_had", field_number(f), ": i64 = m.", f.name, ".len;\n",
+                "    var pb_len", field_number(f), ": i64 = pb_had", field_number(f), ";\n");
         }
     }
     format(w,
@@ -1575,24 +1575,24 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         "        if r.err != PB_OK { break; }\n");
     for i in fields.len {
         let f .= fields[i];
-        format(w, "        ", if i == 0 { "" } else { "} else " }, "if tag == ", f_tag(f), " {\n");
-        let x = fieldExpr(f);
+        format(w, "        ", if i == 0 { "" } else { "} else " }, "if tag == ", field_tag(f), " {\n");
+        let x = field_expr(f);
         if f.repeated {
-            emitDecodeRepeated(fe, f);
+            emit_decode_repeated(f);
             continue;
         }
         if f.map != null {
-            let entry .= fieldMap(f);
-            emitDecodeMapEntry(fe, f, entry);
+            let entry .= field_map(f);
+            emit_decode_map_entry(f, entry);
             continue;
         }
         if f.sub != null {
-            let sub .= fieldSub(f);
-            emitDecodeSubMessage(fe, path, f, sub);
+            let sub .= field_sub(f);
+            emit_decode_sub_message(path, f, sub);
             continue;
         }
         if f.oneof != null {
-            let o .= fieldOneof(f);
+            let o .= field_oneof(f);
             // Read first: a value that fails to read replaces nothing, nor
             // does one that a closed enum does not declare.
             format(w,
@@ -1619,7 +1619,7 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
                 "            if r.err != PB_OK { break; }\n",
                 "            if ", known, " {\n",
                 "                ", x, " = pb_v;\n",
-                "                m.pb_has", f.bit / 32, " |= 0x", hex8(bitMask(f.bit)), ";\n",
+                "                m.pb_has", f.bit / 32, " |= 0x", hex8(bit_mask(f.bit)), ";\n",
                 "            } else {\n",
                 "                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);\n",
                 "            }\n");
@@ -1628,7 +1628,7 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         format(w, "            ", x, " = ", subst(f.sc.read, x), ";\n");
         if f.bit >= 0 {
             let b = f.bit;
-            format(w, "            m.pb_has", b / 32, " |= 0x", hex8(bitMask(b)), ";\n");
+            format(w, "            m.pb_has", b / 32, " |= 0x", hex8(bit_mask(b)), ";\n");
         }
     }
     if fields.len == 0 {
@@ -1642,7 +1642,7 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
     format(w, "    }\n");
     for &f in fields {
         if f.repeated || f.map != null {
-            format(w, "    m.", f.name, " = pb_trim(", runPool(fe, f), ", m.", f.name, ", pb_len", f_number(f), ");\n");
+            format(w, "    m.", f.name, " = pb_trim(", run_pool(f), ", m.", f.name, ", pb_len", field_number(f), ");\n");
         }
     }
     format(w,
@@ -1655,12 +1655,12 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         "    var r = pb_reader(buf);\n",
         "    ", decode_from, "(r, m);\n");
     if folded {
-        format(w, "    if r.err == PB_OK { ", generatedName(path, "fold_maps"), "(m); }\n");
+        format(w, "    if r.err == PB_OK { ", generated_name(path, "fold_maps"), "(m); }\n");
     }
     if checked {
         // On the whole message: a later occurrence may set what an
         // earlier one of a sub-message lacks.
-        format(w, "    if r.err == PB_OK && !", generatedName(path, "is_initialized"), "(m) { return PB_ERR_REQUIRED; }\n");
+        format(w, "    if r.err == PB_OK && !", generated_name(path, "is_initialized"), "(m) { return PB_ERR_REQUIRED; }\n");
     }
     format(w,
         "    return r.err;\n",
@@ -1671,23 +1671,23 @@ fn emitDecode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
 // its own and packed: either form is read, whichever the field declares.
 // A packed run is a window of its own, so a value cannot read past its
 // end. After a failure the caller stops on r.err, as for a sub-message.
-fn emitDecodeRepeated(fe: FileEmitter&, f: Field&) {
+fn emit_decode_repeated(f: Field&) {
     if f.sub != null {
-        let sub .= fieldSub(f);
-        let pool = subName(fe, sub, "pool");
-        format(w, f_subOpen(f));
+        let sub .= field_sub(f);
+        let pool = sub_name(sub, "pool");
+        format(w, field_sub_open(f));
         format(w,
-            "            pb_reserve(", runPool(fe, f), ", m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ");\n",
+            "            pb_reserve(", run_pool(f), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ");\n",
             "            let pb_sub .= ", pool, ".alloc_ref(", sub.goose_name, " { .. });\n",
-            "            pb_run(", runPool(fe, f), ", m.", f.name, ")[pb_len", f_number(f), "].m .= pb_sub;\n",
-            "            pb_len", f_number(f), "++;\n",
-            f_subWindow(f), "            ", subName(fe, sub, "decode_from"), "(r, pb_sub);\n",
+            "            pb_run(", run_pool(f), ", m.", f.name, ")[pb_len", field_number(f), "].m .= pb_sub;\n",
+            "            pb_len", field_number(f), "++;\n",
+            field_sub_window(f), "            ", sub_name(sub, "decode_from"), "(r, pb_sub);\n",
             "            if r.err != PB_OK { break; }\n",
-            f_subClose(f));
+            field_sub_close(f));
         return;
     }
     if f.sc.size == SZ_BYTES {
-        format(w, "            pb_append(pb_spans, m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ", ", subst(f.sc.read, empty_span), ");\n");
+        format(w, "            pb_append(pb_spans, m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", subst(f.sc.read, empty_span), ");\n");
         return;
     }
     if f.closed.len > 0 {
@@ -1698,11 +1698,11 @@ fn emitDecodeRepeated(fe: FileEmitter&, f: Field&) {
             "            let pb_v = ", f.sc.read, ";\n",
             "            if r.err != PB_OK { break; }\n",
             "            if ", known, " {\n",
-            "                pb_append(", sc_pool(f.sc), ", m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ", pb_v);\n",
+            "                pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", pb_v);\n",
             "            } else {\n",
             "                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);\n",
             "            }\n",
-            "        } else if tag == ", f_packedTag(f), " {\n",
+            "        } else if tag == ", field_packed_tag(f), " {\n",
             "            let pb_n = pb_read_len(r);\n",
             "            if r.err != PB_OK { break; }\n",
             "            let pb_outer = r.end;\n",
@@ -1712,9 +1712,9 @@ fn emitDecodeRepeated(fe: FileEmitter&, f: Field&) {
             "                let pb_v = ", f.sc.read, ";\n",
             "                if r.err != PB_OK { break; }\n",
             "                if ", known, " {\n",
-            "                    pb_append(", sc_pool(f.sc), ", m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ", pb_v);\n",
+            "                    pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", pb_v);\n",
             "                } else {\n",
-            "                    pb_unknown_element(r, ", f_tag(f), ", pb_at, m.pb_unknown, unknown_len, unknown_had);\n",
+            "                    pb_unknown_element(r, ", field_tag(f), ", pb_at, m.pb_unknown, unknown_len, unknown_had);\n",
             "                }\n",
             "            }\n",
             "            if r.err != PB_OK { break; }\n",
@@ -1722,34 +1722,34 @@ fn emitDecodeRepeated(fe: FileEmitter&, f: Field&) {
         return;
     }
     format(w,
-        "            pb_append(", sc_pool(f.sc), ", m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ", ", f.sc.read, ");\n",
-        "        } else if tag == ", f_packedTag(f), " {\n",
+        "            pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", f.sc.read, ");\n",
+        "        } else if tag == ", field_packed_tag(f), " {\n",
         "            let pb_n = pb_read_len(r);\n",
         "            if r.err != PB_OK { break; }\n",
         "            let pb_outer = r.end;\n",
         "            r.end = r.pos + pb_n;\n",
-        "            while r.pos < r.end { pb_append(", sc_pool(f.sc), ", m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ", ", f.sc.read, "); }\n",
+        "            while r.pos < r.end { pb_append(", scalar_pool(f.sc), ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ", ", f.sc.read, "); }\n",
         "            if r.err != PB_OK { break; }\n",
         "            r.end = pb_outer;\n");
 }
 
 // The branch of decode_from for a map entry. It decodes into the next
 // slot of the run. Repeated keys are folded once, by M_decode (see
-// emitFoldMaps), as looking each one up would be quadratic. A partial
+// emit_fold_maps), as looking each one up would be quadratic. A partial
 // entry is freed: only whole ones are in the map.
-fn emitDecodeMapEntry(fe: FileEmitter&, f: Field&, entry: MessageInfo&) {
-    let pool = runPool(fe, f);
+fn emit_decode_map_entry(f: Field&, entry: MessageInfo&) {
+    let pool = run_pool(f);
     format(w,
         "            let pb_n = pb_read_len(r);\n",
         "            if r.err != PB_OK { break; }\n",
         "            if r.depth >= PB_MAX_DEPTH { pb_fail(r, PB_ERR_DEPTH); break; }\n",
-        "            pb_reserve(", pool, ", m.", f.name, ", pb_len", f_number(f), ", pb_had", f_number(f), ");\n",
-        "            let pb_e .= pb_run(", pool, ", m.", f.name, ")[pb_len", f_number(f), "];\n",
+        "            pb_reserve(", pool, ", m.", f.name, ", pb_len", field_number(f), ", pb_had", field_number(f), ");\n",
+        "            let pb_e .= pb_run(", pool, ", m.", f.name, ")[pb_len", field_number(f), "];\n",
         "            let pb_outer = r.end;\n",
         "            r.end = r.pos + pb_n;\n",
         "            r.depth++;\n",
-        "            ", subName(fe, entry, "decode_from"), "(r, pb_e);\n",
-        "            if r.err != PB_OK { ", subName(fe, entry, "clear"), "(pb_e); break; }\n",
+        "            ", sub_name(entry, "decode_from"), "(r, pb_e);\n",
+        "            if r.err != PB_OK { ", sub_name(entry, "clear"), "(pb_e); break; }\n",
         "            r.depth--;\n",
         "            r.end = pb_outer;\n");
     if f.closed.len > 0 {
@@ -1759,66 +1759,66 @@ fn emitDecodeMapEntry(fe: FileEmitter&, f: Field&, entry: MessageInfo&) {
         format(w,
             "            let pb_v = pb_e.value;\n",
             "            if !(", known, ") {\n",
-            "                ", subName(fe, entry, "clear"), "(pb_e);\n",
+            "                ", sub_name(entry, "clear"), "(pb_e);\n",
             "                pb_unknown_keep(r, start, m.pb_unknown, unknown_len, unknown_had);\n",
             "                continue;\n",
             "            }\n");
     }
     format(w,
-        "            ", subName(fe, entry, "place"), "(pb_e);\n",
-        "            pb_len", f_number(f), "++;\n");
+        "            ", sub_name(entry, "place"), "(pb_e);\n",
+        "            pb_len", field_number(f), "++;\n");
 }
 
 // The statements adding the payload size of packed field `f` up in a
 // new local pb_n.
-fn emitPackedSize(fe: FileEmitter&, f: Field&, indent: const u8[:]) {
+fn emit_packed_size(f: Field&, indent: const u8[:]) {
     if f.sc.size == SZ_FIXED {
         format(w, indent, "let pb_n: i64 = ", f.sc.fixed, " * m.", f.name, ".len;\n");
     } else {
         format(w, indent, "var pb_n: i64 = 0;\n");
-        format(w, indent, "for pb_v in pb_run(", sc_pool(f.sc), ", m.", f.name, ") { pb_n += pb_varint_size(", subst(f.sc.write_value, "pb_v"), "); }\n");
+        format(w, indent, "for pb_v in pb_run(", scalar_pool(f.sc), ", m.", f.name, ") { pb_n += pb_varint_size(", subst(f.sc.write_value, "pb_v"), "); }\n");
     }
 }
 
 // The branch of decode_from for a sub-message: an occurrence merges
 // into the message already there (decision 0004). After a failure
 // r.end is not restored: the caller stops on r.err too.
-fn emitDecodeSubMessage(fe: FileEmitter&, path: const u8[:], f: Field&, sub: MessageInfo&) {
-    format(w, f_subOpen(f));
+fn emit_decode_sub_message(path: const u8[:], f: Field&, sub: MessageInfo&) {
+    format(w, field_sub_open(f));
     format(w,
-        f_subWindow(f), "            ", subName(fe, sub, "decode_from"), "(r, ", accessorName(path, fieldName(f.fd), mutable_acc), "(m));\n",
+        field_sub_window(f), "            ", sub_name(sub, "decode_from"), "(r, ", accessor_name(path, field_name(f.fd), mutable_acc), "(m));\n",
         "            if r.err != PB_OK { break; }\n",
-        f_subClose(f));
+        field_sub_close(f));
 }
 
-fn emitEncode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
+fn emit_encode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
     format(w,
         "\n",
-        "// Appends m's wire encoding, ", generatedName(path, "size_of"), "(m) bytes, to out.\n",
-        fe.fn_kw, " ", generatedName(path, "encode"), "(m: ", goose_name, "&, out: u8[>..]&) {\n");
+        "// Appends m's wire encoding, ", generated_name(path, "size_of"), "(m) bytes, to out.\n",
+        fe.fn_kw, " ", generated_name(path, "encode"), "(m: ", goose_name, "&, out: u8[>..]&) {\n");
     for &f in fields {
-        let x = fieldExpr(f);
+        let x = field_expr(f);
         if f.map != null {
-            let entry .= fieldMap(f);
+            let entry .= field_map(f);
             format(w,
                 "    for pb_i in m.", f.name, ".len {\n",
-                "        let pb_e .= pb_run(", runPool(fe, f), ", m.", f.name, ")[pb_i];\n",
-                "        pb_write_varint(out, ", f_tag(f), ");\n",
-                "        pb_write_varint(out, ", subName(fe, entry, "size_of"), "(pb_e) as! u64);\n",
-                "        ", subName(fe, entry, "encode"), "(pb_e, out);\n",
+                "        let pb_e .= pb_run(", run_pool(f), ", m.", f.name, ")[pb_i];\n",
+                "        pb_write_varint(out, ", field_tag(f), ");\n",
+                "        pb_write_varint(out, ", sub_name(entry, "size_of"), "(pb_e) as! u64);\n",
+                "        ", sub_name(entry, "encode"), "(pb_e, out);\n",
                 "    }\n");
             continue;
         }
         if f.oneof != null {
-            let o .= fieldOneof(f);
+            let o .= field_oneof(f);
             if f.sub != null {
-                let sub .= fieldSub(f);
+                let sub .= field_sub(f);
                 format(w,
                     "    match m.", o.name, " {\n",
                     "        ", f.name, " pb_p => {\n",
                     "            let pb_l = pb_p.v.m;\n",
                     "            if pb_l {\n",
-                    subWrite(f, "                ", "pb_l", subName(fe, sub, "size_of"), subName(fe, sub, "encode")), "\n",
+                    sub_write(f, "                ", "pb_l", sub_name(sub, "size_of"), sub_name(sub, "encode")), "\n",
                     "            }\n",
                     "        },\n",
                     "        _ => {},\n",
@@ -1827,7 +1827,7 @@ fn emitEncode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
                 format(w,
                     "    match m.", o.name, " {\n",
                     "        ", f.name, " pb_p => {\n",
-                    "            pb_write_varint(out, ", f_tag(f), ");\n",
+                    "            pb_write_varint(out, ", field_tag(f), ");\n",
                     "            ", subst(f.sc.write, "pb_p.v"), ";\n",
                     "        },\n",
                     "        _ => {},\n",
@@ -1836,19 +1836,19 @@ fn emitEncode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
             continue;
         }
         if f.repeated && f.sub != null {
-            let sub .= fieldSub(f);
+            let sub .= field_sub(f);
             format(w,
-                "    for pb_ref in pb_run(", runPool(fe, f), ", m.", f.name, ") {\n",
+                "    for pb_ref in pb_run(", run_pool(f), ", m.", f.name, ") {\n",
                 "        let pb_l = pb_ref.m;\n",
                 "        guard pb_l else { continue; }\n",
-                subWrite(f, "        ", "pb_l", subName(fe, sub, "size_of"), subName(fe, sub, "encode")), "\n",
+                sub_write(f, "        ", "pb_l", sub_name(sub, "size_of"), sub_name(sub, "encode")), "\n",
                 "    }\n");
             continue;
         }
         if f.repeated && f.sc.size == SZ_BYTES {
             format(w,
                 "    for pb_v in pb_run(pb_spans, m.", f.name, ") {\n",
-                "        pb_write_varint(out, ", f_tag(f), ");\n",
+                "        pb_write_varint(out, ", field_tag(f), ");\n",
                 "        pb_write_bytes(out, pb_v);\n",
                 "    }\n");
             continue;
@@ -1856,13 +1856,13 @@ fn emitEncode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         if f.repeated {
             format(w, "    if m.", f.name, ".len > 0 {\n");
             if f.packs {
-                format(w, "        pb_write_varint(out, ", f_packedTag(f), ");\n");
-                emitPackedSize(fe, f, "        ");
+                format(w, "        pb_write_varint(out, ", field_packed_tag(f), ");\n");
+                emit_packed_size(f, "        ");
                 format(w, "        pb_write_varint(out, pb_n as! u64);\n");
-                format(w, "        for pb_v in pb_run(", sc_pool(f.sc), ", m.", f.name, ") { ", subst(f.sc.write, "pb_v"), "; }\n");
+                format(w, "        for pb_v in pb_run(", scalar_pool(f.sc), ", m.", f.name, ") { ", subst(f.sc.write, "pb_v"), "; }\n");
             } else {
-                format(w, "        for pb_v in pb_run(", sc_pool(f.sc), ", m.", f.name, ") {\n");
-                format(w, "            pb_write_varint(out, ", f_tag(f), ");\n");
+                format(w, "        for pb_v in pb_run(", scalar_pool(f.sc), ", m.", f.name, ") {\n");
+                format(w, "            pb_write_varint(out, ", field_tag(f), ");\n");
                 format(w,
                     "            ", subst(f.sc.write, "pb_v"), ";\n",
                     "        }\n");
@@ -1871,21 +1871,21 @@ fn emitEncode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
             continue;
         }
         if f.sub != null {
-            let sub .= fieldSub(f);
+            let sub .= field_sub(f);
             format(w,
-                "    let pb_f", f_number(f), " = ", x, ".m;\n",
-                "    if pb_f", f_number(f), " {\n",
-                subWrite(f, "        ", keep(str("pb_f", f_number(f))), subName(fe, sub, "size_of"), subName(fe, sub, "encode")), "\n",
+                "    let pb_f", field_number(f), " = ", x, ".m;\n",
+                "    if pb_f", field_number(f), " {\n",
+                sub_write(f, "        ", keep(str("pb_f", field_number(f))), sub_name(sub, "size_of"), sub_name(sub, "encode")), "\n",
                 "    }\n");
             continue;
         }
         if f.always {
-            format(w, "    pb_write_varint(out, ", f_tag(f), ");\n");
+            format(w, "    pb_write_varint(out, ", field_tag(f), ");\n");
             format(w, "    ", subst(f.sc.write, x), ";\n");
             continue;
         }
-        format(w, "    if ", isSet(f, x), " {\n");
-        format(w, "        pb_write_varint(out, ", f_tag(f), ");\n");
+        format(w, "    if ", is_set(f, x), " {\n");
+        format(w, "        pb_write_varint(out, ", field_tag(f), ");\n");
         format(w, "        ", subst(f.sc.write, x), ";\n");
         format(w, "    }\n");
     }
@@ -1894,31 +1894,31 @@ fn emitEncode(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         "}\n");
 }
 
-fn emitSizeOf(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
+fn emit_size_of(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
     format(w,
         "\n",
         "// The size of m's wire encoding, in bytes.\n",
-        fe.fn_kw, " ", generatedName(path, "size_of"), "(m: ", goose_name, "&) -> i64 {\n",
+        fe.fn_kw, " ", generated_name(path, "size_of"), "(m: ", goose_name, "&) -> i64 {\n",
         "    var n: i64 = 0;\n");
     for &f in fields {
-        let x = fieldExpr(f);
-        let ts = varintSize(f_tag(f));
+        let x = field_expr(f);
+        let ts = varint_size(field_tag(f));
         if f.map != null {
-            let entry .= fieldMap(f);
+            let entry .= field_map(f);
             format(w,
                 "    for pb_i in m.", f.name, ".len {\n",
-                "        n += ", ts, " + pb_len_size(", subName(fe, entry, "size_of"), "(pb_run(", runPool(fe, f), ", m.", f.name, ")[pb_i]));\n",
+                "        n += ", ts, " + pb_len_size(", sub_name(entry, "size_of"), "(pb_run(", run_pool(f), ", m.", f.name, ")[pb_i]));\n",
                 "    }\n");
             continue;
         }
         if f.oneof != null {
-            let o .= fieldOneof(f);
+            let o .= field_oneof(f);
             format(w, "    match m.", o.name, " {\n");
             if f.sc.size == SZ_MESSAGE {
                 format(w,
                     "        ", f.name, " pb_p => {\n",
                     "            let pb_l = pb_p.v.m;\n",
-                    "            if pb_l { n += ", subSize(f, subName(fe, fieldSub(f), "size_of"), "pb_l"), "; }\n",
+                    "            if pb_l { n += ", sub_size(f, sub_name(field_sub(f), "size_of"), "pb_l"), "; }\n",
                     "        },\n");
             }
             if f.sc.size == SZ_VARINT {
@@ -1937,10 +1937,10 @@ fn emitSizeOf(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         }
         if f.repeated && f.sub != null {
             format(w,
-                "    for pb_ref in pb_run(", runPool(fe, f), ", m.", f.name, ") {\n",
+                "    for pb_ref in pb_run(", run_pool(f), ", m.", f.name, ") {\n",
                 "        let pb_l = pb_ref.m;\n",
                 "        guard pb_l else { continue; }\n",
-                "        n += ", subSize(f, subName(fe, fieldSub(f), "size_of"), "pb_l"), ";\n",
+                "        n += ", sub_size(f, sub_name(field_sub(f), "size_of"), "pb_l"), ";\n",
                 "    }\n");
             continue;
         }
@@ -1951,25 +1951,25 @@ fn emitSizeOf(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         if f.repeated {
             format(w, "    if m.", f.name, ".len > 0 {\n");
             if f.packs {
-                emitPackedSize(fe, f, "        ");
-                format(w, "        n += ", varintSize(f_packedTag(f)), " + pb_len_size(pb_n);\n");
+                emit_packed_size(f, "        ");
+                format(w, "        n += ", varint_size(field_packed_tag(f)), " + pb_len_size(pb_n);\n");
             } else {
-                emitPackedSize(fe, f, "        ");
+                emit_packed_size(f, "        ");
                 format(w, "        n += ", ts, " * m.", f.name, ".len + pb_n;\n");
             }
             format(w, "    }\n");
             continue;
         }
         if f.sub != null {
-            let sub .= fieldSub(f);
-            format(w, "    let pb_f", f_number(f), " = ", x, ".m;\n");
-            format(w, "    if pb_f", f_number(f), " { n += ", subSize(f, subName(fe, sub, "size_of"), keep(str("pb_f", f_number(f)))), "; }\n");
+            let sub .= field_sub(f);
+            format(w, "    let pb_f", field_number(f), " = ", x, ".m;\n");
+            format(w, "    if pb_f", field_number(f), " { n += ", sub_size(f, sub_name(sub, "size_of"), keep(str("pb_f", field_number(f)))), "; }\n");
             continue;
         }
         if f.always {
             format(w, "    n += ");
         } else {
-            format(w, "    if ", isSet(f, x), " { n += ");
+            format(w, "    if ", is_set(f, x), " { n += ");
         }
         if f.sc.size == SZ_VARINT {
             format(w, ts, " + pb_varint_size(", subst(f.sc.write_value, x), ");");
@@ -1988,18 +1988,18 @@ fn emitSizeOf(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fiel
         "}\n");
 }
 
-fn emitClear(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], oneofs: const Oneof[:], has_words: i64) {
+fn emit_clear(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], oneofs: const Oneof[:], has_words: i64) {
     format(w,
         "\n",
         "// Frees what m owns and resets it to the empty message.\n",
-        fe.fn_kw, " ", generatedName(path, "clear"), "(m: ", goose_name, "&) {\n");
+        fe.fn_kw, " ", generated_name(path, "clear"), "(m: ", goose_name, "&) {\n");
     for &f in fields {
         if f.oneof != null {
             continue;
         }
-        let x = fieldExpr(f);
+        let x = field_expr(f);
         if (f.repeated && f.sub != null) || f.map != null {
-            format(w, "    ", accessorName(path, fieldName(f.fd), clear_acc), "(m);\n");
+            format(w, "    ", accessor_name(path, field_name(f.fd), clear_acc), "(m);\n");
             continue;
         }
         if f.repeated && f.sc.size == SZ_BYTES {
@@ -2007,11 +2007,11 @@ fn emitClear(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], field
             continue;
         }
         if f.repeated {
-            format(w, "    ", x, " = pb_resize(", sc_pool(f.sc), ", ", x, ", 0);\n");
+            format(w, "    ", x, " = pb_resize(", scalar_pool(f.sc), ", ", x, ", 0);\n");
             continue;
         }
         if f.sub != null {
-            format(w, "    ", accessorName(path, fieldName(f.fd), clear_acc), "(m);\n");
+            format(w, "    ", accessor_name(path, field_name(f.fd), clear_acc), "(m);\n");
             continue;
         }
         format(w, "    ", subst(f.clear, x), ";\n");
@@ -2032,36 +2032,36 @@ fn emitClear(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], field
 // message ends would repeat it for a sub-message that repeats on the wire,
 // and one input could then make it quadratic. Top-down, so an entry that
 // is replaced is not folded first.
-fn emitFoldMaps(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
+fn emit_fold_maps(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
     format(w,
         "\n",
         "// Folds repeated keys in the maps of m and of the messages it holds, which\n",
         "// decoding appends without looking them up: the last value wins, in the\n",
         "// place of the first occurrence.\n",
-        fe.fn_kw, " ", generatedName(path, "fold_maps"), "(m: ", goose_name, "&) {\n");
+        fe.fn_kw, " ", generated_name(path, "fold_maps"), "(m: ", goose_name, "&) {\n");
     for &f in fields {
         if f.map != null {
-            let entry .= fieldMap(f);
-            format(w, "    m.", f.name, " = ", subName(fe, entry, "fold"), "(m.", f.name, ");\n");
+            let entry .= field_map(f);
+            format(w, "    m.", f.name, " = ", sub_name(entry, "fold"), "(m.", f.name, ");\n");
         }
-        if !fieldHoldsMaps(f) {
+        if !field_holds_maps(f) {
             continue;
         }
         if f.map != null {
-            let entry .= fieldMap(f);
-            format(w, "    for pb_i in m.", f.name, ".len { ", subName(fe, entry, "fold_maps"), "(pb_run(", runPool(fe, f), ", m.", f.name, ")[pb_i]); }\n");
+            let entry .= field_map(f);
+            format(w, "    for pb_i in m.", f.name, ".len { ", sub_name(entry, "fold_maps"), "(pb_run(", run_pool(f), ", m.", f.name, ")[pb_i]); }\n");
             continue;
         }
-        let fold = subName(fe, fieldSub(f), "fold_maps");
+        let fold = sub_name(field_sub(f), "fold_maps");
         if f.repeated {
             format(w,
-                "    for pb_ref in pb_run(", runPool(fe, f), ", m.", f.name, ") {\n",
+                "    for pb_ref in pb_run(", run_pool(f), ", m.", f.name, ") {\n",
                 "        let pb_l = pb_ref.m;\n",
                 "        guard pb_l else { continue; }\n",
                 "        ", fold, "(pb_l);\n",
                 "    }\n");
         } else if f.oneof != null {
-            let o .= fieldOneof(f);
+            let o .= field_oneof(f);
             format(w,
                 "    match m.", o.name, " {\n",
                 "        ", f.name, " pb_p => {\n",
@@ -2072,24 +2072,24 @@ fn emitFoldMaps(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fi
                 "    }\n");
         } else {
             format(w,
-                "    let pb_f", f_number(f), " = m.", f.name, ".m;\n",
-                "    if pb_f", f_number(f), " { ", fold, "(pb_f", f_number(f), "); }\n");
+                "    let pb_f", field_number(f), " = m.", f.name, ".m;\n",
+                "    if pb_f", field_number(f), " { ", fold, "(pb_f", field_number(f), "); }\n");
         }
     }
     format(w, "}\n");
 }
 
 // is_initialized: every required field is set, in m and in what it holds.
-fn emitIsInitialized(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], has_words: i64) {
+fn emit_is_initialized(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], has_words: i64) {
     format(w,
         "\n",
         "// True if every required field is set, in m and in the messages it holds.\n",
-        fe.fn_kw, " ", generatedName(path, "is_initialized"), "(m: ", goose_name, "&) -> bool {\n");
+        fe.fn_kw, " ", generated_name(path, "is_initialized"), "(m: ", goose_name, "&) -> bool {\n");
     var masks: u32[>..] = [];
     for pb_mi in has_words { masks.push(0); }
     for &f in fields {
         if !f.required { continue; }
-        if f.bit >= 0 { masks[f.bit / 32] |= bitMask(f.bit); }
+        if f.bit >= 0 { masks[f.bit / 32] |= bit_mask(f.bit); }
     }
     for i in masks.len {
         let mask = masks[i];
@@ -2101,27 +2101,27 @@ fn emitIsInitialized(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:
         if f.required && f.sub != null {
             format(w, "    if m.", f.name, ".m == null { return false; }\n");
         }
-        if !fieldHoldsRequired(f) {
+        if !field_holds_required(f) {
             continue;
         }
         if f.map != null {
-            let entry .= fieldMap(f);
+            let entry .= field_map(f);
             format(w,
                 "    for pb_i in m.", f.name, ".len {\n",
-                "        if !", subName(fe, entry, "is_initialized"), "(pb_run(", runPool(fe, f), ", m.", f.name, ")[pb_i]) { return false; }\n",
+                "        if !", sub_name(entry, "is_initialized"), "(pb_run(", run_pool(f), ", m.", f.name, ")[pb_i]) { return false; }\n",
                 "    }\n");
             continue;
         }
-        let check = subName(fe, fieldSub(f), "is_initialized");
+        let check = sub_name(field_sub(f), "is_initialized");
         if f.repeated {
             format(w,
-                "    for pb_ref in pb_run(", runPool(fe, f), ", m.", f.name, ") {\n",
+                "    for pb_ref in pb_run(", run_pool(f), ", m.", f.name, ") {\n",
                 "        let pb_l = pb_ref.m;\n",
                 "        guard pb_l else { continue; }\n",
                 "        if !", check, "(pb_l) { return false; }\n",
                 "    }\n");
         } else if f.oneof != null {
-            let o .= fieldOneof(f);
+            let o .= field_oneof(f);
             format(w,
                 "    match m.", o.name, " {\n",
                 "        ", f.name, " pb_p => {\n",
@@ -2132,8 +2132,8 @@ fn emitIsInitialized(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:
                 "    }\n");
         } else {
             format(w,
-                "    let pb_f", f_number(f), " = m.", f.name, ".m;\n",
-                "    if pb_f", f_number(f), " { if !", check, "(pb_f", f_number(f), ") { return false; } }\n");
+                "    let pb_f", field_number(f), " = m.", f.name, ".m;\n",
+                "    if pb_f", field_number(f), " { if !", check, "(pb_f", field_number(f), ") { return false; } }\n");
         }
     }
     format(w,
@@ -2143,30 +2143,30 @@ fn emitIsInitialized(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:
 
 // Decision 0001: copying a record shares what its spans and links
 // reach, so M_copy duplicates that too.
-fn emitCopy(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], oneofs: const Oneof[:], has_words: i64) {
+fn emit_copy(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:], oneofs: const Oneof[:], has_words: i64) {
     format(w,
         "\n",
         "// Makes dst a deep copy of src, freeing what dst owned. The two share\n",
         "// nothing afterwards. Neither may be a sub-message of the other.\n",
-        fe.fn_kw, " ", generatedName(path, "copy"), "(dst: ", goose_name, "&, src: ", goose_name, "&) {\n",
+        fe.fn_kw, " ", generated_name(path, "copy"), "(dst: ", goose_name, "&, src: ", goose_name, "&) {\n",
         "    if dst .== src { return; }\n",
-        "    ", generatedName(path, "clear"), "(dst);\n");
+        "    ", generated_name(path, "clear"), "(dst);\n");
     for &f in fields {
         if f.oneof != null {
             continue;
         }
         if f.map != null {
-            let entry .= fieldMap(f);
-            let pool = runPool(fe, f);
+            let entry .= field_map(f);
+            let pool = run_pool(f);
             format(w,
                 "    dst.", f.name, " = pb_resize(", pool, ", dst.", f.name, ", src.", f.name, ".len);\n",
                 "    for pb_i in src.", f.name, ".len {\n",
-                "        ", subName(fe, entry, "copy"), "(pb_run(", pool, ", dst.", f.name, ")[pb_i], pb_run(", pool, ", src.", f.name, ")[pb_i]);\n",
+                "        ", sub_name(entry, "copy"), "(pb_run(", pool, ", dst.", f.name, ")[pb_i], pb_run(", pool, ", src.", f.name, ")[pb_i]);\n",
                 "    }\n");
         } else if f.repeated && f.sub != null {
-            let sub .= fieldSub(f);
-            let links = runPool(fe, f);
-            let pool = subName(fe, sub, "pool");
+            let sub .= field_sub(f);
+            let links = run_pool(f);
+            let pool = sub_name(sub, "pool");
             format(w,
                 "    dst.", f.name, " = pb_resize(", links, ", dst.", f.name, ", src.", f.name, ".len);\n",
                 "    for pb_i in src.", f.name, ".len {\n",
@@ -2174,17 +2174,17 @@ fn emitCopy(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields
                 "        guard pb_l else { continue; }\n",
                 "        let pb_c .= ", pool, ".alloc_ref(", sub.goose_name, " { .. });\n",
                 "        pb_run(", links, ", dst.", f.name, ")[pb_i].m .= pb_c;\n",
-                "        ", subName(fe, sub, "copy"), "(pb_c, pb_l);\n",
+                "        ", sub_name(sub, "copy"), "(pb_c, pb_l);\n",
                 "    }\n");
         } else if f.repeated && f.sc.size == SZ_BYTES {
             format(w, "    dst.", f.name, " = pb_spans_copy(src.", f.name, ");\n");
         } else if f.repeated {
-            format(w, "    dst.", f.name, " = pb_copy_run(", sc_pool(f.sc), ", src.", f.name, ");\n");
+            format(w, "    dst.", f.name, " = pb_copy_run(", scalar_pool(f.sc), ", src.", f.name, ");\n");
         } else if f.sub != null {
-            let sub .= fieldSub(f);
+            let sub .= field_sub(f);
             format(w,
-                "    let pb_f", f_number(f), " = src.", f.name, ".m;\n",
-                "    if pb_f", f_number(f), " { ", subName(fe, sub, "copy"), "(", accessorName(path, fieldName(f.fd), mutable_acc), "(dst), pb_f", f_number(f), "); }\n");
+                "    let pb_f", field_number(f), " = src.", f.name, ".m;\n",
+                "    if pb_f", field_number(f), " { ", sub_name(sub, "copy"), "(", accessor_name(path, field_name(f.fd), mutable_acc), "(dst), pb_f", field_number(f), "); }\n");
         } else if f.sc.size == SZ_BYTES {
             format(w, "    dst.", f.name, " = pb_bytes_copy(src.", f.name, ");\n");
         } else {
@@ -2198,11 +2198,11 @@ fn emitCopy(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields
                 continue;
             }
             if f.sub != null {
-                let sub .= fieldSub(f);
+                let sub .= field_sub(f);
                 format(w,
                     "        ", f.name, " pb_p => {\n",
                     "            let pb_l = pb_p.v.m;\n",
-                    "            if pb_l { ", subName(fe, sub, "copy"), "(", accessorName(path, fieldName(f.fd), mutable_acc), "(dst), pb_l); }\n",
+                    "            if pb_l { ", sub_name(sub, "copy"), "(", accessor_name(path, field_name(f.fd), mutable_acc), "(dst), pb_l); }\n",
                     "        },\n");
             } else if f.sc.size == SZ_BYTES {
                 format(w, "        ", f.name, " pb_p => { dst.", o.name, " = ", o.type_name, ".", f.name, " { v: pb_bytes_copy(pb_p.v) }; },\n");
@@ -2222,52 +2222,52 @@ fn emitCopy(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields
         "}\n");
 }
 
-// The accessors of a stored field, per fieldAccessors: the getter
+// The accessors of a stored field, per field_accessors: the getter
 // and set_ of strings and bytes, and set_, has_ and clear_ of fields
-// with presence; a sub-message has its own (emitSubMessageAccessors).
-fn emitAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&) {
+// with presence; a sub-message has its own (emit_sub_message_accessors).
+fn emit_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&) {
     if f.oneof != null {
-        let o .= fieldOneof(f);
-        emitOneofAccessors(fe, goose_name, path, f, o);
+        let o .= field_oneof(f);
+        emit_oneof_accessors(goose_name, path, f, o);
         return;
     }
     if f.map != null {
-        let entry .= fieldMap(f);
-        emitMapAccessors(fe, goose_name, path, f, entry);
+        let entry .= field_map(f);
+        emit_map_accessors(fe, goose_name, path, f, entry);
         return;
     }
     if f.repeated {
         if f.sub != null {
-            let sub .= fieldSub(f);
-            emitRepeatedMessageAccessors(fe, goose_name, path, f, sub);
+            let sub .= field_sub(f);
+            emit_repeated_message_accessors(fe, goose_name, path, f, sub);
             return;
         }
         if f.sc.size == SZ_BYTES {
-            emitRepeatedStringAccessors(fe, goose_name, path, f);
+            emit_repeated_string_accessors(goose_name, path, f);
             return;
         }
-        emitRepeatedAccessors(fe, goose_name, path, f);
+        emit_repeated_accessors(goose_name, path, f);
         return;
     }
     if f.sub != null {
-        let sub .= fieldSub(f);
-        emitSubMessageAccessors(fe, goose_name, path, f, sub);
+        let sub .= field_sub(f);
+        emit_sub_message_accessors(fe, goose_name, path, f, sub);
         return;
     }
-    let fname = fieldName(f.fd);
-    let x = fieldExpr(f);
+    let fname = field_name(f.fd);
+    let x = field_expr(f);
     let is_bytes = f.sc.size == SZ_BYTES;
-    if hasDefaultBytes(f.fd) {
-        let value = defaultBytes(f.fd);
-        let name = accessorName(path, fname, default_acc);
+    if has_default_bytes(f.fd) {
+        let value = default_bytes(f.fd);
+        let name = accessor_name(path, fname, default_acc);
         let b = f.bit;
-        emitDefaultBytes(fe, name, value);
+        emit_default_bytes(name, value);
         format(w,
             "\n",
             "// The contents of ", fname, ", in pb_bytes, or ", name, " if it is not set: valid\n",
             "// until it is next set or m is cleared.\n",
-            "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> const u8[:] {\n",
-            "    if (m.pb_has", b / 32, " & 0x", hex8(bitMask(b)), ") == 0 { return ", name, "; }\n",
+            "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> const u8[:] {\n",
+            "    if (m.pb_has", b / 32, " & 0x", hex8(bit_mask(b)), ") == 0 { return ", name, "; }\n",
             "    return pb_run(pb_bytes, ", x, ");\n",
             "}\n");
     } else if is_bytes {
@@ -2275,7 +2275,7 @@ fn emitAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f
             "\n",
             "// The contents of ", fname, ", in pb_bytes: valid until it is next set or m\n",
             "// is cleared.\n",
-            "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> u8[:] { return pb_run(pb_bytes, ", x, "); }\n");
+            "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> u8[:] { return pb_run(pb_bytes, ", x, "); }\n");
     }
     if !is_bytes && f.bit < 0 {
         return;
@@ -2293,7 +2293,7 @@ fn emitAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f
     }
     format(w,
         ".\n",
-        "fn ", accessorName(path, fname, set_acc), "(m: ", goose_name, "&, v: ", sc_setType(f.sc), ") {\n",
+        "fn ", accessor_name(path, fname, set_acc), "(m: ", goose_name, "&, v: ", scalar_set_type(f.sc), ") {\n",
         "    ", subst(f.sc.set, x), ";\n");
     if f.bit < 0 {
         format(w, "}\n");
@@ -2301,24 +2301,24 @@ fn emitAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f
     }
     let b = f.bit;
     format(w,
-        "    m.pb_has", b / 32, " |= 0x", hex8(bitMask(b)), ";\n",
+        "    m.pb_has", b / 32, " |= 0x", hex8(bit_mask(b)), ";\n",
         "}\n",
         "\n",
-        "fn ", accessorName(path, fname, has_acc), "(m: ", goose_name, "&) -> bool { return (m.pb_has", b / 32, " & 0x", hex8(bitMask(b)), ") != 0; }\n",
+        "fn ", accessor_name(path, fname, has_acc), "(m: ", goose_name, "&) -> bool { return (m.pb_has", b / 32, " & 0x", hex8(bit_mask(b)), ") != 0; }\n",
         "\n",
-        "fn ", accessorName(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
+        "fn ", accessor_name(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
         "    ", subst(f.clear, x), ";\n",
-        "    m.pb_has", b / 32, " &= 0x", hex8(~bitMask(b)), ";\n",
+        "    m.pb_has", b / 32, " &= 0x", hex8(~bit_mask(b)), ";\n",
         "}\n");
 }
 
 // What a map entry has besides a message's functions. Lookup is linear
 // (decision 0001).
-fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
-    let key .= mapField(fields, 1);
-    let value .= mapField(fields, 2);
-    let entries = generatedName(path, "entries");
-    let find = generatedName(path, "find");
+fn emit_map_entry_helpers(goose_name: const u8[:], path: const u8[:], fields: const Field[:]) {
+    let key .= map_field(fields, 1);
+    let value .= map_field(fields, 2);
+    let entries = generated_name(path, "entries");
+    let find = generated_name(path, "find");
     let key_is_bytes = key.sc.size == SZ_BYTES;
     format(w,
         "\n",
@@ -2326,7 +2326,7 @@ fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8
         "reusable[] var ", entries, ": ", goose_name, "[>..] = [];\n",
         "\n",
         "// The index of the entry with key k among the first `used` of run s, or -1.\n",
-        "fn ", find, "(s: pb_Span, used: i64, k: ", sc_setType(key.sc), ") -> i64 {\n",
+        "fn ", find, "(s: pb_Span, used: i64, k: ", scalar_set_type(key.sc), ") -> i64 {\n",
         "    let pb_run_s = pb_run(", entries, ", s);\n",
         "    for pb_i in used {\n");
     if key_is_bytes {
@@ -2340,18 +2340,18 @@ fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8
         "}\n",
         "\n",
         "// The entry with key k in run s, added with the default value if there is none.\n",
-        "fn ", generatedName(path, "slot"), "(s: pb_Span&, k: ", sc_setType(key.sc), ") -> ", goose_name, "& {\n",
+        "fn ", generated_name(path, "slot"), "(s: pb_Span&, k: ", scalar_set_type(key.sc), ") -> ", goose_name, "& {\n",
         "    var pb_i = ", find, "(s, s.len, k);\n",
         "    if pb_i < 0 {\n",
         "        pb_i = s.len;\n",
         "        s = pb_resize(", entries, ", s, pb_i + 1);\n");
     if key_is_bytes {
-        format(w, "        ", accessorName(path, "key", set_acc), "(pb_run(", entries, ", s)[pb_i], k);\n");
+        format(w, "        ", accessor_name(path, "key", set_acc), "(pb_run(", entries, ", s)[pb_i], k);\n");
     } else {
         format(w, "        pb_run(", entries, ", s)[pb_i].key = k;\n");
     }
     if value.sub != null {
-        format(w, "        ", accessorName(path, "value", mutable_acc), "(pb_run(", entries, ", s)[pb_i]);\n");
+        format(w, "        ", accessor_name(path, "value", mutable_acc), "(pb_run(", entries, ", s)[pb_i]);\n");
     }
     format(w,
         "    }\n",
@@ -2360,9 +2360,9 @@ fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8
         "\n",
         "// Settles an entry just decoded: a missing message value is an empty one,\n",
         "// and unknown fields are dropped.\n",
-        "fn ", generatedName(path, "place"), "(pb_e: ", goose_name, "&) {\n");
+        "fn ", generated_name(path, "place"), "(pb_e: ", goose_name, "&) {\n");
     if value.sub != null {
-        format(w, "    ", accessorName(path, "value", mutable_acc), "(pb_e);\n");
+        format(w, "    ", accessor_name(path, "value", mutable_acc), "(pb_e);\n");
     }
     format(w,
         "    pb_e.pb_unknown = pb_bytes_free(pb_e.pb_unknown);\n",
@@ -2371,11 +2371,11 @@ fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8
         "// Run s with each repeated key folded: the last value wins, in the place of\n",
         "// the first occurrence, and what the others held is freed. O(n log n).\n",
         "// fold_maps calls it; decoding leaves repeated keys for it.\n",
-        "fn ", generatedName(path, "fold"), "(s: pb_Span) -> pb_Span {\n",
+        "fn ", generated_name(path, "fold"), "(s: pb_Span) -> pb_Span {\n",
         "    if s.len < 2 { return s; }\n",
         "    let pb_r = pb_run(", entries, ", s);\n",
         "    var pb_keys: ", if key_is_bytes { "pb_StrKey" } else { "pb_NumKey" }, "[>..] = [];\n",
-        "    for pb_i in pb_r.len { pb_keys.push(", if key_is_bytes { "pb_StrKey" } else { "pb_NumKey" }, " { key: ", foldKey(key.sc), ", at: pb_i as! u32 }); }\n",
+        "    for pb_i in pb_r.len { pb_keys.push(", if key_is_bytes { "pb_StrKey" } else { "pb_NumKey" }, " { key: ", fold_key(key.sc), ", at: pb_i as! u32 }); }\n",
         "    ", if key_is_bytes { "pb_sort_str_keys" } else { "pb_sort_num_keys" }, "(pb_keys);\n",
         "    var pb_gone: bool[>..] = [];\n",
         "    var pb_i: i64 = 0;\n",
@@ -2388,7 +2388,7 @@ fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8
         "            let pb_last: i64 = pb_keys[pb_j - 1].at;\n",
         "            for pb_k in pb_j - pb_i - 1 {\n",
         "                let pb_at: i64 = pb_keys[pb_i + pb_k].at;\n",
-        "                ", generatedName(path, "clear"), "(pb_r[pb_at]);\n",
+        "                ", generated_name(path, "clear"), "(pb_r[pb_at]);\n",
         "                pb_gone[pb_at] = true;\n",
         "            }\n",
         "            pb_gone[pb_first] = false;\n",
@@ -2412,23 +2412,23 @@ fn emitMapEntryHelpers(fe: FileEmitter&, goose_name: const u8[:], path: const u8
 // The accessors of a map field. Entries live in a run that may move, so
 // a reference to one is good until the map next changes; a message value
 // has a slot of its own, and outlives other changes.
-fn emitMapAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, entry: MessageInfo&) {
-    let fname = fieldName(f.fd);
-    let pool = runPool(fe, f);
-    let key_fd .= mapKeyOf(entry.desc);
-    let value_fd .= mapValueOf(entry.desc);
-    let key_type = sc_setType(scalarOfTypeReq(key_fd));
-    let find = subName(fe, entry, "find");
-    let slot = subName(fe, entry, "slot");
+fn emit_map_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, entry: MessageInfo&) {
+    let fname = field_name(f.fd);
+    let pool = run_pool(f);
+    let key_fd .= map_key_of(entry.desc);
+    let value_fd .= map_value_of(entry.desc);
+    let key_type = scalar_set_type(scalar_of_type_req(key_fd));
+    let find = sub_name(entry, "find");
+    let slot = sub_name(entry, "slot");
     format(w,
         "\n",
         "// The entries of ", fname, ", in insertion order: its .len is their number, and\n",
         "// each has .key and .value, or the entry type's accessors for what is in a\n",
         "// pool. Valid until the map next changes or m is cleared.\n",
-        "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> ", entry.goose_name, "[:] { return pb_run(", pool, ", m.", f.name, "); }\n");
-    let get = accessorName(path, fname, map_get_acc);
-    let put = accessorName(path, fname, map_put_acc);
-    let sub_opt = subMessageOf(fe, value_fd);
+        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> ", entry.goose_name, "[:] { return pb_run(", pool, ", m.", f.name, "); }\n");
+    let get = accessor_name(path, fname, map_get_acc);
+    let put = accessor_name(path, fname, map_put_acc);
+    let sub_opt = sub_message_of(fe, value_fd);
     if sub_opt {
         let sub .= sub_opt;
         format(w,
@@ -2443,10 +2443,10 @@ fn emitMapAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:]
             "\n",
             "// The value with key k, added empty if there is none.\n",
             "fn ", put, "(m: ", goose_name, "&, k: ", key_type, ") -> ", sub.goose_name, "& {\n",
-            "    return ", accessorName(entry.path, "value", mutable_acc), "(", slot, "(m.", f.name, ", k));\n",
+            "    return ", accessor_name(entry.path, "value", mutable_acc), "(", slot, "(m.", f.name, ", k));\n",
             "}\n");
     } else {
-        let value_sc .= scalarOfTypeReq(value_fd);
+        let value_sc .= scalar_of_type_req(value_fd);
         let is_bytes = value_sc.size == SZ_BYTES;
         format(w,
             "\n",
@@ -2459,27 +2459,27 @@ fn emitMapAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:]
                 "    return pb_run(pb_bytes, pb_run(", pool, ", m.", f.name, ")[pb_i].value), true;\n");
         } else {
             format(w,
-                "    if pb_i < 0 { return ", sc_zero(value_sc), ", false; }\n",
+                "    if pb_i < 0 { return ", scalar_zero(value_sc), ", false; }\n",
                 "    return pb_run(", pool, ", m.", f.name, ")[pb_i].value, true;\n");
         }
         format(w,
             "}\n",
             "\n",
             "// Sets the value with key k", if is_bytes { " to a copy of v" } else { " to v" }, ", adding an entry if there is none.\n",
-            "fn ", put, "(m: ", goose_name, "&, k: ", key_type, ", v: ", sc_setType(value_sc), ") {\n");
+            "fn ", put, "(m: ", goose_name, "&, k: ", key_type, ", v: ", scalar_set_type(value_sc), ") {\n");
         if is_bytes {
-            format(w, "    ", accessorName(entry.path, "value", set_acc), "(", slot, "(m.", f.name, ", k), v);\n");
+            format(w, "    ", accessor_name(entry.path, "value", set_acc), "(", slot, "(m.", f.name, ", k), v);\n");
         } else {
             format(w, "    ", slot, "(m.", f.name, ", k).value = v;\n");
         }
         format(w, "}\n");
     }
-    let clear_entry = subName(fe, entry, "clear");
+    let clear_entry = sub_name(entry, "clear");
     format(w,
         "\n",
         "// Removes the entry with key k and frees what it owns. False if there is\n",
         "// none. Later entries keep their order.\n",
-        "fn ", accessorName(path, fname, map_remove_acc), "(m: ", goose_name, "&, k: ", key_type, ") -> bool {\n",
+        "fn ", accessor_name(path, fname, map_remove_acc), "(m: ", goose_name, "&, k: ", key_type, ") -> bool {\n",
         "    let pb_i = ", find, "(m.", f.name, ", m.", f.name, ".len, k);\n",
         "    if pb_i < 0 { return false; }\n",
         "    let pb_r = pb_run(", pool, ", m.", f.name, ");\n",
@@ -2492,7 +2492,7 @@ fn emitMapAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:]
         "}\n",
         "\n",
         "// Frees the entries of ", fname, " and everything they own.\n",
-        fe.fn_kw, " ", accessorName(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
+        fe.fn_kw, " ", accessor_name(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
         "    for pb_i in m.", f.name, ".len { ", clear_entry, "(pb_run(", pool, ", m.", f.name, ")[pb_i]); }\n",
         "    m.", f.name, " = pb_resize(", pool, ", m.", f.name, ", 0);\n",
         "}\n");
@@ -2501,7 +2501,7 @@ fn emitMapAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:]
 // clear_<oneof>: frees what the member that is set owns. It is in the
 // cycle of M_clear, and may be the first call into it, so it is declared
 // as the codecs are.
-fn emitOneofClear(fe: FileEmitter&, goose_name: const u8[:], o: Oneof&, fields: const Field[:]) {
+fn emit_oneof_clear(fe: FileEmitter&, goose_name: const u8[:], o: Oneof&, fields: const Field[:]) {
     format(w,
         "\n",
         "// Frees what oneof ", o.name, " holds, and sets no member.\n",
@@ -2512,13 +2512,13 @@ fn emitOneofClear(fe: FileEmitter&, goose_name: const u8[:], o: Oneof&, fields: 
             continue;
         }
         if f.sub != null {
-            let sub .= fieldSub(f);
-            let pool = subName(fe, sub, "pool");
+            let sub .= field_sub(f);
+            let pool = sub_name(sub, "pool");
             format(w,
                 "        ", f.name, " pb_p => {\n",
                 "            let pb_sub = pb_p.v.m;\n",
                 "            if pb_sub {\n",
-                "                ", subName(fe, sub, "clear"), "(pb_sub);\n",
+                "                ", sub_name(sub, "clear"), "(pb_sub);\n",
                 "                ", pool, ".free(", pool, ".index_of(pb_sub));\n",
                 "            }\n",
                 "        },\n");
@@ -2536,14 +2536,14 @@ fn emitOneofClear(fe: FileEmitter&, goose_name: const u8[:], o: Oneof&, fields: 
 // The accessors of a member of a oneof: has_, clear_ (of this member
 // only if it is the one set), and those of its kind of storage, which
 // read the default when another member is set.
-fn emitOneofAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, o: Oneof&) {
-    let fname = fieldName(f.fd);
-    let get = accessorName(path, fname, get_acc);
-    let set = accessorName(path, fname, set_acc);
-    let has = accessorName(path, fname, has_acc);
-    let clear = accessorName(path, fname, clear_acc);
+fn emit_oneof_accessors(goose_name: const u8[:], path: const u8[:], f: Field&, o: Oneof&) {
+    let fname = field_name(f.fd);
+    let get = accessor_name(path, fname, get_acc);
+    let set = accessor_name(path, fname, set_acc);
+    let has = accessor_name(path, fname, has_acc);
+    let clear = accessor_name(path, fname, clear_acc);
     if f.sub != null {
-        let sub .= fieldSub(f);
+        let sub .= field_sub(f);
         format(w,
             "\n",
             "// The sub-message ", fname, ", or null if it is not the member set. Valid until\n",
@@ -2557,7 +2557,7 @@ fn emitOneofAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
             "}\n",
             "\n",
             "// The sub-message ", fname, ", first made the member set, and empty, if it is not.\n",
-            "fn ", accessorName(path, fname, mutable_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "& {\n",
+            "fn ", accessor_name(path, fname, mutable_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "& {\n",
             "    match m.", o.name, " {\n",
             "        ", f.name, " pb_p => {\n",
             "            let pb_l = pb_p.v.m;\n",
@@ -2566,15 +2566,15 @@ fn emitOneofAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
             "        _ => {},\n",
             "    }\n",
             "    ", o.clear, "(m);\n",
-            "    let pb_new .= ", subName(fe, sub, "pool"), ".alloc_ref(", sub.goose_name, " { .. });\n",
+            "    let pb_new .= ", sub_name(sub, "pool"), ".alloc_ref(", sub.goose_name, " { .. });\n",
             "    m.", o.name, " = ", o.type_name, ".", f.name, " { v: ", f.sc.goose, " { m: pb_new } };\n",
             "    return pb_new;\n",
             "}\n");
     } else if f.sc.size == SZ_BYTES {
-        if hasDefaultBytes(f.fd) {
-            let value = defaultBytes(f.fd);
-            let name = accessorName(path, fname, default_acc);
-            emitDefaultBytes(fe, name, value);
+        if has_default_bytes(f.fd) {
+            let value = default_bytes(f.fd);
+            let name = accessor_name(path, fname, default_acc);
+            emit_default_bytes(name, value);
             format(w,
                 "\n",
                 "// The contents of ", fname, " in pb_bytes, ", name, " if it is not the member set:\n",
@@ -2616,10 +2616,10 @@ fn emitOneofAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
             "        ", f.name, " pb_p => { return pb_p.v; },\n",
             "        _ => {},\n",
             "    }\n",
-            "    return ", if f.dflt.len > 0 { f.dflt } else { sc_zero(f.sc) }, ";\n",
+            "    return ", if f.dflt.len > 0 { f.dflt } else { scalar_zero(f.sc) }, ";\n",
             "}\n",
             "\n",
-            "// Makes ", fname, " the member set, with value v: it is encoded even when ", sc_zero(f.sc), ".\n",
+            "// Makes ", fname, " the member set, with value v: it is encoded even when ", scalar_zero(f.sc), ".\n",
             "fn ", set, "(m: ", goose_name, "&, v: ", f.sc.goose, ") {\n",
             "    ", o.clear, "(m);\n",
             "    m.", o.name, " = ", o.type_name, ".", f.name, " { v: v };\n",
@@ -2634,39 +2634,39 @@ fn emitOneofAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[
 }
 
 // The accessors of a repeated string or bytes field.
-fn emitRepeatedStringAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&) {
-    let fname = fieldName(f.fd);
+fn emit_repeated_string_accessors(goose_name: const u8[:], path: const u8[:], f: Field&) {
+    let fname = field_name(f.fd);
     format(w,
         "\n",
         "// The spans of ", fname, ", in pb_spans: its .len is the number of values.\n",
-        "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> pb_Span[:] { return pb_run(pb_spans, m.", f.name, "); }\n",
+        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> pb_Span[:] { return pb_run(pb_spans, m.", f.name, "); }\n",
         "\n",
         "// The contents of value i of ", fname, ", in pb_bytes: valid until it is next\n",
         "// set or m is cleared.\n",
-        "fn ", accessorName(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(pb_spans, m.", f.name, ")[i]); }\n",
+        "fn ", accessor_name(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> u8[:] { return pb_run(pb_bytes, pb_run(pb_spans, m.", f.name, ")[i]); }\n",
         "\n",
         "// Adds a copy of v to ", fname, ".\n",
-        "fn ", accessorName(path, fname, add_acc), "(m: ", goose_name, "&, v: const u8[:]) { m.", f.name, " = pb_spans_add(m.", f.name, ", v); }\n",
+        "fn ", accessor_name(path, fname, add_acc), "(m: ", goose_name, "&, v: const u8[:]) { m.", f.name, " = pb_spans_add(m.", f.name, ", v); }\n",
         "\n",
         "// Sets value i of ", fname, " to a copy of v.\n",
-        "fn ", accessorName(path, fname, set_acc), "(m: ", goose_name, "&, i: i64, v: const u8[:]) { pb_spans_set(m.", f.name, ", i, v); }\n",
+        "fn ", accessor_name(path, fname, set_acc), "(m: ", goose_name, "&, i: i64, v: const u8[:]) { pb_spans_set(m.", f.name, ", i, v); }\n",
         "\n",
-        "fn ", accessorName(path, fname, clear_acc), "(m: ", goose_name, "&) { m.", f.name, " = pb_spans_free(m.", f.name, "); }\n");
+        "fn ", accessor_name(path, fname, clear_acc), "(m: ", goose_name, "&) { m.", f.name, " = pb_spans_free(m.", f.name, "); }\n");
 }
 
 // The accessors of a repeated message field. Each element has a slot of
 // its own in the pool, so a reference to it outlives adding others.
-fn emitRepeatedMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, sub: MessageInfo&) {
-    let fname = fieldName(f.fd);
-    let links = runPool(fe, f);
-    let pool = subName(fe, sub, "pool");
+fn emit_repeated_message_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, sub: MessageInfo&) {
+    let fname = field_name(f.fd);
+    let links = run_pool(f);
+    let pool = sub_name(sub, "pool");
     format(w,
         "\n",
         "// The links of ", fname, ", in ", links, ": its .len is the number of messages.\n",
-        "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> ", f.sc.goose, "[:] { return pb_run(", links, ", m.", f.name, "); }\n",
+        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> ", f.sc.goose, "[:] { return pb_run(", links, ", m.", f.name, "); }\n",
         "\n",
         "// Message i of ", fname, ". Valid until it or m is cleared.\n",
-        "fn ", accessorName(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> ", sub.goose_name, "& {\n",
+        "fn ", accessor_name(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> ", sub.goose_name, "& {\n",
         "    let pb_l = pb_run(", links, ", m.", f.name, ")[i].m;\n",
         "    assert(pb_l);\n",
         "    return pb_l;\n",
@@ -2674,7 +2674,7 @@ fn emitRepeatedMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path:
     format(w,
         "\n",
         "// Adds an empty message to ", fname, " and returns it.\n",
-        "fn ", accessorName(path, fname, add_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "& {\n",
+        "fn ", accessor_name(path, fname, add_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "& {\n",
         "    let pb_i: i64 = m.", f.name, ".len;\n",
         "    m.", f.name, " = pb_resize(", links, ", m.", f.name, ", pb_i + 1);\n",
         "    let pb_new .= ", pool, ".alloc_ref(", sub.goose_name, " { .. });\n",
@@ -2683,11 +2683,11 @@ fn emitRepeatedMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path:
         "}\n",
         "\n",
         "// Frees the messages of ", fname, " and everything they own.\n",
-        fe.fn_kw, " ", accessorName(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
+        fe.fn_kw, " ", accessor_name(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
         "    for pb_ref in pb_run(", links, ", m.", f.name, ") {\n",
         "        let pb_l = pb_ref.m;\n",
         "        guard pb_l else { continue; }\n",
-        "        ", subName(fe, sub, "clear"), "(pb_l);\n",
+        "        ", sub_name(sub, "clear"), "(pb_l);\n",
         "        ", pool, ".free(", pool, ".index_of(pb_l));\n",
         "    }\n",
         "    m.", f.name, " = pb_resize(", links, ", m.", f.name, ", 0);\n",
@@ -2695,24 +2695,24 @@ fn emitRepeatedMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path:
 }
 
 // The accessors of a repeated scalar.
-fn emitRepeatedAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&) {
-    let fname = fieldName(f.fd);
-    let pool = sc_pool(f.sc);
+fn emit_repeated_accessors(goose_name: const u8[:], path: const u8[:], f: Field&) {
+    let fname = field_name(f.fd);
+    let pool = scalar_pool(f.sc);
     format(w,
         "\n",
         "// The values of ", fname, ", in ", pool, ": valid until it is next changed or m is\n",
         "// cleared.\n",
-        "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> ", f.sc.goose, "[:] { return pb_run(", pool, ", m.", f.name, "); }\n",
+        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> ", f.sc.goose, "[:] { return pb_run(", pool, ", m.", f.name, "); }\n",
         "\n",
-        "fn ", accessorName(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> ", f.sc.goose, " { return pb_run(", pool, ", m.", f.name, ")[i]; }\n",
+        "fn ", accessor_name(path, fname, at_acc), "(m: ", goose_name, "&, i: i64) -> ", f.sc.goose, " { return pb_run(", pool, ", m.", f.name, ")[i]; }\n",
         "\n",
-        "// Adds a value to ", fname, ". This moves its values, so ", accessorName(path, fname, set_acc), " is better for many.\n",
-        "fn ", accessorName(path, fname, add_acc), "(m: ", goose_name, "&, v: ", f.sc.goose, ") { m.", f.name, " = pb_add(", pool, ", m.", f.name, ", v); }\n",
+        "// Adds a value to ", fname, ". This moves its values, so ", accessor_name(path, fname, set_acc), " is better for many.\n",
+        "fn ", accessor_name(path, fname, add_acc), "(m: ", goose_name, "&, v: ", f.sc.goose, ") { m.", f.name, " = pb_add(", pool, ", m.", f.name, ", v); }\n",
         "\n",
         "// Sets ", fname, " to a copy of v.\n",
-        "fn ", accessorName(path, fname, set_acc), "(m: ", goose_name, "&, v: const ", f.sc.goose, "[:]) { m.", f.name, " = pb_set_run(", pool, ", m.", f.name, ", v); }\n",
+        "fn ", accessor_name(path, fname, set_acc), "(m: ", goose_name, "&, v: const ", f.sc.goose, "[:]) { m.", f.name, " = pb_set_run(", pool, ", m.", f.name, ", v); }\n",
         "\n",
-        "fn ", accessorName(path, fname, clear_acc), "(m: ", goose_name, "&) { m.", f.name, " = pb_resize(", pool, ", m.", f.name, ", 0); }\n");
+        "fn ", accessor_name(path, fname, clear_acc), "(m: ", goose_name, "&) { m.", f.name, " = pb_resize(", pool, ", m.", f.name, ", 0); }\n");
 }
 
 // The getter, mutable_, has_ and clear_ of a sub-message. Its slot in
@@ -2720,17 +2720,17 @@ fn emitRepeatedAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const 
 // until the field is cleared.
 // clear_ is in the cycle of M_clear, and may be the first call into it,
 // so it is declared as the codecs are; likewise for a repeated message.
-fn emitSubMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, sub: MessageInfo&) {
-    let fname = fieldName(f.fd);
-    let pool = subName(fe, sub, "pool");
+fn emit_sub_message_accessors(fe: FileEmitter&, goose_name: const u8[:], path: const u8[:], f: Field&, sub: MessageInfo&) {
+    let fname = field_name(f.fd);
+    let pool = sub_name(sub, "pool");
     format(w,
         "\n",
         "// The sub-message ", fname, ", or null if it is not set. Valid until it or m is\n",
         "// cleared.\n",
-        "fn ", accessorName(path, fname, get_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "&? { return m.", f.name, ".m; }\n",
+        "fn ", accessor_name(path, fname, get_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "&? { return m.", f.name, ".m; }\n",
         "\n",
         "// The sub-message ", fname, ", set to an empty one first if it is not set.\n",
-        "fn ", accessorName(path, fname, mutable_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "& {\n",
+        "fn ", accessor_name(path, fname, mutable_acc), "(m: ", goose_name, "&) -> ", sub.goose_name, "& {\n",
         "    let pb_sub = m.", f.name, ".m;\n",
         "    if pb_sub { return pb_sub; }\n",
         "    let pb_new .= ", pool, ".alloc_ref(", sub.goose_name, " { .. });\n",
@@ -2738,13 +2738,13 @@ fn emitSubMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path: cons
         "    return pb_new;\n",
         "}\n",
         "\n",
-        "fn ", accessorName(path, fname, has_acc), "(m: ", goose_name, "&) -> bool { return m.", f.name, ".m != null; }\n",
+        "fn ", accessor_name(path, fname, has_acc), "(m: ", goose_name, "&) -> bool { return m.", f.name, ".m != null; }\n",
         "\n",
         "// Frees the sub-message ", fname, " and everything it owns.\n",
-        fe.fn_kw, " ", accessorName(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
+        fe.fn_kw, " ", accessor_name(path, fname, clear_acc), "(m: ", goose_name, "&) {\n",
         "    let pb_sub = m.", f.name, ".m;\n",
         "    guard pb_sub else { return; }\n",
-        "    ", subName(fe, sub, "clear"), "(pb_sub);\n",
+        "    ", sub_name(sub, "clear"), "(pb_sub);\n",
         "    ", pool, ".free(", pool, ".index_of(pb_sub));\n",
         "    m.", f.name, ".m .= null;\n",
         "}\n");
@@ -2752,9 +2752,9 @@ fn emitSubMessageAccessors(fe: FileEmitter&, goose_name: const u8[:], path: cons
 
 // Generates the .goose source for `file` into `w`. False on a name collision,
 // and `diag` holds the message.
-fn generateFile(file: FileDesc&) -> bool {
-    indexRequest();
-    let fe .= newFileEmitter(file);
+fn generate_file(file: FileDesc&) -> bool {
+    index_request();
+    let fe .= new_file_emitter(file);
     emit(fe);
     return diag.len == 0;
 }

@@ -86,11 +86,11 @@ fn add_enum_value(e: EnumDesc&, name: const u8[:], number: i32) {
 // Starts a request over, as a new run of the plugin would have it.
 fn reset_generator() {
     google_protobuf_compiler::CodeGeneratorRequest_clear(request);
-    forgetRequest();
+    forget_request();
     diag = "";
 }
 
-// A file of the request, which generateFile can see, as protoc would send it.
+// A file of the request, which generate_file can see, as protoc would send it.
 fn add_file(name: const u8[:], package: const u8[:], syntax: const u8[:]) -> FileDesc& {
     let file .= google_protobuf_compiler::CodeGeneratorRequest_add_proto_file(request);
     google_protobuf::FileDescriptorProto_set_name(file, name);
@@ -99,15 +99,15 @@ fn add_file(name: const u8[:], package: const u8[:], syntax: const u8[:]) -> Fil
     return file;
 }
 
-// What generateFile writes for `file`, which must not collide.
+// What generate_file writes for `file`, which must not collide.
 fn generated_text(file: FileDesc&) -> const u8[:] {
     let at = w.len;
-    if !generateFile(file) { abort(str("unexpected collision: ", diag)); }
+    if !generate_file(file) { abort(str("unexpected collision: ", diag)); }
     return w[at..];
 }
 
 // The message of the collision that `file` must have.
 fn collision_of(file: FileDesc&) -> const u8[:] {
-    if generateFile(file) { abort("expected a collision"); }
+    if generate_file(file) { abort("expected a collision"); }
     return diag;
 }

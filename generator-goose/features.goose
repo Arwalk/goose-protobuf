@@ -45,25 +45,25 @@ let PRESENCE_REQUIRED = 2;
 
 // The field accessors of the bindings, with what a Zig optional gives: a field
 // that is not set reads as "" or TYPE_NONE, not as its default.
-fn fieldName(fd: FieldDesc&) -> const u8[:] { return google_protobuf::FieldDescriptorProto_name(fd); }
+fn field_name(fd: FieldDesc&) -> const u8[:] { return google_protobuf::FieldDescriptorProto_name(fd); }
 
-fn fieldType(fd: FieldDesc&) -> i32 {
+fn field_type(fd: FieldDesc&) -> i32 {
     if !google_protobuf::FieldDescriptorProto_has_type(fd) { return TYPE_NONE; }
     return fd.type_;
 }
 
-fn fieldIsRepeated(fd: FieldDesc&) -> bool {
+fn field_is_repeated(fd: FieldDesc&) -> bool {
     return google_protobuf::FieldDescriptorProto_has_label(fd) && fd.label == LABEL_REPEATED;
 }
 
-fn fieldIsRequired(fd: FieldDesc&) -> bool {
+fn field_is_required(fd: FieldDesc&) -> bool {
     return google_protobuf::FieldDescriptorProto_has_label(fd) && fd.label == LABEL_REQUIRED;
 }
 
-fn fileName(file: FileDesc&) -> const u8[:] { return google_protobuf::FileDescriptorProto_name(file); }
-fn filePackage(file: FileDesc&) -> const u8[:] { return google_protobuf::FileDescriptorProto_package(file); }
-fn messageName(m: MessageDesc&) -> const u8[:] { return google_protobuf::DescriptorProto_name(m); }
-fn enumName(e: EnumDesc&) -> const u8[:] { return google_protobuf::EnumDescriptorProto_name(e); }
+fn file_name(file: FileDesc&) -> const u8[:] { return google_protobuf::FileDescriptorProto_name(file); }
+fn file_package(file: FileDesc&) -> const u8[:] { return google_protobuf::FileDescriptorProto_package(file); }
+fn message_name(m: MessageDesc&) -> const u8[:] { return google_protobuf::DescriptorProto_name(m); }
+fn enum_name(e: EnumDesc&) -> const u8[:] { return google_protobuf::EnumDescriptorProto_name(e); }
 
 // The features this generator acts on. json_format and the naming and limit
 // features say nothing about the binary wire format.
@@ -77,7 +77,7 @@ struct Features {
 
 // What an element whose parent has these features has, with its own
 // overrides from its options, if any.
-fn featuresChild(parent: Features, set: FeatureSet?) -> Features {
+fn features_child(parent: Features, set: FeatureSet?) -> Features {
     var f = parent;
     guard set else { return f; }
     if google_protobuf::FeatureSet_has_field_presence(set) {
@@ -117,54 +117,54 @@ let proto3_defaults = Features { presence: PRESENCE_IMPLICIT, closed_enum: false
 let edition_2023_defaults = Features { presence: PRESENCE_EXPLICIT, closed_enum: false, packed_repeated: true, verify_utf8: true, delimited: false };
 
 // True for a file of syntax "editions", whose features are its own.
-fn isEditions(file: FileDesc&) -> bool {
+fn is_editions(file: FileDesc&) -> bool {
     return google_protobuf::FileDescriptorProto_syntax(file) == "editions";
 }
 
-fn defaultsOf(file: FileDesc&) -> Features {
-    if isEditions(file) { return edition_2023_defaults; }
+fn defaults_of(file: FileDesc&) -> Features {
+    if is_editions(file) { return edition_2023_defaults; }
     if google_protobuf::FileDescriptorProto_has_syntax(file) && google_protobuf::FileDescriptorProto_syntax(file) == "proto3" { return proto3_defaults; }
     return proto2_defaults;
 }
 
 // The features of `file`, which its top-level elements inherit.
-fn featuresOfFile(file: FileDesc&) -> Features {
+fn features_of_file(file: FileDesc&) -> Features {
     let opts = google_protobuf::FileDescriptorProto_options(file);
-    guard opts else { return defaultsOf(file); }
-    return featuresChild(defaultsOf(file), google_protobuf::FileOptions_features(opts));
+    guard opts else { return defaults_of(file); }
+    return features_child(defaults_of(file), google_protobuf::FileOptions_features(opts));
 }
 
 // The features of a message whose parent, a file or a message, has `parent`.
-fn featuresOfMessage(parent: Features, m: MessageDesc&) -> Features {
+fn features_of_message(parent: Features, m: MessageDesc&) -> Features {
     let opts = google_protobuf::DescriptorProto_options(m);
     guard opts else { return parent; }
-    return featuresChild(parent, google_protobuf::MessageOptions_features(opts));
+    return features_child(parent, google_protobuf::MessageOptions_features(opts));
 }
 
 // The features of an enum whose parent, a file or a message, has `parent`.
-fn featuresOfEnum(parent: Features, e: EnumDesc&) -> Features {
+fn features_of_enum(parent: Features, e: EnumDesc&) -> Features {
     let opts = google_protobuf::EnumDescriptorProto_options(e);
     guard opts else { return parent; }
-    return featuresChild(parent, google_protobuf::EnumOptions_features(opts));
+    return features_child(parent, google_protobuf::EnumOptions_features(opts));
 }
 
 // The features of a oneof of a message that has `parent`.
-fn featuresOfOneof(parent: Features, o: OneofDesc&) -> Features {
+fn features_of_oneof(parent: Features, o: OneofDesc&) -> Features {
     let opts = google_protobuf::OneofDescriptorProto_options(o);
     guard opts else { return parent; }
-    return featuresChild(parent, google_protobuf::OneofOptions_features(opts));
+    return features_child(parent, google_protobuf::OneofOptions_features(opts));
 }
 
 // The features of field `fd` of `file`, whose parent, its message or its oneof,
 // has `parent`. In proto2 and proto3, the label, the type and `packed` say what
 // features say elsewhere: descriptor.cc's InferLegacyProtoFeatures.
-fn featuresOfField(file: FileDesc&, parent: Features, fd: FieldDesc&) -> Features {
+fn features_of_field(file: FileDesc&, parent: Features, fd: FieldDesc&) -> Features {
     var f = parent;
     let opts = google_protobuf::FieldDescriptorProto_options(fd);
-    if opts { f = featuresChild(f, google_protobuf::FieldOptions_features(opts)); }
-    if isEditions(file) { return f; }
-    if fieldIsRequired(fd) { f.presence = PRESENCE_REQUIRED; }
-    if fieldType(fd) == TYPE_GROUP { f.delimited = true; }
+    if opts { f = features_child(f, google_protobuf::FieldOptions_features(opts)); }
+    if is_editions(file) { return f; }
+    if field_is_required(fd) { f.presence = PRESENCE_REQUIRED; }
+    if field_type(fd) == TYPE_GROUP { f.delimited = true; }
     if opts {
         if google_protobuf::FieldOptions_has_packed(opts) { f.packed_repeated = opts.packed; }
     }

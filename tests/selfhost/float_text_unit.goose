@@ -4,7 +4,7 @@ import pb_wire;
 import float_text;
 
 fn check_literal(is32: bool, text: const u8[:], want: const u8[:]) {
-    let got = floatLiteral(is32, text);
+    let got = float_literal(is32, text);
     if got != want { abort(str("floatLiteral(", is32, ", \"", text, "\") is \"", got, "\", not \"", want, "\"")); }
 }
 

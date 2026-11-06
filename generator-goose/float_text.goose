@@ -7,11 +7,11 @@ import pb_wire;
 import support;
 
 // Big natural numbers, little-endian u32 limbs, with no zero limb on top.
-fn bigTrim(a: u32[>..<]&) {
+fn big_trim(a: u32[>..<]&) {
     while a.len > 0 && a[a.len - 1] == 0 { a.pop(); }
 }
 
-fn bigMulAdd(a: u32[>..<]&, m: u32, add: u32) {
+fn big_mul_add(a: u32[>..<]&, m: u32, add: u32) {
     var carry: u64 = add;
     for i in a.len {
         let v: u64 = (a[i] as u64) * m + carry;
@@ -21,7 +21,7 @@ fn bigMulAdd(a: u32[>..<]&, m: u32, add: u32) {
     if carry != 0 { a.push(carry as! u32); }
 }
 
-fn bigBits(a: u32[>..<]&) -> i64 {
+fn big_bits(a: u32[>..<]&) -> i64 {
     if a.len == 0 { return 0; }
     var n = (a.len - 1) * 32;
     var top = a[a.len - 1];
@@ -29,7 +29,7 @@ fn bigBits(a: u32[>..<]&) -> i64 {
     return n;
 }
 
-fn bigShl(a: u32[>..<]&, n: i64) {
+fn big_shl(a: u32[>..<]&, n: i64) {
     if a.len == 0 { return; }
     let limbs = n / 32;
     let bits = n % 32;
@@ -51,7 +51,7 @@ fn bigShl(a: u32[>..<]&, n: i64) {
     }
 }
 
-fn bigCmp(a: u32[>..<]&, b: u32[>..<]&) -> i64 {
+fn big_cmp(a: u32[>..<]&, b: u32[>..<]&) -> i64 {
     if a.len != b.len { return if a.len < b.len { -1 } else { 1 }; }
     var i = a.len - 1;
     while i >= 0 {
@@ -62,7 +62,7 @@ fn bigCmp(a: u32[>..<]&, b: u32[>..<]&) -> i64 {
 }
 
 // a -= b, where a >= b.
-fn bigSub(a: u32[>..<]&, b: u32[>..<]&) {
+fn big_sub(a: u32[>..<]&, b: u32[>..<]&) {
     var borrow: u64 = 0;
     for i in a.len {
         let s: u64 = (if i < b.len { b[i] as u64 } else { 0 }) + borrow;
@@ -75,29 +75,29 @@ fn bigSub(a: u32[>..<]&, b: u32[>..<]&) {
             borrow = 1;
         }
     }
-    bigTrim(a);
+    big_trim(a);
 }
 
 // The bits of the float nearest to digits * 10^exp10, ties to even, with
 // `mant` mantissa bits and exponent bias `bias`. digits holds ASCII digits.
-fn nearestBits(digits: const u8[:], exp10: i64, mant: i64, bias: i64) -> u64 {
+fn nearest_bits(digits: const u8[:], exp10: i64, mant: i64, bias: i64) -> u64 {
     var inf_bits: u64 = (bias * 2 + 1) as! u64;
     inf_bits = inf_bits << mant;
     var n: u32[>..<] = [];
     var d: u32[>..<] = [];
     d.push(1);
-    for c in digits { bigMulAdd(n, 10, c - '0'); }
-    bigTrim(n);
+    for c in digits { big_mul_add(n, 10, c - '0'); }
+    big_trim(n);
     if n.len == 0 { return 0; }
-    if exp10 > 0 { for i in exp10 { bigMulAdd(n, 10, 0); } }
-    if exp10 < 0 { for i in -exp10 { bigMulAdd(d, 10, 0); } }
+    if exp10 > 0 { for i in exp10 { big_mul_add(n, 10, 0); } }
+    if exp10 < 0 { for i in -exp10 { big_mul_add(d, 10, 0); } }
 
     // Scale so that 1 <= n / d < 2: the value is that times 2^k.
-    var k = bigBits(n) - bigBits(d);
-    if k > 0 { bigShl(d, k); }
-    if k < 0 { bigShl(n, -k); }
-    if bigCmp(n, d) < 0 {
-        bigShl(n, 1);
+    var k = big_bits(n) - big_bits(d);
+    if k > 0 { big_shl(d, k); }
+    if k < 0 { big_shl(n, -k); }
+    if big_cmp(n, d) < 0 {
+        big_shl(n, 1);
         k -= 1;
     }
     let emin = 1 - bias;
@@ -108,13 +108,13 @@ fn nearestBits(digits: const u8[:], exp10: i64, mant: i64, bias: i64) -> u64 {
     var q: u64 = 0;
     for i in p {
         q = q << 1;
-        if bigCmp(n, d) >= 0 {
-            bigSub(n, d);
+        if big_cmp(n, d) >= 0 {
+            big_sub(n, d);
             q |= 1;
         }
-        bigShl(n, 1);
+        big_shl(n, 1);
     }
-    let c = bigCmp(n, d);
+    let c = big_cmp(n, d);
     if c > 0 || (c == 0 && (q & 1) != 0) { q += 1; }
     if k < emin { return q; }
     let biased: u64 = (k + bias) as! u64;
@@ -125,7 +125,7 @@ fn nearestBits(digits: const u8[:], exp10: i64, mant: i64, bias: i64) -> u64 {
 
 // Reads [+-]digits[.digits][e[+-]digits]. The digits go to `digits`, without the
 // point, and exp10 is what scales them. False for any other text.
-fn scanDecimal(text: const u8[:], digits: u8[>..]&) -> bool, bool, i64 {
+fn scan_decimal(text: const u8[:], digits: u8[>..]&) -> bool, bool, i64 {
     var i = 0;
     var neg = false;
     if i < text.len && (text[i] == '-' || text[i] == '+') {
@@ -219,7 +219,7 @@ fn scientific(t: const u8[:]) -> const u8[:] {
     return keep(out);
 }
 
-fn infinityLiteral(is32: bool, neg: bool) -> const u8[:] {
+fn infinity_literal(is32: bool, neg: bool) -> const u8[:] {
     if is32 { return if neg { "pb_f32_from_bits(0xff800000)" } else { "pb_f32_from_bits(0x7f800000)" }; }
     return if neg { "pb_f64_from_bits(0xfff0000000000000)" } else { "pb_f64_from_bits(0x7ff0000000000000)" };
 }
@@ -227,12 +227,12 @@ fn infinityLiteral(is32: bool, neg: bool) -> const u8[:] {
 // The Goose expression of float default `text`, as protoc writes it, or "" if it
 // is +0. Infinities and nan have no literal, so they go through the bits. Only
 // decimal text is read, which is all protoc writes; other text stays as it is.
-fn floatLiteral(is32: bool, text: const u8[:]) -> const u8[:] {
-    if text == "inf" { return infinityLiteral(is32, false); }
-    if text == "-inf" { return infinityLiteral(is32, true); }
+fn float_literal(is32: bool, text: const u8[:]) -> const u8[:] {
+    if text == "inf" { return infinity_literal(is32, false); }
+    if text == "-inf" { return infinity_literal(is32, true); }
     if text == "nan" { return if is32 { "pb_f32_from_bits(0x7fc00000)" } else { "pb_f64_from_bits(0x7ff8000000000000)" }; }
     var scanned: u8[>..] = [];
-    let ok, neg, exp10 = scanDecimal(text, scanned);
+    let ok, neg, exp10 = scan_decimal(text, scanned);
     if !ok { return text; }
     var first = 0;
     while first < scanned.len && scanned[first] == '0' { first += 1; }
@@ -244,12 +244,12 @@ fn floatLiteral(is32: bool, text: const u8[:]) -> const u8[:] {
     if digits.len == 0 {
         bits = 0;
     } else if is32 {
-        bits = if magnitude > 60 { 0x7f800000 } else if magnitude < -80 { 0 } else { nearestBits(digits, exp10, 23, 127) };
+        bits = if magnitude > 60 { 0x7f800000 } else if magnitude < -80 { 0 } else { nearest_bits(digits, exp10, 23, 127) };
     } else {
-        bits = if magnitude > 400 { 0x7ff0000000000000 } else if magnitude < -400 { 0 } else { nearestBits(digits, exp10, 52, 1023) };
+        bits = if magnitude > 400 { 0x7ff0000000000000 } else if magnitude < -400 { 0 } else { nearest_bits(digits, exp10, 52, 1023) };
     }
     if bits == 0 { return if neg { "-0.0" } else { "" }; }
-    if bits == (if is32 { 0x7f800000 } else { 0x7ff0000000000000 }) { return infinityLiteral(is32, neg); }
+    if bits == (if is32 { 0x7f800000 } else { 0x7ff0000000000000 }) { return infinity_literal(is32, neg); }
     if is32 {
         let v = pb_f32_from_bits(bits as! u32);
         return scientific(str(if neg { -v } else { v }));
