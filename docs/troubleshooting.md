@@ -94,6 +94,7 @@ error: unknown identifier: pb_plugin_and_runtime_versions_differ_abi_1
 ```
 
 The generated code came from a plugin of another version than the runtime you import.
+`protoc-gen-goose --version` shows which `abi` number your plugin writes.
 Install the plugin of that version, generate again, and do not edit generated files.
 
 ### Unknown function, for a field's getter

@@ -27,7 +27,7 @@ else is internal, and may change in any release.**
 | Record fields | Those of scalar and enum fields, and a oneof's field with its member names, including `pb_none` |
 | Runtime | `PB_OK`, the `PB_ERR_*` codes with their values, and `PB_MAX_DEPTH` |
 | Packages | The package name `pb_wire`, and the paths `pb_wire.wkt.*` with the names in them |
-| Plugin | The binary's name, and that it takes no parameter: an unknown one is an error |
+| Plugin | The binary's name, `--version` and `--help`, and that it takes no parameter: an unknown one is an error |
 | Scripts | `install_plugin.sh`, `install_toolchain.sh` and `vendor_runtime.sh`: their arguments and what they install |
 | Wire format | What protobuf itself promises: any version reads what another wrote |
 

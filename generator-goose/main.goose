@@ -6,6 +6,57 @@ import pb_wire;
 import support;
 import generate;
 
+// The version of this plugin, its runtime and the well-known types (decision 0012).
+// RELEASING.md says when it changes.
+const plugin_version = "0.1.0-dev";
+
+const usage = """
+    Usage: protoc --goose_out=DIR file.proto
+
+    protoc-gen-goose is a protoc plugin, which protoc runs with a request on stdin.
+    It generates Goose code for the protobuf binary wire format. protoc finds it on
+    your PATH, or with --plugin=protoc-gen-goose=PATH. It takes no parameter.
+
+    Options:
+      -h, --help   print this and exit
+      --version    print the version and exit
+
+    """;
+
+// The C library's, as Goose's os module has none.
+extern "isatty" fn c_isatty(fd: i32) -> i32;
+
+fn print_version() {
+    write_stdout(str("protoc-gen-goose ", plugin_version, " (runtime abi ", runtime_abi, ")\n"));
+}
+
+// Answers what a person typed, and exits. protoc passes no argument, so it never
+// gets here unless its stdin is a terminal, where reading would wait for ever.
+fn handle_command_line() {
+    let argv = args();
+    if argv.len > 2 {
+        write_stderr(str("protoc-gen-goose: unknown argument: ", argv[2], "\n", usage));
+        exit(2);
+    }
+    if argv.len == 2 {
+        let a = argv[1];
+        if a == "--version" {
+            print_version();
+        } else if a == "--help" || a == "-h" {
+            write_stdout(usage);
+        } else {
+            write_stderr(str("protoc-gen-goose: unknown argument: ", a, "\n", usage));
+            exit(2);
+        }
+        flush_stdout();
+        exit(0);
+    }
+    if c_isatty(0) != 0 {
+        write_stderr(usage);
+        exit(2);
+    }
+}
+
 fn decode_error_text(err: i32) -> const u8[:] {
     if err == PB_ERR_TRUNCATED { return "truncated input"; }
     if err == PB_ERR_MALFORMED { return "malformed input"; }
@@ -16,6 +67,7 @@ fn decode_error_text(err: i32) -> const u8[:] {
 }
 
 fn main() {
+    handle_command_line();
     var input: u8[>..] = [];
     read_stdin(input);
     var out: u8[>..] = [];

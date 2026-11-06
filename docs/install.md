@@ -62,7 +62,7 @@ needing neither the clone nor Goose to run. If the script tells you the director
 not on your `PATH`, add it, as `protoc` finds the plugin there. To put it elsewhere,
 give a prefix: `install_plugin.sh /usr/local` writes `/usr/local/bin/protoc-gen-goose`.
 
-Check that `protoc` finds it:
+`protoc-gen-goose --version` says which version you have. Check that `protoc` finds it:
 
 ```sh run
 printf 'syntax = "proto3";\nmessage M {}\n' > m.proto
