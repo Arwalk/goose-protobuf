@@ -1,10 +1,8 @@
 // Goose emitter: turns one FileDescriptorProto into one .goose file.
 //
-// Port of generator/src/emit.zig, function for function, with its names in snake
-// case, which is what makes a diff between the two easy to reason about. A field
-// `f` of a message comes in as a reference, an optional as a null, and an optional
-// string as an empty one; each of those is said where it is declared. The name
-// rules are final, docs/decisions/0006-naming.md; user code depends on them:
+// A field `f` of a message comes in as a reference, an optional as a null, and an
+// optional string as an empty one; each of those is said where it is declared. The
+// name rules are final, docs/decisions/0006-naming.md; user code depends on them:
 //   - package `a.b`        -> `namespace a_b;` (no package: global namespace)
 //   - message `Outer.Inner` -> struct `Outer_Inner`
 //   - enum value `RED` of enum `Outer.Color` -> `let Outer_Color_RED: i32`
@@ -51,7 +49,7 @@ var claimed_files: u32 = 0;
 var required_answers: u32 = 0;
 var maps_answers: u32 = 0;
 
-// The text of the files generated so far: `w` of the Zig emitter. The response
+// The text of the files generated so far. The response
 // keeps a copy of each, so the plugin holds its output twice. It cannot shrink, as
 // a global may hold a reference into a grow-only array.
 var w: u8[>..] = [];
@@ -299,7 +297,7 @@ struct EnumInfo {
 
 var enum_infos: EnumInfo[>..] = [];
 
-// The size class of a scalar: `size: union(enum)` of the Zig emitter.
+// The size class of a scalar.
 let SZ_VARINT = 0;
 let SZ_FIXED = 1;
 let SZ_BYTES = 2;
@@ -812,8 +810,7 @@ fn has_presence(ff: Features, fd: FieldDesc&) -> bool {
 // The message for CodeGeneratorResponse.error of a name collision.
 var diag: const u8[:] = "";
 
-// What the Zig emitter carries in its hash maps, each here a number in support's
-// global table.
+// What is known of one file, the maps each a number in support's global table.
 struct FileEmitter {
     file: FileDesc&,
     // Goose name -> what claimed it (text), and whether a generated function or
@@ -956,9 +953,9 @@ fn full_name(scope: const u8[:], name: const u8[:]) -> const u8[:] {
 }
 
 // Fails generating the file: the first error goes in CodeGeneratorResponse.error,
-// and generate_file reports it when it is done. The Zig emitter stops here, but a
-// long-distance return cannot leave the recursion of emit_message, and what runs
-// after a collision can only add names no one will read.
+// and generate_file reports it when it is done. A long-distance return cannot leave
+// the recursion of emit_message, and what runs after a collision can only add names
+// no one will read.
 fn collide(message: const u8[:]) {
     if diag.len == 0 { diag = message; }
 }

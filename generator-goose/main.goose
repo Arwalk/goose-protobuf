@@ -1,6 +1,5 @@
 // protoc-gen-goose: protoc plugin that emits Goose code for the protobuf
-// binary wire format. Port of generator/src/main.zig: the Zig generator is the
-// specification, and scripts/selfhost_diff.sh compares the two byte for byte.
+// binary wire format. scripts/build_plugin.sh builds it.
 
 import os;
 import pb_wire;

@@ -18,10 +18,6 @@ jobs:
       # The protobuf submodule is only needed by the conformance runner.
       - uses: actions/checkout@v4
 
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.17.1
-
       - name: Cache pinned protoc and Goose
         uses: actions/cache@v4
         with:
@@ -35,14 +31,12 @@ jobs:
 
       - name: Toolchain versions
         run: |
-          zig version
           protoc --version
           goose version
           goose toolchain
 
-      - name: Generator build and unit tests
-        working-directory: generator
-        run: zig build && zig build test
+      - name: Generator build
+        run: scripts/build_plugin.sh
 
       - name: Plugin smoke test
         run: tests/smoke_plugin.sh
@@ -106,10 +100,6 @@ jobs:
           scripts/install_toolchain.sh
           echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
 
-      - uses: mlugg/setup-zig@v2
-        with:
-          version: 0.17.1
-
       # Messages the testee will use, generated and goose-checked (no golden).
       - name: Generate conformance messages
         run: |
@@ -124,9 +114,9 @@ jobs:
       - name: Check well-known types
         run: scripts/wkt.sh
 
-      # generator-goose/ writes what generator/ writes, byte for byte.
-      - name: Self-hosted generator
-        run: scripts/selfhost_diff.sh
+      # The plugin is built on its own output: it writes its bindings unchanged.
+      - name: Plugin bindings
+        run: scripts/regen_bindings.sh
 
       # The feature defaults that the generator tests against match protoc's.
       - name: Check edition defaults

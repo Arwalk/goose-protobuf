@@ -1,5 +1,5 @@
 // The plugin, from a serialized CodeGeneratorRequest to a serialized
-// CodeGeneratorResponse. Port of generator/src/main.zig.
+// CodeGeneratorResponse.
 //
 // protoc validates the descriptors it sends, and a plugin relies on that: one
 // that protoc would refuse, such as a map entry with no value or a oneof_index out

@@ -1,6 +1,6 @@
 # Agent Instructions: goose-protobuf
 
-`protoc-gen-goose` is a Zig protoc plugin. It generates Goose code for the
+`protoc-gen-goose` is a protoc plugin written in Goose. It generates Goose code for the
 protobuf **binary wire format only**, and the conformance suite is the
 measure of correctness. Read README.md for scope and layout, and TOOLCHAIN.md
 for the pinned versions and their caveats.
@@ -8,7 +8,6 @@ for the pinned versions and their caveats.
 ## Build & test
 
 ```bash
-(cd generator && zig build && zig build test)   # generator (Zig 0.17.1)
 goose check runtime/pb_wire.goose               # Goose typecheck
 scripts/build_runner.sh                         # conformance_test_runner
 scripts/run_conformance.sh [testee] [flags]     # conformance suite
@@ -19,9 +18,8 @@ scripts/goose_tests.sh [paths]                  # Goose unit tests (tests/**/*_t
 scripts/roundtrip.sh [names]                    # round-trip tests (tests/roundtrip/<name>/)
 scripts/interop.sh [names]                      # the same cases through Goose, protoc and Python
 scripts/fuzz.sh [seconds]                       # libFuzzer on generated decoders (needs clang)
-scripts/build_plugin.sh                         # the generator in Goose (generator-goose/)
+scripts/build_plugin.sh                         # the generator, generator-goose/, to build/protoc-gen-goose
 scripts/regen_bindings.sh [--update]            # it writes its own bindings unchanged
-scripts/selfhost_diff.sh [names]                # it writes what the Zig generator writes
 scripts/selfhost_bindings.sh                    # plugin bindings on real CodeGeneratorRequests
 scripts/selfhost_tests.sh                       # unit tests of generator-goose/ (tests/selfhost/*_unit.goose)
 scripts/check_docs.py                           # run docs/usage.md: its snippets, commands and output
@@ -52,7 +50,7 @@ reach above the test's directory: `import pb_wire from "../../runtime";`.
 
 Generator unit tests: a `tests/selfhost/*_unit.goose` file is such a program too,
 built by `scripts/selfhost_tests.sh` next to the files of `generator-goose/`, its
-generated bindings and `unit_support.goose`, so it calls the generator's functions
+bindings and `unit_support.goose`, so it calls the generator's functions
 directly. `*_unit.goose`, not `*_test.goose`, as they cannot build where they are.
 
 Round-trip tests: `tests/roundtrip/<name>/` holds `<case>.txtpb` files,
@@ -77,9 +75,9 @@ hex diff.
   explains what changed and why.
 - **Bug fixes are test-first**: write the failing test, run it and watch it
   fail, then fix.
-- **The two generators change together.** `generator/` is the specification, and
-  `generator-goose/` follows it byte for byte: a change to what the generator emits
-  goes into both, and `scripts/selfhost_diff.sh` must pass.
+- **The plugin is built on its own output.** After a change to what the generator
+  emits, `scripts/regen_bindings.sh --update` until it reports no change, and commit
+  `generator-goose/google/` with the goldens (decision 0011).
 - **Generated code must pass `goose check`.** Goose has no formatter, so
   generator output must be byte-deterministic (same input, same bytes), and
   golden tests check that.

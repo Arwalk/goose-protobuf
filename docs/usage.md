@@ -11,7 +11,7 @@ read here works. CI does this on every push.
 ## What you need
 
 - Goose v2026.3 and protoc 36.2. Other versions are untested.
-- Zig 0.17.1, to build the plugin.
+- A C compiler, which `goose build` uses, as for any Goose program.
 - A checkout of this repository. The examples expect it next to your project,
   as `../goose-protobuf`.
 
@@ -21,7 +21,7 @@ read here works. CI does this on every push.
 Build the plugin from your project's directory:
 
 ```sh run
-(cd ../goose-protobuf/generator && zig build)
+../goose-protobuf/scripts/build_plugin.sh
 ```
 
 ## Write a proto
@@ -62,7 +62,7 @@ message Person {
 ## Generate the code
 
 ```sh run
-protoc --plugin=protoc-gen-goose=../goose-protobuf/generator/zig-out/bin/protoc-gen-goose \
+protoc --plugin=protoc-gen-goose=../goose-protobuf/build/protoc-gen-goose \
        --goose_out=. -I . people.proto
 ```
 

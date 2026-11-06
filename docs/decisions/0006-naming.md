@@ -109,12 +109,12 @@ that escaping cannot resolve is a collision error.
 
 gpb-41j.3 implemented the package, message, enum and keyword rules, and
 collision detection for types and constants. gpb-41j.9 added the rest of
-the reserved list, in `generator/src/emit.zig`:
+the reserved list, now in `generator-goose/emit.goose`:
 
 - Every generated function and global is claimed before any type or
   constant: per message `_decode`, `_encode`, `_size_of`, `_clear`,
   `_copy`, and the `_Ref`, `_pool` and `_links` of decision 0001; per
-  field, the accessors in `fieldAccessors` (the one table of accessor
+  field, the accessors in `field_accessors` (the one table of accessor
   names, which the field emitters must use), plus `has_`/`clear_` for
   fields with explicit presence.
 - Generated names are built from the unescaped path and then escaped

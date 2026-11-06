@@ -16,7 +16,7 @@ well-known types are generated and committed in `wkt/`; `tests/roundtrip/wkt`
 covers them. Every
 required binary conformance test passes for proto3, proto2 and editions up to
 2023, whose fields go through the same code, driven by their resolved features.
-The generator also exists in Goose, and writes the same bytes as the Zig one.
+The generator is itself written in Goose.
 The backlog lives in beads
 (`bd ready`).
 
@@ -28,12 +28,10 @@ The backlog lives in beads
 
 ## Design
 
-- The generator is written in Zig (`generator/`). It reads
-  `descriptor.proto` / `plugin.proto` through
-  [zig-protobuf](https://github.com/Arwalk/zig-protobuf). `generator-goose/` is
-  a port to Goose over its own generated bindings, built from the Zig plugin's
-  output, and `scripts/selfhost_diff.sh` checks that the two agree. The Zig one
-  remains the one to build and the specification.
+- The generator is written in Goose (`generator-goose/`). It reads
+  `descriptor.proto` / `plugin.proto` through bindings it generates itself, which
+  are committed, so a checkout builds with Goose alone
+  ([decision 0011](docs/decisions/0011-goose-only-generator.md)).
 - Generated code is self-contained per message: `encode`, `decode` and
   `size_of`. The only shared code is `runtime/pb_wire.goose`, which holds
   the wire primitives.
@@ -43,8 +41,7 @@ The backlog lives in beads
 ## Layout
 
 ```
-generator/      Zig protoc plugin (protoc-gen-goose)
-generator-goose/ the same plugin in Goose
+generator-goose/ protoc plugin (protoc-gen-goose), with its own bindings
 pb_wire.goose   entry of the pb_wire package (this repository)
 runtime/        pb_wire.goose: shared wire-format primitives
 wkt/            well-known types, generated and committed (scripts/wkt.sh)

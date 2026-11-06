@@ -2,8 +2,6 @@
 // to, per element. protoc passes a file's features unresolved, as it wrote them,
 // so the plugin resolves them as protobuf's descriptor.cc does: the defaults of
 // the file's edition, overridden by the file, then each enclosing element.
-//
-// Port of generator/src/features.zig.
 
 import pb_wire;
 import google.protobuf.descriptor;
@@ -43,8 +41,8 @@ let PRESENCE_EXPLICIT = 0;
 let PRESENCE_IMPLICIT = 1;
 let PRESENCE_REQUIRED = 2;
 
-// The field accessors of the bindings, with what a Zig optional gives: a field
-// that is not set reads as "" or TYPE_NONE, not as its default.
+// The field accessors of the bindings, for what is not set: a field reads as "" or
+// TYPE_NONE, not as its default.
 fn field_name(fd: FieldDesc&) -> const u8[:] { return google_protobuf::FieldDescriptorProto_name(fd); }
 
 fn field_type(fd: FieldDesc&) -> i32 {
@@ -110,7 +108,7 @@ fn features_child(parent: Features, set: FeatureSet?) -> Features {
 }
 
 // proto2: FeatureSetDefaults' EDITION_LEGACY. scripts/edition_defaults.sh checks
-// generator/src/edition_defaults.binpb against protoc, and
+// edition_defaults.binpb against protoc, and
 // tests/selfhost/feature_defaults_unit.goose these values against that file.
 let proto2_defaults = Features { presence: PRESENCE_EXPLICIT, closed_enum: true, packed_repeated: false, verify_utf8: false, delimited: false };
 let proto3_defaults = Features { presence: PRESENCE_IMPLICIT, closed_enum: false, packed_repeated: true, verify_utf8: true, delimited: false };

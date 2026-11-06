@@ -1,6 +1,7 @@
-// A proto float default as Goose source: the text protoc wrote, read exactly as
-// Zig's parseFloat does, and written as its {e} does. std's parse_flt is not
-// correctly rounded, so this reads the digits through exact big-number division.
+// A proto float default as Goose source: the text protoc wrote, read exactly, and
+// written in the shortest scientific form that reads back the same. std's parse_flt
+// is not correctly rounded, so this reads the digits through exact big-number
+// division.
 
 import std;
 import pb_wire;
@@ -170,7 +171,7 @@ fn scan_decimal(text: const u8[:], digits: u8[>..]&) -> bool, bool, i64 {
     return true, neg, exp10;
 }
 
-// The shortest text of a float, as print writes it, as Zig's {e} writes it:
+// The shortest text of a float, as print writes it, in scientific form:
 // `1.5e0`, `-2.5e300`, `1e10`.
 fn scientific(t: const u8[:]) -> const u8[:] {
     if t == "inf" || t == "-inf" { return keep(t); }

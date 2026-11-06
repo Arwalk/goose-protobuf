@@ -1,7 +1,6 @@
-// What the Zig generator gets from its standard library: an arena for text, and
-// string-keyed hash maps. Goose has no heap and a Zig map as a field would make
-// its struct resizable, so all maps share one global table and a map is a number.
-// Nothing is ever freed: a plugin runs once and exits.
+// An arena for text, and string-keyed hash maps. Goose has no heap and a map as a
+// field would make its struct resizable, so all maps share one global table and a
+// map is a number. Nothing is ever freed: a plugin runs once and exits.
 
 import std;
 
@@ -16,7 +15,7 @@ fn keep(s: const u8[:]) -> const u8[:] {
     return arena[at..];
 }
 
-// `v` as eight lowercase hexadecimal digits: Zig's {x:0>8}.
+// `v` as eight lowercase hexadecimal digits.
 fn hex8(v: u32) -> const u8[:] {
     var t: u8[>..] = [];
     format_uint(t, v, 16, 8, '0');
