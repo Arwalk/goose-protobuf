@@ -8,7 +8,7 @@ message. This takes about five minutes, most of it installing tools.
 You need Goose and `protoc`, at the versions in [the install guide](install.md), and
 a C compiler, which `goose build` uses.
 
-Clone this repository, then make an empty directory for your project next to it,
+Clone [this repository](https://github.com/Arwalk/goose-protobuf), then make an empty directory for your project next to it,
 as `../goose-protobuf`. If you do not have the tools, run
 `scripts/install_toolchain.sh` in the clone, and put its `.tools/bin` on your `PATH`.
 
@@ -90,8 +90,9 @@ that changes.
 **A checkout**, as above, is the quickest way to start:
 `import pb_wire from "../goose-protobuf";`.
 
-**A git source** needs no checkout at build time, as Goose fetches it. The
-[install guide](install.md#get-the-runtime) has the line to write.
+**A git source** has Goose fetch the runtime for you. You still need a checkout at the
+same version to get the plugin. The [install guide](install.md#a-git-source) has the
+lines to write.
 
 **A copy** next to your program needs no network and no other directory. Copy the
 package in, and name it with no source:

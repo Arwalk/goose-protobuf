@@ -85,7 +85,7 @@ import people;
 There are two other ways to provide it:
 
 - A git source, with the line to write in the
-  [install guide](install.md#get-the-runtime).
+  [install guide](install.md#a-git-source).
 - A copy next to your root file: run `scripts/vendor_runtime.sh <dir>` from this
   repository and leave out the `from` line, writing `import pb_wire;`.
 

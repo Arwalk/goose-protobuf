@@ -6,13 +6,6 @@ which number comes next, see the bump table in
 
 One tag, `vX.Y.Z`, names the plugin, the runtime and the well-known types.
 
-## Once, before the first release
-
-The docs write the repository as a placeholder, `owner/repo`, in one place: the "A
-git source" row of "Get the runtime" in [docs/install.md](docs/install.md). The other
-guides link to that row. Replace it with `Arwalk/goose-protobuf`. Decision records
-keep the placeholder, as they are history.
-
 ## Prepare
 
 Start from `main`, with `PREV` set to the last tag (skip the steps that compare with
@@ -45,7 +38,10 @@ it on the first release).
    scripts/build_plugin.sh && build/protoc-gen-goose --version
    ```
 
-5. **Commit and push**, as `chore: Release vX.Y.Z`, and wait for CI to go green on that
+5. **Name it in the guide.** In [docs/install.md](docs/install.md), the "A git source"
+   row and section name the latest release. Set them to `vX.Y.Z`.
+
+6. **Commit and push**, as `chore: Release vX.Y.Z`, and wait for CI to go green on that
    commit, in both the build and the conformance jobs.
 
 ## Tag

@@ -25,7 +25,7 @@ On Linux, Goose needs glibc 2.35 or later and `libc6-dev`.
 
 ## Install Goose and protoc
 
-If you do not have them, clone this repository and let it fetch both, checked against
+If you do not have them, clone [this repository](https://github.com/Arwalk/goose-protobuf) and let it fetch both, checked against
 their recorded checksums. Your project goes next to the clone, as `../goose-protobuf`.
 From your project's directory:
 
@@ -87,11 +87,35 @@ build otherwise.
 | Source | Root file line | Use it when |
 |---|---|---|
 | A checkout | `import pb_wire from "../goose-protobuf";` | You are starting out |
-| A git source | `import pb_wire from "owner/repo@vX.Y.Z";` | You want Goose to fetch it. Pin a commit if the build must be reproducible, since a tag can move |
+| A git source | `import pb_wire from "Arwalk/goose-protobuf@v0.1.0";` | You want Goose to fetch it. [More below](#a-git-source) |
 | A copy | `import pb_wire;` | You want no network and no other directory. `scripts/vendor_runtime.sh <dir>` makes the copy, next to your root file |
 
-A git source fetches this whole repository once per version, about 5 MB into Goose's
-cache, tests included. Goose compiles only what your program imports, so the rest adds
-nothing to your build time.
-
 [The quickstart](quickstart.md) tries them on a small program.
+
+### A git source
+
+Name a release from [the changelog](../CHANGELOG.md), as `v0.1.0` above. A version the
+changelog marks as unreleased has no tag yet, so until then pin a commit.
+
+Pin a commit as well if your build must be reproducible, since a tag can move. Give the
+whole hash, as Goose cannot fetch a short one. This one is only an example, so choose
+yours from the repository's history:
+
+`import pb_wire from "Arwalk/goose-protobuf@dc5323408e9e369d07ad9b706fb414bde185ed50";`
+
+Goose fetches only the runtime. **You still need a checkout at the same version to get
+the plugin**, since generated code will not build against a runtime of another version.
+For a release:
+
+- `git clone --depth 1 --branch v0.1.0 https://github.com/Arwalk/goose-protobuf`
+- `goose-protobuf/scripts/install_plugin.sh`
+
+For a commit:
+
+- `git clone https://github.com/Arwalk/goose-protobuf`
+- `git -C goose-protobuf checkout <the whole hash>`
+- `goose-protobuf/scripts/install_plugin.sh`
+
+The fetch takes this whole repository once per version, about 5 MB into Goose's cache,
+tests included. Goose compiles only what your program imports, so the rest adds nothing
+to your build time.
