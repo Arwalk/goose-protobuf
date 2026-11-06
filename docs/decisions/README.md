@@ -23,7 +23,7 @@ change, and *proposed* is waiting for the project owner's review.
 | [0010](0010-no-map-index.md) | Maps have no index, and get a bulk append | Accepted, until a workload needs one |
 | [0011](0011-goose-only-generator.md) | The generator is written in Goose, on bindings it commits | Accepted |
 | [0012](0012-public-api.md) | What is public, and how versions move | Accepted, amended by 0014 on raised protoc pins, with the rules for users in [docs/versions.md](../versions.md) |
-| [0013](0013-generated-code-outside-the-root.md) | A directory of generated code is a package, so the plugin needs no parameter | Proposed |
+| [0013](0013-generated-code-outside-the-root.md) | A directory of generated code is a package, so the plugin needs no parameter | Accepted |
 | [0014](0014-protoc-range.md) | protoc 27.0 up to the pin is supported, and what that does to decision 0012 | Accepted |
 | [0015](0015-package-fetch-size.md) | What a git source costs a consumer, and that nothing needs trimming | Accepted |
 | [0016](0016-edition-2024.md) | Edition 2024 is supported, as nothing it changes reaches the wire format | Accepted |

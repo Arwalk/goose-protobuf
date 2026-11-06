@@ -23,3 +23,8 @@ What `protoc-gen-goose` does not do, or does slowly, and what to do about it.
 - One decode may allocate 512 MiB unless you
   [raise the limit](../SECURITY.md#the-decode-limit), and a program's messages are limited
   to about 2 GB in each pool together.
+- Your proto cannot import a proto whose generated code comes from a library package:
+  the generated `import b.y;` fails with `cannot find the module b.y`, and the plugin
+  has no parameter to redirect it. Have the library ship its `.proto` files, and generate
+  them in your program. Do not load a generated copy from the library as well, or you
+  get `type name already declared`.
