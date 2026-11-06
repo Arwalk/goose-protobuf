@@ -53,5 +53,5 @@ change every call, for what most programs set once. Messages are single-threaded
   limit. It worked before, up to about 2 GB.
 - Messages the program still holds add up, and past 2 GB the abort remains. Tracking what
   is live would need a charge on every free too. [SECURITY.md](../../SECURITY.md) says so.
-- Past 4 GiB in a pool, which only a raised `--stack-reserve` allows, positions still wrap.
-  That is a separate problem.
+- A pool past 2^32 elements, which only a raised `--stack-reserve` allows, is a separate
+  problem: `pb_resize` ends the program there, as a position would wrap.

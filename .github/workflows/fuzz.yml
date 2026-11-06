@@ -1,5 +1,6 @@
 # The generated decoders under libFuzzer and AddressSanitizer (scripts/fuzz.sh),
-# which is too slow for every push. SECURITY.md says what this covers.
+# which is too slow for every push, and a test that needs 4 GiB of memory.
+# SECURITY.md says what fuzzing covers.
 name: fuzz
 
 on:
@@ -28,6 +29,9 @@ jobs:
         run: |
           scripts/install_toolchain.sh
           echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - name: Pool limit
+        run: scripts/test_pool_limit.sh
 
       - name: Install clang and its fuzzer runtime
         run: sudo apt-get install --no-install-recommends -y clang libclang-rt-dev

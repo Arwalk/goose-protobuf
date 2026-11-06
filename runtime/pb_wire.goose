@@ -22,7 +22,8 @@
 // Errors (docs/decisions/0004-decode-errors.md): readers take a pb_Reader
 // by reference. A failing read records the first error in r.err, moves
 // r.pos to r.end so every field loop stops, and returns 0. Nothing here
-// aborts on bad input. Writers append to a u8[>..] and cannot fail.
+// aborts on bad input, within the limits in SECURITY.md. Writers append to a
+// u8[>..] and cannot fail.
 
 import std;
 
@@ -304,10 +305,18 @@ fn pb_resize<T>(pool: T[>..]&, s: pb_Span, n: i64) -> pb_Span {
     }
     if s.len == 0 {
         let r = pool.alloc_slice(n);
-        return pb_Span { at: pool.index_of(r[0]) as! u32, len: n as! u32 };
+        return pb_span_at(pool.index_of(r[0]), n);
     }
     let r = pool.realloc_slice(pb_run(pool, s), n);
-    return pb_Span { at: pool.index_of(r[0]) as! u32, len: n as! u32 };
+    return pb_span_at(pool.index_of(r[0]), n);
+}
+
+// A span holds 32 bits. Past that a position would wrap, and the run would overwrite
+// another with no error, so this ends the program. It takes a raised --stack-reserve to
+// get here, as the default ends it earlier, and a decode's limit stops one message first.
+fn pb_span_at(at: i64, n: i64) -> pb_Span {
+    if at >= (1 << 32) || n >= (1 << 32) { abort("pb_wire: a pool holds over 2^32 elements"); }
+    return pb_Span { at: at as! u32, len: n as! u32 };
 }
 
 // Run s of pb_bytes with src appended. src must not be in pb_bytes.

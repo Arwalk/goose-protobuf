@@ -48,12 +48,9 @@ So:
 - Raising the limit past about 1 GiB brings the abort back within reach of one message.
 - If input must not be able to end your service, decode in a process you can restart.
 
-### Do not raise the reservation for untrusted input
-
-`goose build --stack-reserve` raises the limit above. Do not use it to decode untrusted
-input: positions in the pools are 32 bits, and **past 4 GiB in one pool a decoder
-returns `PB_OK` with wrong data**, as a new value overwrites an old one. The default
-reservation ends the program long before that.
+A larger reservation does not lift every limit: `goose build --stack-reserve` raises the
+2 GB, but positions in the pools are 32 bits, so a pool holding over 2^32 elements also
+ends the program, with `a pool holds over 2^32 elements`.
 
 ### Other limits
 

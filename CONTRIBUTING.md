@@ -115,6 +115,12 @@ scripts/test_run_conformance.sh
 scripts/test_protoc_versions.sh
 ```
 
+One more needs 4 GiB of memory, so CI runs it once a week with the fuzzer:
+
+```sh
+scripts/test_pool_limit.sh                      # a pool past 2^32 elements ends the program
+```
+
 ### Golden tests
 
 Each `tests/protos/<name>.proto` is generated twice (the two outputs must be
