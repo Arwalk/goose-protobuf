@@ -22,7 +22,7 @@ text goes. A document marked *planned* does not exist yet.
 | `docs/benchmarks.md` *(planned)* | See how fast encoding and decoding are |
 | [examples/](../examples/) | Start from a complete program |
 | [CHANGELOG.md](../CHANGELOG.md) | See what changed between versions |
-| `SECURITY.md` *(planned)* | Report a problem, or decode untrusted input safely |
+| [SECURITY.md](../SECURITY.md) | Report a problem, or decode untrusted input safely |
 
 ### Working on the project
 

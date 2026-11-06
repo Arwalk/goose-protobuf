@@ -19,4 +19,5 @@ What `protoc-gen-goose` does not do, or does slowly, and what to do about it.
   add to one by decoding, concatenated encodings decode as a merge, so join the
   buffers and decode once. For many `_get` on a large map, keep your own index beside
   it ([decision 0010](decisions/0010-no-map-index.md)).
-- One run of values is limited to 2^32 elements.
+- One run of values is limited to 2^32 elements, and one pool to 4 GiB. Decoding large
+  input can end your program, so [check its size first](../SECURITY.md#decoding-untrusted-bytes).

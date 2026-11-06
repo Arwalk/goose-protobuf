@@ -189,7 +189,8 @@ scripts/fuzz_seeds.sh                              # refresh the seeds, after a 
 ```
 
 A crash exits nonzero and leaves its input in `build/fuzz/`. Plain clang is not
-enough on Ubuntu, as the runtime is a package of its own.
+enough on Ubuntu, as the runtime is a package of its own. CI runs this once a week for
+30 minutes (`.github/workflows/fuzz.yml`), and keeps a failing input as an artifact.
 
 ## Rules
 

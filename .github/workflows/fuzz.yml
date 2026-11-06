@@ -1,0 +1,50 @@
+# The generated decoders under libFuzzer and AddressSanitizer (scripts/fuzz.sh),
+# which is too slow for every push. SECURITY.md says what this covers.
+name: fuzz
+
+on:
+  schedule:
+    - cron: "17 3 * * 0"
+  workflow_dispatch:
+
+jobs:
+  fuzz:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # update = none in .gitmodules keeps it out of what package users fetch
+      # (decision 0005), so it takes --checkout.
+      - name: Check out the protobuf submodule
+        run: git submodule update --init --checkout third_party/protobuf
+
+      - name: Cache pinned protoc and Goose
+        uses: actions/cache@v4
+        with:
+          path: .tools
+          key: tools-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('scripts/install_toolchain.sh') }}
+
+      - name: Install pinned protoc and Goose
+        run: |
+          scripts/install_toolchain.sh
+          echo "$PWD/.tools/bin" >> "$GITHUB_PATH"
+
+      - name: Install clang and its fuzzer runtime
+        run: sudo apt-get install --no-install-recommends -y clang libclang-rt-dev
+
+      - name: Self-test the harness
+        run: scripts/test_fuzz.sh
+
+      - name: Fuzz for 30 minutes
+        run: scripts/fuzz.sh 1800
+
+      - name: Keep the failing input
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: |
+            build/fuzz/crash-*
+            build/fuzz/timeout-*
+            build/fuzz/oom-*
+          if-no-files-found: ignore
